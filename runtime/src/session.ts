@@ -41,6 +41,7 @@ import type { Beat, Message, State, Timing } from "./state.ts";
 import { SttRelay } from "./stt.ts";
 import { Tts } from "./tts.ts";
 import { Alignment } from "./align.ts";
+import { Leveler } from "./level.ts";
 import type { AlignmentChunk } from "./align.ts";
 
 const PROTOCOL_VERSION = 1;
@@ -322,11 +323,13 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			);
 		}
 		const timing: Timing = { characters: [], starts: [], ends: [] };
+		// whispered delivery tags come back far quieter than normal speech
+		const leveler = new Leveler();
 		const end = await tts.speak({
 			id,
 			text,
 			newTurn,
-			onAudio: (pcm) => sendAudio(id, pcm),
+			onAudio: (pcm) => sendAudio(id, leveler.process(pcm)),
 			onAlignment: (a) => {
 				pushTiming(timing, a);
 				sp.align.push(a);
