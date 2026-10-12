@@ -4,10 +4,13 @@
 // model call picks the words from the character's vocabulary; the runtime
 // times them to the voice.
 //
-// Calls are serialized per session, so each sentence sees what the previous
-// ones spent (camera moves, gestures, intense emotions) and which talking style
-// is running. A failed or late call means no beats for that sentence, never a
-// wrong one.
+// Sentences are staged in batches: a batch fires
+// at BATCH_SIZE sentences, or once no new sentence has arrived for BATCH_IDLE_MS.
+// One call per batch keeps up with long replies and stays under rate limits,
+// and the director sees enough of the passage to hold a talking style across
+// it. Batches are serialized per session, so each sees what the previous ones
+// spent (camera moves, gestures, intense emotions). A batch from an earlier
+// turn is dropped. A failed or late call means no beats, never a wrong one.
 //
 // config (usually a character's director.yaml):
 //   model:     { base_url, api_key_env, model }   an OpenAI-compatible chat model
@@ -59,12 +62,23 @@ interface Budget {
 	lastRegister: string;
 }
 
+// one sentence waiting in a batch, and how to hand back its beats
+interface Waiting {
+	line: string;
+	done: (beats: Beat[]) => void;
+}
+
 interface Session {
 	turn: number | undefined;
 	budget: Budget;
 	spoken: string; // this reply's sentences already staged, for context
 	chain: Promise<unknown>;
+	batch: Waiting[];
+	idle: ReturnType<typeof setTimeout> | undefined;
 }
+
+const BATCH_SIZE = 3;
+const BATCH_IDLE_MS = 400;
 
 const sessions = new Map<string, Session>();
 
@@ -174,11 +188,14 @@ function spend(b: Budget, beats: Beat[], c: Config): void {
 	}
 }
 
-async function stage(line: string, s: Session, c: Config): Promise<Beat[]> {
+// One call for a batch of consecutive lines, staged as one passage. Returns the
+// beats for each line, matched by where each span falls in the passage.
+async function stage(lines: string[], s: Session, c: Config): Promise<Beat[][]> {
+	const passage = lines.join("\n");
 	const user =
 		`ALREADY SPOKEN (context only — do not stage this):\n${s.spoken || "(this is the opening)"}\n\n` +
 		`${continuity(s.budget, c)}\n\n` +
-		`STAGE THIS PASSAGE (spans must be exact substrings of it):\n${line}`;
+		`STAGE THIS PASSAGE (spans must be exact substrings of it):\n${passage}`;
 	const resp = await fetch(`${c.model.base_url.replace(/\/+$/, "")}/chat/completions`, {
 		method: "POST",
 		signal: AbortSignal.timeout(7000),
@@ -199,11 +216,59 @@ async function stage(line: string, s: Session, c: Config): Promise<Beat[]> {
 	});
 	if (!resp.ok) throw new Error(`the director model answered HTTP ${resp.status}`);
 	const j = (await resp.json()) as { choices?: Array<{ message?: { content?: string } }> };
-	return coerce(parseJson(j.choices?.[0]?.message?.content ?? ""), c);
+	const beats = coerce(parseJson(j.choices?.[0]?.message?.content ?? ""), c);
+	// where each line starts in the passage
+	const starts: number[] = [];
+	let at = 0;
+	for (const line of lines) {
+		starts.push(at);
+		at += line.length + 1;
+	}
+	const perLine: Beat[][] = lines.map(() => []);
+	let cursor = 0; // spans come in order, so a repeated phrase can't match backwards
+	for (const beat of beats) {
+		let found = passage.indexOf(beat.span, cursor);
+		if (found < 0) found = passage.indexOf(beat.span); // the model reordered
+		if (found < 0) continue; // not in the passage; it could never be timed
+		cursor = found + beat.span.length;
+		let line = 0;
+		for (let i = 0; i < starts.length; i++) if (found >= starts[i]) line = i;
+		perLine[line].push(beat);
+	}
+	return perLine;
+}
+
+// stages the waiting batch after the ones before it
+function fire(s: Session, c: Config): void {
+	clearTimeout(s.idle);
+	s.idle = undefined;
+	const batch = s.batch;
+	s.batch = [];
+	if (!batch.length) return;
+	const turn = s.turn;
+	s.chain = s.chain.then(async () => {
+		// a new turn began while this batch waited; its sentences are gone
+		if (turn !== s.turn) return batch.forEach((w) => w.done([]));
+		try {
+			const lines = batch.map((w) => w.line);
+			const perLine = await stage(lines, s, c);
+			if (turn !== s.turn) return batch.forEach((w) => w.done([]));
+			spend(s.budget, perLine.flat(), c);
+			s.spoken = `${s.spoken} ${lines.join(" ")}`.trim();
+			batch.forEach((w, i) => w.done(perLine[i]));
+		} catch {
+			batch.forEach((w) => w.done([]));
+		}
+	});
 }
 
 export default async function ({ event, state, config }: Input) {
 	if (event === "on_session_end") {
+		const s = sessions.get(state.session.id);
+		if (s) {
+			clearTimeout(s.idle);
+			s.batch.forEach((w) => w.done([]));
+		}
 		sessions.delete(state.session.id);
 		return;
 	}
@@ -211,24 +276,27 @@ export default async function ({ event, state, config }: Input) {
 	if (event !== "on_sentence" || !line) return;
 	let s = sessions.get(state.session.id);
 	if (!s) {
-		s = { turn: state.turn, budget: newBudget(), spoken: "", chain: Promise.resolve() };
+		s = { turn: state.turn, budget: newBudget(), spoken: "", chain: Promise.resolve(), batch: [], idle: undefined };
 		sessions.set(state.session.id, s);
 	}
+	// a new reply starts a new budget; the talking style carries over
+	if (s.turn !== state.turn) {
+		clearTimeout(s.idle);
+		s.batch.forEach((w) => w.done([]));
+		s.batch = [];
+		s.turn = state.turn;
+		s.budget = { ...newBudget(), lastRegister: s.budget.lastRegister };
+		s.spoken = "";
+	}
 	const session = s;
-	const run = session.chain.then(async () => {
-		// a new reply starts a new budget; the talking style carries over
-		if (session.turn !== state.turn) {
-			session.turn = state.turn;
-			session.budget = { ...newBudget(), lastRegister: session.budget.lastRegister };
-			session.spoken = "";
+	const beats = await new Promise<Beat[]>((done) => {
+		session.batch.push({ line, done });
+		if (session.batch.length >= BATCH_SIZE) fire(session, config);
+		else {
+			clearTimeout(session.idle);
+			session.idle = setTimeout(() => fire(session, config), BATCH_IDLE_MS);
 		}
-		const beats = await stage(line, session, config);
-		spend(session.budget, beats, config);
-		session.spoken = `${session.spoken} ${line}`.trim();
-		return beats;
 	});
-	session.chain = run.catch(() => {});
-	const beats = await run;
 	if (!beats.length) return;
 	return { state: { ...state, beats: [...(state.beats ?? []), ...beats] } };
 }
