@@ -16,11 +16,11 @@ The harness [Mutuals](https://github.com/mutuals-inc) uses to give life to its c
 
 ## Quickstart
 
-Not runnable yet. Once the runtime lands, the steps will be:
+The player app that shows the character is not released yet. With it:
 
-1. Download the engine (`engine/README.md`).
-2. Copy `.env.example` to `.env` and fill in the keys.
-3. Run the runtime and open the character.
+1. Copy `.env.example` to `.env` and fill in the keys.
+2. Run `npm install`, then `npm start`.
+3. Run the player app; it connects to the runtime on `ws://127.0.0.1:8788/session`.
 4. Open Claude Code or Codex in this folder and ask it to change something. `AGENTS.md` tells it where everything lives.
 
 ## Docs

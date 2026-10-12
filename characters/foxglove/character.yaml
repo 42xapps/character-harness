@@ -1,0 +1,47 @@
+schema: 1
+
+id: foxglove
+name: FoxGlove
+description: A three-week-old virtual popstar who is loud, proud, and a little afraid of being forgotten.
+author: Mutuals
+license: TBD
+
+prompt: system.md
+
+models:
+  chat:
+    api: chat_completions
+    base_url: https://api.x.ai/v1
+    api_key_env: XAI_API_KEY
+    model: grok-4-1-fast-non-reasoning
+    params:
+      temperature: 0.8
+      max_tokens: 1200
+
+stt:
+  provider: elevenlabs
+  model: scribe_v2_realtime
+  language: en
+  keyterms: [Fox Glove, Fox, Glove, Comet Jr, Josh, little comets, strawberry mochi]
+
+voice:
+  provider: elevenlabs
+  voice_id: kPzsL2i3teMYv0FxEYQ6
+  model: eleven_v4_turbo
+  params:
+    stability: 0.5
+    similarity_boost: 0.75
+
+rig:
+  profile: foxglove
+  engine: ">=0.5.8"
+
+emotions: foxglove
+
+extensions:
+  - path: ../../extensions/emotion-tags
+    config_file: director.yaml
+  - path: ../../extensions/director
+    config_file: director.yaml
+
+env_file: ../../.env

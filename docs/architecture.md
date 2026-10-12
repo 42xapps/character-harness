@@ -13,7 +13,7 @@ input (voice, chat, screen)
      → llm          the character's model writes the reply
      → after_llm    the full reply is written
   → on_sentence     per sentence, once before_reply is done, while TTS synthesizes it
-  → on_speak        audio plays, the rig moves
+  → on_speak        the sentence's audio and timing are ready
   → after_turn      the turn is closed
 ```
 
@@ -41,8 +41,8 @@ A blocking extension on `before_reply` or `before_llm` ends the turn by setting 
 | `before_reply` | input arrived; runs alongside `before_llm` and the LLM call | `input`, `messages` | the gate (reply or stay quiet), moderation that cancels the turn |
 | `before_llm` | the prompt is being built | `input`, `messages`, `prompt` | memory recall, context injection, blocking a topic |
 | `after_llm` | the full reply is written; early sentences may already be playing | `+ reply` | observability spans, logging the reply |
-| `on_sentence` | per sentence, while TTS synthesizes it | `+ sentence` | staging: emotion, gesture, camera |
-| `on_speak` | audio plays, the rig moves | `sentence` + `timing` | sync expressions to the audio |
+| `on_sentence` | per sentence, while TTS synthesizes it | `+ sentence`, `beats` | staging: emotion, gesture, camera |
+| `on_speak` | a sentence's audio and timing are ready | `sentence` + `timing` | sync expressions to the audio |
 | `after_turn` | the turn is closed | everything | memory writes, metrics, rewards, transcripts, eval data |
 | `on_session_end` | the session closes | everything, plus the end reason | consolidate memory, close metrics, report the session to an eval service |
 
@@ -105,7 +105,19 @@ voice:
 - Each sentence comes back as streamed audio plus per-character timing. The runtime puts the timing in `timing` for `on_speak`, so expressions land on the word.
 - The sentence goes to ElevenLabs as written, so delivery tags like `[laughs]` work.
 - ElevenLabs uses `ELEVENLABS_API_KEY`.
-- On failure the runtime sets `error` and ends the turn. `after_turn` still fires.
+- If a sentence fails, the runtime sets `error` and the app retries it.
+
+## Beats
+
+An extension on `on_sentence` stages the sentence by adding beats to `state.beats`:
+
+```json
+{ "span": "you actually did it", "emotion": "happy", "register": "upbeat", "gesture": "cheer", "camera": "push-in" }
+```
+
+`span` is the exact text where the beat starts (`""` is the start of the sentence). The words come from the character's own vocabulary, the emotions, talking styles, gestures and camera moves the app has assets for. The runtime never interprets them. It waits until the span is voiced, then sends the beat to the app timed to that moment, and the app animates the character. A beat with only an emotion at the start changes the face at once.
+
+Each extension's beats go out as soon as it returns, so a fast extension isn't held back by a slower one after it.
 
 ## State
 
@@ -116,11 +128,13 @@ Every event carries one JSON state object. Extensions receive it, may change it,
 | `schema` | state version |
 | `character` | the loaded manifest |
 | `session` | session id, who is in it, the channel, and the end reason on `on_session_end` |
-| `input` | what came in this turn, and from which channel |
+| `input` | what came in this turn: `text`, and `channel` (`voice`, `chat` or `screen`) |
 | `messages` | recent conversation |
 | `prompt` | the system prompt being built |
 | `reply` | the full reply, once written |
+| `turn` | the turn's number, the same for every hook of one turn |
 | `sentence` | the current sentence, inside `on_sentence` and `on_speak` |
+| `beats` | inside `on_sentence`: cues an extension adds for this sentence (see "Beats") |
 | `timing` | when each character of the sentence is heard, inside `on_speak` |
 | `cancel` | `true` to end the turn without replying, set on `before_reply` or `before_llm` |
 | `error` | why the turn failed, if it did |

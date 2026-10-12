@@ -1,0 +1,4 @@
+name: emotion-tags
+handler: index.ts
+hooks:
+  on_sentence: { timeout_ms: 500 }

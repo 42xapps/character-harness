@@ -37,7 +37,9 @@ extensions:
     config: { anything: you-need }
 ```
 
-The runtime passes `config` to the extension untouched.
+The runtime passes `config` to the extension untouched. For a long config, `config_file` names a YAML file in the character's folder instead.
+
+Two extensions ship with the harness: `emotion-tags` changes the face from the tag that opens each sentence, and `director` stages each sentence with beats (see "Beats" in `architecture.md`).
 
 ## Handlers
 
@@ -52,6 +54,8 @@ Both get the same input and return the same output:
 in:  { event, state, config }
 out: { state }
 ```
+
+A module's default export is that function, sync or async. Returning nothing means no change. An HTTP handler gets the input as a JSON `POST` and answers with the output. Keys from `.env` are in `process.env`.
 
 ## Blocking and non-blocking
 

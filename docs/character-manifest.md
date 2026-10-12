@@ -112,6 +112,7 @@ A list, in the order the extensions run. Each extension declares its own hooks a
 |---|---|---|
 | `path` | yes | The extension's folder. |
 | `config` | no | Anything. Passed to the extension untouched. |
+| `config_file` | no | A YAML file in the character's folder with more config. Keys in `config` win. |
 
 ## Keys
 

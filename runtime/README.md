@@ -4,4 +4,12 @@ The conversation loop: speech in, the gate alongside the LLM, per-sentence stagi
 
 It runs on Node and loads extensions from their folders.
 
-TBD.
+```bash
+npm install
+npm start                      # characters/foxglove
+npm start -- characters/<id>   # another character
+```
+
+It serves the app on `ws://127.0.0.1:8788/session`. Set `PORT` to change the port, and `HOST=0.0.0.0` so another device on the same network can reach it.
+
+`src/session.ts` lists the messages of the app protocol.

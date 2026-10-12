@@ -1,0 +1,6 @@
+name: director
+handler: index.ts
+hooks:
+  on_sentence: { timeout_ms: 8000 }
+  on_session_end: { blocking: false }
+requires_env: [XAI_API_KEY]
