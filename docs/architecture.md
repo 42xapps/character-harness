@@ -104,7 +104,7 @@ voice:
 
 - Each sentence comes back as streamed audio plus per-character timing. The runtime puts the timing in `timing` for `on_speak`, so expressions land on the word.
 - The sentence goes to ElevenLabs as written, so delivery tags like `[laughs]` work.
-- Tags like `[quiet]` or `[whispers]` come back 5-10x quieter than normal speech. The runtime lifts a quiet sentence toward normal loudness (up to 12x) and never turns one down.
+- Tags like `[quiet]` or `[whispers]` come back 5-10x quieter than normal speech. A character can list them under `voice.drop_tags` to have them removed before the voice. As a backup, the runtime lifts a quiet sentence toward normal loudness (up to 12x) and never turns one down.
 - ElevenLabs uses `ELEVENLABS_API_KEY`.
 - If a sentence fails, the runtime sets `error` and the app retries it.
 

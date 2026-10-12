@@ -95,6 +95,7 @@ Models an extension uses belong to that extension, not here. See "The chat model
 | `voice_id` | yes | The provider's voice ID. |
 | `model` | yes | Like `eleven_v4_turbo`. |
 | `params` | no | Voice settings passed to the provider, like `stability` and `similarity_boost`. |
+| `drop_tags` | no | Delivery tags removed from each sentence before the voice gets it, like `[quiet, whispers]` for tags it renders too quietly. |
 
 ## `rig`, `emotions`
 

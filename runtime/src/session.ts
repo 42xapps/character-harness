@@ -87,6 +87,14 @@ interface Spoken {
 	cancelled: boolean;
 }
 
+// removes the listed [tags] from a sentence; the rest of it is left as written
+function dropTags(text: string, tags: string[]): string {
+	if (!tags.length) return text;
+	return text
+		.replace(/\[([a-zA-Z][a-zA-Z-]*)\]\s*/g, (tag, word: string) => (tags.includes(word.toLowerCase()) ? "" : tag))
+		.trim();
+}
+
 const stripTags = (text: string) => text.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
 
 function isBeat(b: unknown): b is Beat {
@@ -327,7 +335,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		const leveler = new Leveler();
 		const end = await tts.speak({
 			id,
-			text,
+			text: dropTags(text, character.voice.drop_tags),
 			newTurn,
 			onAudio: (pcm) => sendAudio(id, leveler.process(pcm)),
 			onAlignment: (a) => {

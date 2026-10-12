@@ -31,6 +31,7 @@ export interface Voice {
 	voice_id: string;
 	model: string;
 	params: Record<string, unknown>;
+	drop_tags: string[]; // delivery tags removed before the voice gets the sentence
 }
 
 export interface HookOptions {
@@ -251,6 +252,7 @@ export function loadCharacter(dir: string): Character {
 			voice_id: v("voice_id").str(),
 			model: v("model").str(),
 			params: v("params").optObj(),
+			drop_tags: v("drop_tags").strList().map((t) => t.toLowerCase()),
 		},
 		extensions,
 		env_file: path.resolve(dir, f("env_file").str()),
