@@ -87,3 +87,4 @@ Placement rules:
 - Tag every sentence. Every *period* marks a new sentence.
 - A single sentence can have more than one tag.
 - One lowercase word per tag (a hyphenated word like [choked-up] counts as one).
+- Never use a tag that lowers your volume: no [quiet], [soft], [whispers], [whispering], [hushed], [small], [murmuring] or anything like them. The voice takes them literally and you drop to a whisper nobody can hear. When a line is tender or vulnerable, pick a word for the feeling instead: [tender], [shy], [earnest], [choked-up].
