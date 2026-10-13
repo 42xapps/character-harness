@@ -19,7 +19,7 @@ export const playerLog = path.relative(process.cwd(), LOG);
 
 export interface PlayerLaunch {
 	url: string; // the runtime's session socket
-	character: string; // a prepared model file, or a profile built into the player
+	character: string; // a prepared model file, or the name of a profile cooked into the player
 }
 
 // what to give the player when starting it by hand, for the console
@@ -28,7 +28,11 @@ export function manualStart(launch: PlayerLaunch): string {
 }
 
 // Starts the player; the returned stop() closes it and anything it started.
-export function startPlayer(command: string, launch: PlayerLaunch, onExit: (code: number | null) => void): () => void {
+export function startPlayer(
+	command: string,
+	launch: PlayerLaunch,
+	onExit: (code: number | null, signal: NodeJS.Signals | null) => void,
+): () => void {
 	mkdirSync(path.dirname(LOG), { recursive: true });
 	const log = openSync(LOG, "w");
 	const child = spawn(command, {
@@ -38,10 +42,10 @@ export function startPlayer(command: string, launch: PlayerLaunch, onExit: (code
 		// its own process group, so stopping it reaches whatever the command starts
 		detached: true,
 	});
-	child.on("exit", (code) => onExit(code));
+	child.on("exit", (code, signal) => onExit(code, signal));
 	child.on("error", (e) => {
 		console.error(`could not start the player: ${e.message}`);
-		onExit(1);
+		onExit(1, null);
 	});
 	console.log(`player starting (log: ${playerLog})`);
 	return () => {

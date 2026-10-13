@@ -1,0 +1,12 @@
+# the link to your local Kaigen SDK install (see README.md)
+/hz
+# build and cook output
+/out/
+/cooked/
+/src/generated/
+/compile_commands.json
+*.dSYM/
+# written while the app runs
+/logs/
+/crashes/
+/window.dat

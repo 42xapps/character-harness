@@ -1,0 +1,24 @@
+type NnModelSourceBlobAsset
+version 17
+---
+source "silero_vad_16k.onnx"
+opset_expected 15
+inputs 3
+  name "input"
+  dims 2 1 576
+  rank 2
+  dtype NN_DTYPE_F32
+  pinned false
+  pinned_i64 0
+  name "state"
+  dims 3 2 1 128
+  rank 3
+  dtype NN_DTYPE_F32
+  pinned false
+  pinned_i64 0
+  name "sr"
+  dims 0
+  rank 0
+  dtype NN_DTYPE_I64
+  pinned true
+  pinned_i64 16000

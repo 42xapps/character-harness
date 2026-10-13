@@ -1,0 +1,532 @@
+type EmotionSetBlobAsset
+version 16
+---
+emotions 19
+  name "happy"
+  reaction "happy"
+  hold "warm"
+  react_rise 0.150000
+  react_hold_min 0.800000
+  react_hold_max 1.600000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "warm"
+  reaction ""
+  hold "warm"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "playful"
+  reaction "playful"
+  hold ""
+  react_rise 0.150000
+  react_hold_min 0.800000
+  react_hold_max 1.400000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "thoughtful"
+  reaction ""
+  hold "thoughtful"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "confident"
+  reaction "confident"
+  hold "confident"
+  react_rise 0.150000
+  react_hold_min 0.700000
+  react_hold_max 1.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "surprised"
+  reaction "surprised"
+  hold "surprised"
+  react_rise 0.150000
+  react_hold_min 1.500000
+  react_hold_max 2.000000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 1.200000
+  overrides 3
+    behavior CHARACTER_BEHAVIOR_NO_MICRO
+    value 0.000000
+
+    behavior CHARACTER_BEHAVIOR_NO_BLINK
+    value 0.000000
+
+    behavior CHARACTER_BEHAVIOR_FREEZE_GAZE
+    value 0.000000
+
+  name "dreamy"
+  reaction ""
+  hold "dreamy"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "sympathetic"
+  reaction ""
+  hold "sympathetic"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "sad"
+  reaction "sad"
+  hold "sad"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "contempt"
+  reaction "fuming"
+  hold "angry"
+  react_rise 0.150000
+  react_hold_min 0.800000
+  react_hold_max 1.500000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "disgust"
+  reaction "angry"
+  hold ""
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "neutral"
+  reaction ""
+  hold "neutral"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "pleading"
+  reaction ""
+  hold "pleading"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "shy"
+  reaction ""
+  hold "bashful"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_outer
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 0.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "sparkle eyes"
+  reaction "starstruck"
+  hold "starstruck"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.784314
+    g 0.576471
+    b 0.098039
+    a 1.000000
+  tint_outer
+    r 0.235645
+    g 0.171526
+    b 0.023934
+    a 1.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0
+
+  name "crying eyes"
+  reaction ""
+  hold "tearful"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 12.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.554000
+    g 0.106000
+    b 0.298000
+    a 1.000000
+  tint_outer
+    r 0.227000
+    g 0.056000
+    b 0.129000
+    a 1.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite true
+  override_duration 2.000000
+  overrides 3
+    behavior CHARACTER_BEHAVIOR_EYE_CONTACT
+    value 1.000000
+
+    behavior CHARACTER_BEHAVIOR_AVERSIONS
+    value 0.000000
+
+    behavior CHARACTER_BEHAVIOR_FREEZE_GAZE
+    value 0.000000
+
+  name "grumpy"
+  reaction ""
+  hold "fuming"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 6.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.430000
+    g 0.040000
+    b 0.070000
+    a 1.000000
+  tint_outer
+    r 0.026000
+    g 0.039000
+    b 0.106000
+    a 1.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 1.500000
+  overrides 3
+    behavior CHARACTER_BEHAVIOR_FREEZE_GAZE
+    value 0.000000
+
+    behavior CHARACTER_BEHAVIOR_EYE_CONTACT
+    value 1.000000
+
+    behavior CHARACTER_BEHAVIOR_AVERSIONS
+    value 0.000000
+
+  name "really grumpy"
+  reaction "fuming"
+  hold "fuming"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.430000
+    g 0.040000
+    b 0.070000
+    a 1.000000
+  tint_outer
+    r 0.026000
+    g 0.039000
+    b 0.106000
+    a 1.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite true
+  override_duration 1.500000
+  overrides 4
+    behavior CHARACTER_BEHAVIOR_FREEZE_GAZE
+    value 0.000000
+
+    behavior CHARACTER_BEHAVIOR_NO_BLINK
+    value 0.000000
+
+    behavior CHARACTER_BEHAVIOR_EYE_CONTACT
+    value 1.000000
+
+    behavior CHARACTER_BEHAVIOR_AVERSIONS
+    value 0.000000
+
+  name "flustered"
+  reaction "dreamy"
+  hold "bashful"
+  react_rise 0.150000
+  react_hold_min 0.400000
+  react_hold_max 0.800000
+  react_fall 0.500000
+  react_amp 1.000000
+  hold_duration 4.000000
+  hold_transition 0.250000
+  tint_inner
+    r 0.515000
+    g 0.102000
+    b 0.279000
+    a 1.000000
+  tint_outer
+    r 0.227000
+    g 0.056000
+    b 0.129000
+    a 1.000000
+  tint_transition 0.300000
+  tint_curve CHARACTER_EASE_SMOOTH
+  hold_indefinite false
+  override_duration 0.000000
+  overrides 0

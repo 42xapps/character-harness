@@ -1,6 +1,6 @@
 # Architecture
 
-Three parts: the **engine** renders the character, the **runtime** runs the conversation, and **extensions** add behavior. A **character** is a folder the runtime loads through its manifest.
+Three parts: the **player** (`player/`) renders the character, the **runtime** runs the conversation, and **extensions** add behavior. A **character** is a folder the runtime loads through its manifest.
 
 ## The turn loop
 

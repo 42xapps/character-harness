@@ -1,5 +1,5 @@
 # FoxGlove
 
-The reference character. Her clips and expression sets are the ones every character is checked against.
+The reference character: her manifest, personality and director are here. Her body, face and animations are not included in this repo.
 
-Files: `character.yaml`, `system.md`. Her body, face and animations are built into the player app.
+Files: `character.yaml`, `system.md`, `director.yaml`.

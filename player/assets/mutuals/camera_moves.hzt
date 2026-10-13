@@ -1,0 +1,35 @@
+type CameraMoveSetBlobAsset
+version 16
+---
+moves 4
+  name "hold"
+  fov 0.000000
+  x 0.000000
+  y 0.000000
+  distance 0.100000
+  curve CHARACTER_EASE_SMOOTH
+  transition 0.100000
+
+  name "push-in"
+  fov 0.000000
+  x 0.000000
+  y 0.044444
+  distance 0.250000
+  curve CHARACTER_EASE_CUBIC_IN
+  transition 0.140000
+
+  name "close-up"
+  fov 24.000002
+  x 0.000000
+  y 0.155556
+  distance 0.100000
+  curve CHARACTER_EASE_CUBIC_IN
+  transition 0.150000
+
+  name "pull-back"
+  fov 0.000000
+  x 0.000000
+  y 0.000000
+  distance 0.000000
+  curve CHARACTER_EASE_CUBIC_OUT
+  transition 0.300000

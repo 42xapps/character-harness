@@ -42,10 +42,13 @@ const extensions = await loadExtensions(character.extensions).catch((e: unknown)
 	fail(e instanceof Error ? e.message : String(e)),
 );
 
-// what the player shows: a profile built into it, or the character's model
+// what the player shows: a profile cooked into its build, or the character's model
 // with its animations baked in
 let shown: string;
-if (character.rig.kind === "profile") shown = character.rig.profile;
+if (character.rig.kind === "profile") {
+	shown = character.rig.profile;
+	console.log(`${character.name}'s body is the player profile "${shown}"; the player in this repo ships no profiles, so it needs a build that includes it`);
+}
 else {
 	const rig = character.rig;
 	const t0 = Date.now();
@@ -81,8 +84,9 @@ server.listen(port, host, () => {
 		return;
 	}
 	try {
-		const stopPlayer = startPlayer(where, launch, (code) => {
+		const stopPlayer = startPlayer(where, launch, (code, signal) => {
 			if (code) fail(`the player exited with ${code}; see ${playerLog}`);
+			if (signal) fail(`the player was stopped by ${signal}; see ${playerLog}`);
 			console.log("the player closed");
 			process.exit(0);
 		});

@@ -1,0 +1,263 @@
+type EntityChunkBlobAsset
+version 19
+---
+entity 6063939844089293065
+
+component SceneEntityTag
+  _ 0
+
+component Camera
+  view 
+  proj 
+  view_proj 
+  inv_view_proj 
+  frustum
+    planes 6
+      x 0.9907099
+      y -0.028508604
+      z -0.13297042
+      w 0.39165023
+
+      x -0.990710
+      y -0.028504668
+      z -0.13297087
+      w 0.39164495
+
+      x 0.000001846
+      y 0.87700266
+      z -0.48048544
+      w -0.1803983
+
+      x -0.000001966
+      y -0.99689406
+      z -0.07875399
+      w 1.8275646
+
+      x -0.000000211
+      y -0.20961997
+      z -0.97778296
+      w 2.9799316
+
+      x -0.000000211
+      y -0.20961997
+      z -0.9777829
+      w 2.7797308
+  rot
+    x 0.105397
+    y 0.000000
+    z 0.000001
+    w -0.994430
+  pos 0.000000 1.716294 2.596321
+  fov 20.000000
+  near_plane 0.100000
+  far_plane 100.000000
+  aspect 1.7777778
+  tan_left 0.000000
+  tan_right 0.000000
+  tan_bottom 0.000000
+  tan_top 0.000000
+  lens_shift_x 0.000000
+  lens_shift_y 0.000000
+
+component WorldTransform
+  position
+    x 0.000000
+    y 1.716294
+    z 2.596321
+  rotation
+    x -0.000001
+    y -0.994430
+    z 0.105397
+    w 0.000000000
+  scale
+    x 1.000000
+    y 1.000000
+    z 1.000000
+
+component EcsStableId
+  id 6063939844089293065
+
+entity 16408682698052971134
+
+component SceneEntityTag
+  _ 0
+
+component EcsDirectionalLight
+  color
+    r 1.000000
+    g 0.980392
+    b 0.925490
+    a 1.000000
+  intensity 1.000000
+  cast_shadow false
+  shadow_strength 1.000000
+  shadow_bias 0.050000
+  shadow_normal_bias 0.400000
+
+component WorldTransform
+  position
+    x 0.000000
+    y 1.000000
+    z 0.000000
+  rotation
+    x 0.04786393
+    y -0.94665796
+    z 0.16692135
+    w 0.27144983
+  scale
+    x 1.000000
+    y 1.000000
+    z 1.000000
+
+component LightAim
+  azimuth_deg -148.000000
+  elevation_deg 20.000000
+
+component EcsStableId
+  id 16408682698052971134
+
+entity 17604535333686824962
+
+component SceneEntityTag
+  _ 0
+
+component EcsSceneSettings
+  ambient_color
+    r 0.484529
+    g 0.484529
+    b 0.484529
+    a 1.000000
+  ambient_intensity 0.500000
+  shadow_color
+    r 0.902992
+    g 0.904199
+    b 0.706772
+    a 1.000000
+  max_shadow_distance 5.000000
+  env_intensity 0.000000
+  skybox false
+  fog_mode RENDERER_FOG_EXP2
+  fog_color
+    r 0.007843
+    g 0.368628
+    b 0.513726
+    a 1.000000
+  fog_density 0.009000
+  fog_start -100.000000
+  fog_end 200.000000
+  clear_color
+    r 0.454299
+    g 0.732970
+    b 0.783019
+    a 0.000000
+
+component StageBackdrop
+  enabled true
+  kind STAGE_BACKDROP_GRADIENT
+  inner_color
+    r 0.065464
+    g 0.196609
+    b 0.250610
+    a 1.000000
+  outer_color
+    r 0.026388
+    g 0.038954
+    b 0.105970
+    a 1.000000
+  radius 0.033333
+  softness 0.475000
+  intensity 1.399998
+  light_follow 1.000000
+  image_scale 1.020000
+  image_offset_x 0.000000
+  image_offset_y -0.005555
+  image_tint
+    r 1.000000
+    g 1.000000
+    b 1.000000
+    a 1.000000
+
+component StageShadowCatcher
+  enabled true
+  shadow_color
+    r 1.000000
+    g 1.000000
+    b 1.000000
+    a 1.000000
+  opacity 0.600000
+  size 2.000000
+  falloff 0.250000
+  height 0.010000
+
+component EcsPostProcessing
+  exposure 1.000000
+  contrast 0.000000
+  brightness 0.000000
+  saturation 0.000000
+  gamma 0.000000
+  tonemap_mode TONEMAP_LINEAR
+  post_exposure 0.000000
+  hue_shift 0.000000
+  color_filter
+    r 1.000000
+    g 1.000000
+    b 1.000000
+    a 1.000000
+  white_balance_temperature 0.000000
+  white_balance_tint 0.000000
+  vignette_color
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 1.000000
+  vignette_center
+    x 0.500000
+    y 0.500000
+  vignette_intensity 0.300000
+  vignette_smoothness 0.182250
+  vignette_rounded false
+  bloom_intensity 2.000000
+  bloom_threshold 1.154896
+  bloom_scatter 1.000000
+  bloom_clamp 65472.000000
+  bloom_tint
+    r 0.380392
+    g 0.756863
+    b 0.952941
+    a 1.000000
+
+component EcsVisibility
+  visible true
+  casts_shadow false
+
+component EcsStableId
+  id 17604535333686824962
+
+entity 2718281828459045235
+
+component SceneEntityTag
+  _ 0
+
+component StageCharacterSpawn
+  framed_eye_height 1.585006
+
+component WorldTransform
+  position
+    x 0.000000
+    y 0.000000
+    z 0.000000
+  rotation
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  scale
+    x 1.000000
+    y 1.000000
+    z 1.000000
+
+component EcsStableId
+  id 2718281828459045235
+
+component EntityName
+  name "CharacterSpawn"

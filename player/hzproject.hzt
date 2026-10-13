@@ -1,0 +1,11 @@
+type HzProjectConfig
+version 1
+---
+name CharacterPlayer
+engine hz
+src_roots 1 src
+asset_roots 1 assets
+shader_roots 1 shaders
+engine_version 0.5.8
+publish
+  product_name "Character Player"

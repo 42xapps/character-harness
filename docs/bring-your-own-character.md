@@ -30,9 +30,11 @@ Gestures and talking styles are what the director picks between. List the same n
 
 ## The face
 
-The player builds the face from the model's own VRM expressions: happy, angry, sad, relaxed, surprised, blinking, and the five vowel mouth shapes for lip sync. The harness's emotions (warm, playful, thoughtful...) are mixed from those. A model made in VRoid Studio gets a richer face, with the same shapes as FoxGlove.
+The player builds the face from the model's own VRM expressions: happy, angry, sad, relaxed, surprised, blinking, and the five vowel mouth shapes for lip sync. The harness's emotions (warm, playful, thoughtful...) are mixed from those.
 
 ## Not yet
 
 - Hair and cloth physics (VRM spring bones). Hair stays still.
+- Models with several skins (common in VRMs exported from Unity).
+- VRM 0.x models with transparent materials.
 - Expressions in `.vrma` files are ignored. The face follows the conversation.

@@ -57,7 +57,7 @@ export interface Gesture {
 	hold: boolean; // the pose holds until the next beat instead of settling back
 }
 
-// The body: a profile built into the player (FoxGlove), or a VRM model with
+// The body: a profile cooked into a player build, or a VRM model with
 // the animations it plays.
 export type Rig =
 	| { kind: "profile"; profile: string }
@@ -201,7 +201,7 @@ function readRig(file: string, dir: string, rig: Obj): Rig {
 	const model = f("model").optStr();
 	if (profile && model) throw new ManifestError(`${file}: \`rig\` takes \`profile\` or \`model\`, not both`);
 	if (profile) return { kind: "profile", profile };
-	if (!model) throw new ManifestError(`${file}: \`rig\` needs a \`model\` (a .vrm file) or a built-in \`profile\``);
+	if (!model) throw new ManifestError(`${file}: \`rig\` needs a \`model\` (a .vrm file) or a player \`profile\``);
 	const abs = path.resolve(dir, model);
 	if (!existsSync(abs)) throw new ManifestError(`${file}: \`rig.model\` ${abs} does not exist`);
 	const anims = f("animations").optObj();

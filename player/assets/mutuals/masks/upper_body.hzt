@@ -1,0 +1,6 @@
+type JointMaskBlobAsset
+version 1
+---
+name "upper_body"
+default_weight 0
+entries 0

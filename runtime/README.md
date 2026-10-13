@@ -6,8 +6,8 @@ It runs on Node and loads extensions from their folders.
 
 ```bash
 npm install
-npm start                      # characters/foxglove
-npm start -- characters/<id>   # another character
+npm start -- characters/<id>   # a character
+npm start                      # FoxGlove, whose body needs a player build that includes it
 ```
 
 For a character with `rig.model`, it first retargets the character's animations onto its model and writes the result to `.cache/characters/<id>/` for the player (`src/rig/`). With `HARNESS_PLAYER` set to the command that opens the player, it then starts it and stops when the player closes (`src/player.ts`).
