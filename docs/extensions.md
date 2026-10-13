@@ -57,6 +57,8 @@ out: { state }
 
 A module's default export is that function, sync or async. Returning nothing means no change. An HTTP handler gets the input as a JSON `POST` and answers with the output. Keys from `.env` are in `process.env`.
 
+An extension runs with the runtime's access: your keys, your files, the network. Only use extensions you trust (see `SECURITY.md`).
+
 ## Blocking and non-blocking
 
 - **Blocking** (default): the turn waits; the returned state goes to the next extension.
@@ -74,6 +76,24 @@ The extensions in `extensions/` ship with the harness and show the shape:
 |---|---|---|
 | `emotion-tags` | `on_sentence`, blocking (500 ms) | changes the face the moment a sentence starts, from the delivery tag it opens with and the character's `tags` map (`[teasing]` → `playful` for FoxGlove). No model call |
 | `director` | `on_sentence` blocking (10 s), `on_session_end` non-blocking | asks a second model to stage each line: an emotion, a talking style, a gesture and a camera move per phrase |
+
+### The director's config
+
+The director reads its words from the character's config, usually a `director.yaml` next to `character.yaml` (`config_file: director.yaml`). `characters/foxglove/director.yaml` is a complete one to copy.
+
+| Key | What |
+|---|---|
+| `model` | `{ base_url, api_key_env, model }`: an OpenAI-compatible chat model that stages the lines |
+| `emotions` | `{ name: hint }`: the emotions it may pick, each with what it means |
+| `intense` | emotions only for peaks, capped per reply |
+| `registers` | talking styles: the names under `rig.animations.talk` |
+| `gestures` | the names under `rig.animations.gestures` |
+| `cameras` | camera moves: `hold`, `push-in`, `close-up`, `pull-back` |
+| `limits` | `{ cameras, intense }`: how many of each per reply |
+| `tags` | `{ tag: emotion }`: delivery tags and near-miss words mapped to an emotion (`emotion-tags` reads it too) |
+| `prompt` | the director's instructions |
+
+Its `extension.yaml` lists `XAI_API_KEY` in `requires_env`, so the runtime asks for that key even when `model.api_key_env` names another; set both, or edit `requires_env`.
 
 Other ideas the hooks fit: awarding points from how the character ended a turn (`after_turn`), sending turns to a monitoring or eval service (`after_llm`, non-blocking), or blocking a topic before the model sees it (`before_llm`).
 

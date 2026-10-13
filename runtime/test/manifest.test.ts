@@ -9,12 +9,12 @@ import { loadCharacter } from "../src/manifest.ts";
 
 // a minimal character whose rig is `rig` (YAML text), with empty files for its
 // model and clips
-function character(rig: string): string {
+function character(rig: string, id = "test"): string {
 	const dir = mkdtempSync(path.join(tmpdir(), "harness-character-"));
 	writeFileSync(
 		path.join(dir, "character.yaml"),
 		`schema: 1
-id: test
+id: ${id}
 name: Test
 description: A character for the tests.
 author: tests
@@ -86,4 +86,10 @@ test("an animation file that isn't .vrma is named, not taken as a clip name", ()
 		() => loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  animations:\n    idle: idle.fbx`)),
 		/only VRM Animation \(\.vrma\) files are loaded/,
 	);
+});
+
+test("an id that could leave the cache folder is refused", () => {
+	const rig = `  engine: ">=0.5.8"\n  model: model.vrm`;
+	assert.throws(() => loadCharacter(character(rig, "../../x")), /`id` must be lowercase letters/);
+	assert.equal(loadCharacter(character(rig, "my-char_2")).id, "my-char_2");
 });

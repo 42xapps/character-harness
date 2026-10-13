@@ -84,17 +84,22 @@ export async function runHook(
 		const opts = e.hooks.get(hook);
 		if (!opts) continue;
 		// every extension gets its own copy, so one still running after its
-		// timeout cannot change what the next one sees
-		const input: HookInput = { event: hook, state: structuredClone(state), config: e.config };
+		// timeout cannot change what the next one sees. Copying throws on state
+		// an earlier extension filled with something that can't be copied.
+		const input = () => ({ event: hook, state: structuredClone(state), config: e.config }) satisfies HookInput;
 		if (!opts.blocking) {
 			Promise.resolve()
-				.then(() => e.call(input))
+				.then(() => e.call(input()))
 				.catch((err) => log(`[ext] ${e.name} ${hook} (non-blocking) failed: ${errorText(err)}`));
 			continue;
 		}
 		try {
-			const out = await withTimeout(Promise.resolve().then(() => e.call(input)), opts.timeout_ms);
-			if (out && typeof out === "object" && out.state && typeof out.state === "object") state = out.state;
+			const out = await withTimeout(Promise.resolve().then(() => e.call(input())), opts.timeout_ms);
+			if (out && typeof out === "object" && out.state && typeof out.state === "object") {
+				// what the next extension and the session get must be copyable
+				structuredClone(out.state);
+				state = out.state;
+			}
 			if (step) state = step(state);
 		} catch (err) {
 			log(

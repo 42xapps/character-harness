@@ -15,7 +15,18 @@ Any VRM model (0.x or 1.0) can be a character's body.
        gestures: { wave: wave.vrma }
    ```
 
-3. Run `npm start -- characters/<id>`. With `HARNESS_PLAYER` in `.env`, the player opens too.
+3. To have the character move and react while it talks, add the extensions and a `director.yaml` with your character's words (copy `characters/foxglove/director.yaml`; the keys are in `extensions.md`):
+
+   ```yaml
+   extensions:
+     - path: ../../extensions/emotion-tags
+       config_file: director.yaml
+     - path: ../../extensions/director
+       config_file: director.yaml
+   ```
+
+   Without them it still talks, in its idle and `regular` talking loops, with no gestures.
+4. Run `npm start -- characters/<id>`. With `HARNESS_PLAYER` in `.env`, the player opens too.
 
 ## The body
 

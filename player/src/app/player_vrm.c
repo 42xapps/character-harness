@@ -192,6 +192,17 @@ hz_internal b32 player_vrm_safe_name(const char *s) {
   return true;
 }
 
+// a name the importer took from the model, used in a cache path: a safe name
+// with no `..` and no leading `/`, so nothing is written outside the cache
+hz_internal b32 player_vrm_safe_part(const char *s) {
+  if (!player_vrm_safe_name(s) || s[0] == '/')
+    return false;
+  for (const char *c = s; *c; c++)
+    if (c[0] == '.' && c[1] == '.')
+      return false;
+  return true;
+}
+
 // the name of morph target `index` of glTF mesh `mesh`: its extras.targetNames
 // (on the mesh or its first primitive), else what the importer called it
 hz_internal const char *player_vrm_morph_name(PJson *gltf, ModelBlobAsset *mb, u32 mesh,
@@ -656,17 +667,35 @@ hz_internal b32 player_vrm_import(CString vrm_path, String stem, CString dir,
   CString tex_dir = str_format(alloc, "%textures/", fmt_cstr(dir)).value;
   CString mat_dir = str_format(alloc, "%materials/", fmt_cstr(dir)).value;
 
-  // the encoder writes under assets/<output_dir>; this output_dir steers both
-  // halves of what it writes into the cache instead
+  GlbImport *imp = asset_import_glb_v2(vrm_path, tex_dir, mat_dir, NULL, NULL, alloc);
+  if (!imp->ok || !imp->model.blob.data) {
+    log_error("vrm: could not import %", fmt_cstr(vrm_path));
+    return false;
+  }
+
+  // a write that fails leaves the import unfinished, so no stamp is written
+  // and the next load imports again
+  b32 wrote = true;
+  for (u32 i = 0; i < imp->textures.len; i++)
+    if (imp->textures.items[i].blob.data && !player_vrm_safe_part(imp->textures.items[i].name)) {
+      log_error("vrm: % has a texture whose name can't be used in a path",
+                fmt_cstr(vrm_path));
+      return false;
+    }
+  for (u32 i = 0; i < imp->materials.len; i++)
+    if (imp->materials.items[i].blob.data && !player_vrm_safe_part(imp->materials.items[i].name)) {
+      log_error("vrm: % has a material whose name can't be used in a path",
+                fmt_cstr(vrm_path));
+      return false;
+    }
+
+  // the images are encoded only once every name is known to be safe, since the
+  // encoder names its files after the textures. It writes under
+  // assets/<output_dir>; this output_dir steers what it writes into the cache
   os_create_dir("assets");
   CString encode_dir = str_format(alloc, "../cooked/%encode/", fmt_cstr(dir)).value;
   if (!asset_import_glb(vrm_path, encode_dir, NULL, NULL, "assets/")) {
     log_error("vrm: could not encode the images of %", fmt_cstr(vrm_path));
-    return false;
-  }
-  GlbImport *imp = asset_import_glb_v2(vrm_path, tex_dir, mat_dir, NULL, NULL, alloc);
-  if (!imp->ok || !imp->model.blob.data) {
-    log_error("vrm: could not import %", fmt_cstr(vrm_path));
     return false;
   }
 
@@ -676,9 +705,9 @@ hz_internal b32 player_vrm_import(CString vrm_path, String stem, CString dir,
     if (!t->blob.data)
       continue;
     player_vrm_seal(t->blob.data, t->blob.size, TYPE_HASH(TextureBlobAsset));
-    player_vrm_write(str_format(alloc, "cooked/%%.hza", fmt_cstr(tex_dir),
-                                fmt_cstr(t->name)).value,
-                     t->blob.data, t->blob.size, alloc);
+    wrote &= player_vrm_write(str_format(alloc, "cooked/%%.hza", fmt_cstr(tex_dir),
+                                         fmt_cstr(t->name)).value,
+                              t->blob.data, t->blob.size, alloc);
     for (u32 v = 0; v < ARRAY_SIZE(player_vrm_ktx_variants); v++) {
       const char *variant = player_vrm_ktx_variants[v];
       PlatformFileData ktx = os_read_file(
@@ -698,13 +727,13 @@ hz_internal b32 player_vrm_import(CString vrm_path, String stem, CString dir,
     if (!m->blob.data)
       continue;
     player_vrm_seal(m->blob.data, m->blob.size, TYPE_HASH(MaterialBlobAsset));
-    player_vrm_write(str_format(alloc, "cooked/%%_mat.hza", fmt_cstr(mat_dir),
-                                fmt_cstr(m->name)).value,
-                     m->blob.data, m->blob.size, alloc);
+    wrote &= player_vrm_write(str_format(alloc, "cooked/%%_mat.hza", fmt_cstr(mat_dir),
+                                         fmt_cstr(m->name)).value,
+                              m->blob.data, m->blob.size, alloc);
   }
   CString model_ref = str_format(alloc, "%%.hza", fmt_cstr(dir), fmt_str(stem)).value;
-  player_vrm_write(str_format(alloc, "cooked/%", fmt_cstr(model_ref)).value,
-                   imp->model.blob.data, imp->model.blob.size, alloc);
+  wrote &= player_vrm_write(str_format(alloc, "cooked/%", fmt_cstr(model_ref)).value,
+                            imp->model.blob.data, imp->model.blob.size, alloc);
   ModelBlobAsset *mb = imp->model.blob.data;
 
   // clips, in the file's animation order
@@ -720,8 +749,8 @@ hz_internal b32 player_vrm_import(CString vrm_path, String stem, CString dir,
     player_vrm_seal(a->blob.data, a->blob.size, TYPE_HASH(AnimationBlobAsset));
     body.clips[i].path = str_format(alloc, "%clips/clip_%.hza", fmt_cstr(dir), fmt_u32(i)).value;
     body.clips[i].length = a->blob.data->length;
-    player_vrm_write(str_format(alloc, "cooked/%", fmt_cstr(body.clips[i].path)).value,
-                     a->blob.data, a->blob.size, alloc);
+    wrote &= player_vrm_write(str_format(alloc, "cooked/%", fmt_cstr(body.clips[i].path)).value,
+                              a->blob.data, a->blob.size, alloc);
   }
   u32 declared = pjson_count(pjson_get(gltf, "animations"));
   if (gltf && declared != imp->animations.len)
@@ -733,6 +762,12 @@ hz_internal b32 player_vrm_import(CString vrm_path, String stem, CString dir,
   i32 idle = table ? player_vrm_body(&body, table, &gestures) : -1;
   if (idle >= 0 && !body.failed)
     idle_clip = body.clips[idle].path;
+
+  if (!wrote) {
+    log_error("vrm: could not write the import of % to cooked/%", fmt_cstr(vrm_path),
+              fmt_cstr(dir));
+    return false;
+  }
 
   // face; one with no usable expressions is still written, with no targets,
   // so the character spawns with a still face

@@ -285,6 +285,10 @@ export function loadCharacter(dir: string): Character {
 	const f = (k: string) => field(file, m, "", k);
 
 	if (f("schema").optNum() !== 1) throw new ManifestError(`${file}: \`schema\` must be 1`);
+	// the id names the character's cache folder and prepared model
+	const id = f("id").str();
+	if (!/^[a-z0-9][a-z0-9_-]*$/.test(id))
+		throw new ManifestError(`${file}: \`id\` must be lowercase letters, digits, - and _ (got "${id}")`);
 	// Required by the manifest contract even where the runtime does not read
 	// them: the app does, and a manifest missing them is not a whole character.
 	for (const k of ["description", "author", "license"]) f(k).str();
@@ -308,7 +312,7 @@ export function loadCharacter(dir: string): Character {
 
 	return {
 		dir,
-		id: f("id").str(),
+		id,
 		name: f("name").str(),
 		prompt: readFileSync(promptFile, "utf8").trim(),
 		chat: readChat(file, f("models").obj()),

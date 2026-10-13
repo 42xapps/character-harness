@@ -2,7 +2,7 @@
 // object, the BIN chunk as bytes, float accessors as arrays, and appending
 // new float data as accessors.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 
 // The parts of glTF this code touches; everything else is carried through.
 export interface GltfNode {
@@ -60,8 +60,13 @@ const MAGIC = 0x46546c67; // "glTF"
 const CHUNK_JSON = 0x4e4f534a;
 const CHUNK_BIN = 0x004e4942;
 const FLOAT = 5126;
+// larger than any avatar or clip; a bigger file is refused before it is read
+const MAX_FILE_BYTES = 512 * 1024 * 1024;
+// an accessor with no data is all zeros; this many is more than any clip needs
+const MAX_ZERO_VALUES = 1 << 24;
 
 export function readGlb(path: string): Glb {
+	if (statSync(path).size > MAX_FILE_BYTES) throw new Error(`${path} is larger than ${MAX_FILE_BYTES >> 20} MB`);
 	const b = readFileSync(path);
 	if (b.length < 20 || b.readUInt32LE(0) !== MAGIC) throw new Error(`${path} is not a binary glTF file`);
 	let json: Gltf | null = null;
@@ -111,12 +116,24 @@ export function readAccessor(glb: Glb, index: number): Float32Array {
 	const size = SIZES[a.componentType];
 	if (!comps || !size) throw new Error(`accessor ${index} has an unsupported type`);
 	if (a.sparse) throw new Error(`accessor ${index} is sparse, which isn't supported`);
-	const out = new Float32Array(a.count * comps);
-	if (a.bufferView === undefined) return out; // all zeros, per the spec
+	if (!Number.isSafeInteger(a.count) || a.count < 0) throw new Error(`accessor ${index} has a bad count`);
+	if (a.bufferView === undefined) {
+		// all zeros, per the spec
+		if (a.count * comps > MAX_ZERO_VALUES) throw new Error(`accessor ${index} is too large`);
+		return new Float32Array(a.count * comps);
+	}
 	const view = glb.json.bufferViews?.[a.bufferView];
 	if (!view || view.buffer !== 0) throw new Error(`accessor ${index} is not in the GLB's own buffer`);
 	const stride = view.byteStride ?? comps * size;
 	const base = (view.byteOffset ?? 0) + (a.byteOffset ?? 0);
+	const whole = (x: unknown) => Number.isSafeInteger(x) && (x as number) >= 0;
+	if (!whole(stride) || stride < comps * size || !whole(base) || !whole(view.byteLength))
+		throw new Error(`accessor ${index} has a bad offset or stride`);
+	// checked before anything is allocated, so a lying count can't exhaust memory
+	const end = a.count === 0 ? base : base + (a.count - 1) * stride + comps * size;
+	if (end > (view.byteOffset ?? 0) + view.byteLength || end > glb.bin.length)
+		throw new Error(`accessor ${index} runs past its buffer`);
+	const out = new Float32Array(a.count * comps);
 	for (let i = 0; i < a.count; i++) {
 		for (let c = 0; c < comps; c++) {
 			const at = base + i * stride + c * size;

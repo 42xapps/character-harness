@@ -1,6 +1,6 @@
 # App protocol
 
-The player app and the runtime talk over one WebSocket for the whole conversation, at `ws://127.0.0.1:8788/session` by default (`HOST` and `PORT` change it; see `runtime/README.md`). Text frames are JSON objects with a `t` field; binary frames carry audio. `runtime/src/session.ts` is the implementation.
+The player app and the runtime talk over one WebSocket for the whole conversation, at `ws://127.0.0.1:8788/session/<token>` by default (`HOST` and `PORT` change it; see `runtime/README.md`). The token is new every time the runtime starts and is given only to the player, in `HARNESS_URL`; a connection without it, or from a web page (any request with an `Origin` header), is refused. Messages are at most 4 MB. Text frames are JSON objects with a `t` field; binary frames carry audio. `runtime/src/session.ts` is the implementation.
 
 ## Who does what
 
@@ -16,7 +16,7 @@ So one turn is: speech in (`stt_*`), one `llm` request, then a `tts` request per
 | `{t:"stt_start", utterance?}` | the user started speaking. With an `utterance` (a positive integer), each utterance gets its own transcription session, and `stt_eos` must carry the same number |
 | `{t:"stt_eos", utterance?}` | the user stopped speaking: commit the transcript |
 | `{t:"stt_reset"}` | throw away what was heard |
-| `{t:"llm", id, history, source?}` | write a reply. `history` is the conversation so far, `[{role, content}]`, ending with the user's turn. `source` is `voice` (default), `chat` or `screen` |
+| `{t:"llm", id, history, source?}` | write a reply. `history` is the conversation so far, `[{role, content}]` with `role` `user` or `assistant` (others are dropped; the system prompt is the character's), ending with the user's turn. `source` is `voice` (default), `chat` or `screen` |
 | `{t:"tts", id, text}` | voice one sentence of the reply. A `tts` with empty text, or the `…` of a silent reply, gets no answer at all |
 | `{t:"cancel", id}` | stop the reply or sentence with that `id`, for example when the user interrupts. Nothing more is sent for it: no `llm_done`, `tts_done` or `error` |
 
@@ -45,9 +45,10 @@ The first sentence of a reply always gets an empty `beat` before any of its audi
 
 | `text` | `id` | What happened | What follows |
 |---|---|---|---|
-| `llm_<status>`, `llm_network` | the reply's | the chat model failed | no `llm_done` |
+| `llm_<status>`, `llm_network`, `llm_failed`, `llm_empty` | the reply's | the chat model failed: an HTTP error, no connection, an error partway through the reply, or a reply with no text | no `llm_done` |
+| `llm_busy`, `tts_busy` | the request's | too many replies (2) or sentences (8) in flight; the request was not run | nothing more for that `id` |
 | `tts_<status>`, `tts_network`, `tts_connect`, `tts_dropped` | the sentence's | the voice failed | no `tts_done`; the app may ask for the sentence again with the same `id` |
-| `stt_upstream` | `0` | speech to text could not connect | the next `stt_start` or mic frame tries again |
+| `stt_upstream` | `0` | speech to text could not connect | it tries again after a wait that grows from 1 s to 15 s, as soon as there is mic audio or an `stt_eos` to send |
 
 ### Silent replies
 

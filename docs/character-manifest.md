@@ -62,7 +62,7 @@ env_file: ../../.env
 | Key | Required | What |
 |---|---|---|
 | `schema` | yes | Manifest version, so older characters keep loading. Currently `1`. |
-| `id` | yes | Stable identifier. |
+| `id` | yes | Stable identifier: lowercase letters, digits, `-` and `_`. It names the cache folder, so keep it unique. |
 | `name` | yes | Display name. |
 | `description` | yes | One line on who she is. |
 | `purpose` | no | What she's for. |

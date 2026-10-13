@@ -56,16 +56,27 @@ function request(m: ChatModel, messages: Message[]): { url: string; body: Record
 	};
 }
 
-// The text one streamed `data:` payload adds, if any.
+// The model failed partway, after answering 200: an error payload in the stream.
+export class LlmStreamError extends Error {}
+
+// The text one streamed `data:` payload adds, if any. Throws LlmStreamError
+// on an error event.
 function delta(m: ChatModel, j: unknown): string {
-	if (m.api === "chat_completions")
-		return (j as { choices?: Array<{ delta?: { content?: string } }> }).choices?.[0]?.delta?.content ?? "";
-	const e = j as { type?: string; delta?: string };
+	const failed = (what: unknown) => new LlmStreamError(`the model failed: ${JSON.stringify(what).slice(0, 200)}`);
+	if (m.api === "chat_completions") {
+		const c = j as { error?: unknown; choices?: Array<{ delta?: { content?: string } }> };
+		if (c.error) throw failed(c.error);
+		return c.choices?.[0]?.delta?.content ?? "";
+	}
+	const e = j as { type?: string; delta?: string; error?: unknown; response?: { error?: unknown } };
+	if (e.type === "error" || e.type === "response.failed") throw failed(e.error ?? e.response?.error ?? e.type);
 	return e.type === "response.output_text.delta" ? e.delta ?? "" : "";
 }
 
-// Yields the reply as it streams. Throws LlmHttpError on a non-2xx answer, and
-// whatever fetch throws on a network failure or an abort.
+// Yields the reply as it streams. Throws LlmHttpError on a non-2xx answer,
+// LlmStreamError on an error in the stream, and whatever fetch throws on a
+// network failure or an abort. A reply cut short (response.incomplete) ends
+// with what was written.
 export async function* streamChat(
 	m: ChatModel,
 	apiKey: string,

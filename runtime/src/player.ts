@@ -5,7 +5,8 @@
 // `open -a`). Unset, the runtime only serves, and prints what the player needs
 // to connect.
 //
-// The player gets HARNESS_URL and HARNESS_CHARACTER in its environment. Its
+// The player gets HARNESS_URL and HARNESS_CHARACTER in its environment, and
+// none of the keys: it never calls a provider itself. Its
 // output goes to .cache/player.log; closing the player stops the runtime, and
 // stopping the runtime closes the player.
 
@@ -31,13 +32,18 @@ export function manualStart(launch: PlayerLaunch): string {
 export function startPlayer(
 	command: string,
 	launch: PlayerLaunch,
+	secrets: Set<string>,
 	onExit: (code: number | null, signal: NodeJS.Signals | null) => void,
 ): () => void {
 	mkdirSync(path.dirname(LOG), { recursive: true });
 	const log = openSync(LOG, "w");
 	const child = spawn(command, {
 		shell: true,
-		env: { ...process.env, HARNESS_URL: launch.url, HARNESS_CHARACTER: launch.character },
+		env: {
+			...Object.fromEntries(Object.entries(process.env).filter(([k]) => !secrets.has(k))),
+			HARNESS_URL: launch.url,
+			HARNESS_CHARACTER: launch.character,
+		},
 		stdio: ["ignore", log, log],
 		// its own process group, so stopping it reaches whatever the command starts
 		detached: true,

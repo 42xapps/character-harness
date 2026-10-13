@@ -33,7 +33,7 @@ import { randomUUID } from "node:crypto";
 import WebSocket from "ws";
 import { hasHook, runHook } from "./extensions.ts";
 import type { Loaded } from "./extensions.ts";
-import { LlmHttpError, streamChat } from "./llm.ts";
+import { LlmHttpError, LlmStreamError, streamChat } from "./llm.ts";
 import { ELEVENLABS_KEY } from "./manifest.ts";
 import type { Character } from "./manifest.ts";
 import { STATE_SCHEMA } from "./state.ts";
@@ -57,6 +57,11 @@ const SILENT_TURN = "…";
 // reply's sentences arrive after its `llm_done`.
 const TURN_IDLE_MS = 1500;
 
+// The app runs one reply at a time and voices a few sentences ahead; past
+// these, a request is refused rather than spent.
+const MAX_LLM_IN_FLIGHT = 2;
+const MAX_TTS_IN_FLIGHT = 8;
+
 interface Turn {
 	id: number;
 	state: State;
@@ -70,7 +75,8 @@ interface Turn {
 function toMessages(history: unknown): Message[] {
 	if (!Array.isArray(history)) return [];
 	return history
-		.filter((h): h is Message => typeof h?.role === "string" && typeof h?.content === "string")
+		// the system prompt is the character's; the app only sends the conversation
+		.filter((h): h is Message => (h?.role === "user" || h?.role === "assistant") && typeof h?.content === "string")
 		// the app's `interrupted` marker is not for the model
 		.map((h) => ({ role: h.role, content: h.content }));
 }
@@ -112,6 +118,38 @@ function pushTiming(t: Timing, a: AlignmentChunk): void {
 	}
 }
 
+// What a hook changed in its copy of `ext`: the keys it set (compared by
+// value, since every hook works on a clone) and the ones it removed.
+interface ExtChanges {
+	set: Record<string, unknown>;
+	removed: string[];
+}
+export function extChanges(before: State["ext"], after: State["ext"]): ExtChanges {
+	const set: Record<string, unknown> = {};
+	const removed: string[] = [];
+	const obj = (x: unknown): Record<string, unknown> => (x && typeof x === "object" ? (x as Record<string, unknown>) : {});
+	// a hook that handed back no `ext` changed none of it
+	if (!after || typeof after !== "object") return { set, removed };
+	const was = obj(before);
+	const now = obj(after);
+	// a value JSON can't write (a BigInt) counts as changed
+	const same = (a: unknown, b: unknown) => {
+		try {
+			return JSON.stringify(a) === JSON.stringify(b);
+		} catch {
+			return false;
+		}
+	};
+	for (const [k, v] of Object.entries(now)) if (!(k in was) || !same(v, was[k])) set[k] = v;
+	for (const k of Object.keys(was)) if (!(k in now)) removed.push(k);
+	return { set, removed };
+}
+export function applyExt(ext: State["ext"], c: ExtChanges): State["ext"] {
+	const out = { ...ext, ...c.set };
+	for (const k of c.removed) delete out[k];
+	return out;
+}
+
 export function runSession(ws: WebSocket, character: Character, exts: Loaded[]): void {
 	const sessionId = randomUUID();
 	const log = (line: string) => console.log(`[${sessionId.slice(0, 8)}] ${line}`);
@@ -121,6 +159,8 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	let ext: Record<string, unknown> = {};
 	let turn: Turn | null = null;
 	const llmStreams = new Map<number, AbortController>();
+	// replies the app cancelled: nothing more may be sent for them
+	const cancelledByApp = new Set<number>();
 	const spoken = new Map<number, Spoken>();
 
 	const send = (obj: unknown) => {
@@ -135,8 +175,18 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		session: { ...session },
 		ext,
 	});
-	// sentence hooks run side by side, so each hands back only its `ext`
-	const mergeExt = (t: Turn, s: State) => { t.state.ext = { ...t.state.ext, ...s.ext }; };
+	// Hooks that overlap (sentences side by side, after_llm and after_turn next
+	// to a newer turn) each started from a copy of `ext`, so only what a hook
+	// changed in its copy is applied; the rest of its copy may be stale.
+	const mergeExt = (t: Turn, before: State["ext"], s: State) => writeExt(t, extChanges(before, s.ext));
+	// A closed turn has handed its `ext` on to the session and maybe a newer
+	// turn, so a late write to it goes there too.
+	const writeExt = (t: Turn, changes: ExtChanges) => {
+		t.state.ext = applyExt(t.state.ext, changes);
+		if (!t.closed) return;
+		ext = applyExt(ext, changes);
+		if (turn && turn !== t) turn.state.ext = applyExt(turn.state.ext, changes);
+	};
 
 	const elevenKey = process.env[ELEVENLABS_KEY] ?? "";
 	const stt = new SttRelay(character.stt, elevenKey, send);
@@ -147,10 +197,12 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		t.closed = true;
 		clearTimeout(t.idle);
 		ext = t.state.ext;
+		const before = t.state.ext;
 		const s = await runHook(exts, "after_turn", t.state, log);
-		ext = s.ext;
-		// a turn that began while this one's after_turn ran keeps its own writes
-		if (turn && turn !== t) turn.state.ext = { ...s.ext, ...turn.state.ext };
+		const changes = extChanges(before, s.ext);
+		ext = applyExt(ext, changes);
+		// a turn that began while after_turn ran gets its writes too
+		if (turn && turn !== t) turn.state.ext = applyExt(turn.state.ext, changes);
 	};
 	// after_turn waits for the reply and every sentence of it, then a moment more
 	const settle = (t: Turn) => {
@@ -165,7 +217,16 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	const started = runHook(exts, "on_session_start", baseState(), log).then((s) => { ext = s.ext; });
 
 	const onLlm = async (id: number, history: unknown, source: unknown) => {
+		// registered at once, so a cancel or the in-flight limit sees it
+		const ac = new AbortController();
+		llmStreams.set(id, ac);
 		await started;
+		// cancelled before the session was ready: it never became a turn
+		if (cancelledByApp.has(id) && llmStreams.get(id) === ac) {
+			llmStreams.delete(id);
+			cancelledByApp.delete(id);
+			return;
+		}
 		if (turn) void closeTurn(turn);
 		const messages = toMessages(history);
 		const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -180,10 +241,12 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			idle: undefined,
 		};
 		turn = t;
-		const ac = new AbortController();
-		llmStreams.set(id, ac);
 		const finish = (how: string) => {
-			llmStreams.delete(id);
+			// the app may have reused the id for a newer reply
+			if (llmStreams.get(id) === ac) {
+				llmStreams.delete(id);
+				cancelledByApp.delete(id);
+			}
 			t.llmDone = true;
 			log(`turn ${id}: ${how}`);
 			settle(t);
@@ -202,7 +265,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 
 		t.state = await runHook(exts, "before_llm", t.state, log);
 		if (closed) return;
-		if (ac.signal.aborted) return finish("cut off by the app");
+		if (cancelledByApp.has(id)) return finish("cut off by the app");
 		if (t.state.cancel === true) return silent();
 
 		// The reply streams as it is written, but nothing reaches the app until
@@ -233,10 +296,15 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 				else held.push(text);
 			}
 		} catch (e) {
-			if (!ac.signal.aborted) failure = e instanceof LlmHttpError ? `llm_${e.status}` : "llm_network";
+			if (!ac.signal.aborted)
+				failure = e instanceof LlmHttpError ? `llm_${e.status}` : e instanceof LlmStreamError ? "llm_failed" : "llm_network";
 		}
+		// a reply with no text would leave the app waiting on the model
+		if (!failure && !reply.trim() && !ac.signal.aborted && !closed) failure = "llm_empty";
 		const cancelled = await replyCancelled;
 		if (closed) return;
+		// a barge-in: the app tore the turn down and expects nothing more for it
+		if (cancelledByApp.has(id)) return finish("cut off by the app");
 		if (cancelled) return silent();
 		t.state.reply = reply;
 		if (failure) {
@@ -244,10 +312,14 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			send({ t: "error", id, text: failure });
 			return finish(`failed: ${failure}`);
 		}
-		// a barge-in: the app tore the turn down and is not waiting for llm_done
-		if (ac.signal.aborted) return finish("cut off by the app");
 		send({ t: "llm_done", id });
-		t.state = await runHook(exts, "after_llm", t.state, log);
+		// the reply is done; after_llm below no longer counts against the limit
+		if (llmStreams.get(id) === ac) llmStreams.delete(id);
+		// sentences arrive while after_llm runs, and their hooks write `ext` too
+		const before = t.state.ext;
+		const after = await runHook(exts, "after_llm", t.state, log);
+		t.state = { ...after, ext: t.state.ext };
+		writeExt(t, extChanges(before, after.ext));
 		finish(`replied, ${reply.length} chars`);
 	};
 
@@ -293,6 +365,10 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 
 	const onTts = async (id: number, text: string) => {
 		if (!text || text.trim() === SILENT_TURN) return;
+		if (spoken.size >= MAX_TTS_IN_FLIGHT) {
+			send({ t: "error", id, text: "tts_busy" });
+			return;
+		}
 		const t = turn && !turn.closed ? turn : null;
 		// the reply's first sentence starts a new turn on the dialogue socket
 		const newTurn = t?.firstSentence ?? false;
@@ -326,8 +402,9 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 				}
 				return { ...s, beats: [] };
 			};
+			const before = t.state.ext;
 			void runHook(exts, "on_sentence", { ...t.state, sentence: text, beats: [] }, log, takeBeats).then((s) =>
-				mergeExt(t, s),
+				mergeExt(t, before, s),
 			);
 		}
 		const timing: Timing = { characters: [], starts: [], ends: [] };
@@ -353,8 +430,10 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			// the start of a sentence is held until it is leveled
 			sendLeveled(leveler.flush());
 			send({ t: "tts_done", id });
-			if (t && hasHook(exts, "on_speak"))
-				void runHook(exts, "on_speak", { ...t.state, sentence: text, timing }, log).then((s) => mergeExt(t, s));
+			if (t && hasHook(exts, "on_speak")) {
+				const before = t.state.ext;
+				void runHook(exts, "on_speak", { ...t.state, sentence: text, timing }, log).then((s) => mergeExt(t, before, s));
+			}
 		} else if (end !== "cancelled") {
 			// no tts_done after an error: the app retries the sentence on the same id
 			send({ t: "error", id, text: end.error });
@@ -368,7 +447,11 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	};
 
 	const cancel = (id: number) => {
-		llmStreams.get(id)?.abort();
+		const ac = llmStreams.get(id);
+		if (ac) {
+			cancelledByApp.add(id);
+			ac.abort();
+		}
 		const sp = spoken.get(id);
 		if (sp) sp.cancelled = true;
 		tts.cancel(id);
@@ -386,13 +469,24 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		} catch {
 			return;
 		}
+		if (typeof msg !== "object" || msg === null || Array.isArray(msg)) return;
+		// every request names its turn or sentence by a small integer id
+		const id = msg.id;
+		const hasId = Number.isSafeInteger(id) && (id as number) >= 0;
+		if ((msg.t === "llm" || msg.t === "tts" || msg.t === "cancel") && !hasId) return;
+		// a reply the app cancelled no longer counts, even while it winds down
+		const replying = [...llmStreams.values()].filter((ac) => !ac.signal.aborted).length;
+		if (msg.t === "llm" && replying >= MAX_LLM_IN_FLIGHT) {
+			send({ t: "error", id, text: "llm_busy" });
+			return;
+		}
 		switch (msg.t) {
 			case "stt_start": stt.start(msg.utterance); break;
 			case "stt_eos": stt.endOfSpeech(msg.utterance); break;
 			case "stt_reset": stt.reset(); break;
-			case "llm": void onLlm(msg.id as number, msg.history, msg.source); break;
-			case "tts": void onTts(msg.id as number, typeof msg.text === "string" ? msg.text : ""); break;
-			case "cancel": cancel(msg.id as number); break;
+			case "llm": void onLlm(id as number, msg.history, msg.source); break;
+			case "tts": void onTts(id as number, typeof msg.text === "string" ? msg.text : ""); break;
+			case "cancel": cancel(id as number); break;
 		}
 	});
 

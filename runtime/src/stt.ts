@@ -15,6 +15,9 @@ import WebSocket from "ws";
 import type { Stt } from "./manifest.ts";
 
 const MIC_QUEUE_MAX = 256;
+// after a failed connect, the next one waits this long, doubling up to the max
+const RETRY_MIN_MS = 1000;
+const RETRY_MAX_MS = 15000;
 
 export class SttRelay {
 	private readonly url: string;
@@ -30,6 +33,9 @@ export class SttRelay {
 	private commitAt: number | null = null;
 	private readonly micQueue: string[] = [];
 	private commitUtterance = () => { this.commitPending = true; };
+	private retryAt = 0;
+	private retryTimer: ReturnType<typeof setTimeout> | undefined;
+	private retryMs = RETRY_MIN_MS;
 
 	constructor(stt: Stt, apiKey: string, send: (obj: unknown) => void) {
 		this.apiKey = apiKey;
@@ -51,8 +57,10 @@ export class SttRelay {
 	}
 
 	endOfSpeech(utterance: unknown): void {
-		if (this.utterance === undefined) this.commit();
-		else if (utterance === this.utterance) this.commitUtterance();
+		if (this.utterance !== undefined && utterance !== this.utterance) return;
+		// before the upstream is open, the commit waits for it
+		this.commitUtterance();
+		void this.open();
 	}
 
 	reset(utterance?: number): void {
@@ -80,6 +88,7 @@ export class SttRelay {
 
 	close(): void {
 		this.closed = true;
+		clearTimeout(this.retryTimer);
 		this.sock?.terminate();
 		this.sock = null;
 	}
@@ -94,13 +103,25 @@ export class SttRelay {
 	}
 
 	private commit(): void {
-		if (!this.isOpen()) return;
+		// the upstream closed under us: the next one commits on open
+		if (!this.isOpen()) {
+			this.commitPending = true;
+			return;
+		}
 		this.commitAt = Date.now();
 		this.sock!.send(JSON.stringify({ message_type: "input_audio_chunk", audio_base_64: "", commit: true, sample_rate: 16000 }));
 	}
 
 	private async open(): Promise<void> {
 		if (this.sock || this.opening || this.closed) return;
+		// waiting after a failed connect: try once the wait is over
+		if (Date.now() < this.retryAt) {
+			this.retryTimer ??= setTimeout(() => {
+				this.retryTimer = undefined;
+				if (this.micQueue.length || this.commitPending) void this.open();
+			}, this.retryAt - Date.now());
+			return;
+		}
 		this.opening = true;
 		const generation = this.generation;
 		const utterance = this.utterance;
@@ -118,11 +139,22 @@ export class SttRelay {
 		}
 		this.opening = false;
 		if (!ok) {
+			this.retryAt = Date.now() + this.retryMs;
+			this.retryMs = Math.min(this.retryMs * 2, RETRY_MAX_MS);
 			this.send({ t: "error", id: 0, text: "stt_upstream" });
+			// what is waiting to go is sent once the wait is over
+			if (this.micQueue.length || this.commitPending) void this.open();
 			return;
 		}
 		this.sock = sock;
+		// the wait resets once the upstream has answered; one that accepts and then
+		// closes at once (a bad key, no quota) counts as a failed connect
+		let heard = false;
 		sock.on("message", (data, isBinary) => {
+			if (!heard) {
+				heard = true;
+				this.retryMs = RETRY_MIN_MS;
+			}
 			if (this.closed || generation !== this.generation || isBinary) return;
 			let m: Record<string, unknown>;
 			try { m = JSON.parse(data.toString()); } catch { return; }
@@ -143,7 +175,13 @@ export class SttRelay {
 				if (utterance !== undefined) sock.terminate();
 			}
 		});
-		sock.on("close", () => { if (this.sock === sock) this.sock = null; });
+		sock.on("close", () => {
+			if (this.sock === sock) this.sock = null;
+			if (!heard && generation === this.generation && !this.closed) {
+				this.retryAt = Date.now() + this.retryMs;
+				this.retryMs = Math.min(this.retryMs * 2, RETRY_MAX_MS);
+			}
+		});
 		while (this.micQueue.length) this.push(this.micQueue.shift()!);
 		this.commitUtterance = () => { committed = true; this.commit(); };
 		if (this.commitPending) {

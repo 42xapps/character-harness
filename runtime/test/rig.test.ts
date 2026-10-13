@@ -146,3 +146,10 @@ test("a one-key animation (a pose) still makes a clip with increasing times", ()
 	assert.ok(clip.times.length >= 2);
 	for (let i = 1; i < clip.times.length; i++) assert.ok(clip.times[i] > clip.times[i - 1]);
 });
+
+test("an accessor whose count runs past its data is refused before it is read", () => {
+	const glb = load();
+	const a = glb.json.accessors!.findIndex((x) => x.bufferView !== undefined);
+	glb.json.accessors![a].count = 1e9;
+	assert.throws(() => readAccessor(glb, a), /runs past its buffer/);
+});
