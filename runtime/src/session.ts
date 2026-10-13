@@ -331,13 +331,14 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			);
 		}
 		const timing: Timing = { characters: [], starts: [], ends: [] };
-		// whispered delivery tags come back far quieter than normal speech
+		// delivery tags come back at very different loudness; this evens them out
 		const leveler = new Leveler();
+		const sendLeveled = (pcm: Buffer) => { if (pcm.length) sendAudio(id, pcm); };
 		const end = await tts.speak({
 			id,
 			text: dropTags(text, character.voice.drop_tags),
 			newTurn,
-			onAudio: (pcm) => sendAudio(id, leveler.process(pcm)),
+			onAudio: (pcm) => sendLeveled(leveler.process(pcm)),
 			onAlignment: (a) => {
 				pushTiming(timing, a);
 				sp.align.push(a);
@@ -349,6 +350,8 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		sp.ended = true;
 		flushBeats(sp);
 		if (end === "done") {
+			// the start of a sentence is held until it is leveled
+			sendLeveled(leveler.flush());
 			send({ t: "tts_done", id });
 			if (t && hasHook(exts, "on_speak"))
 				void runHook(exts, "on_speak", { ...t.state, sentence: text, timing }, log).then((s) => mergeExt(t, s));
