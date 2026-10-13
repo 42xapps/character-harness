@@ -36,11 +36,12 @@ Needs Node 23.6 or later, an ElevenLabs key and a key for the chat model the cha
 - `docs/architecture.md`: the turn loop and the event system
 - `docs/character-manifest.md`: what a character is
 - `docs/extensions.md`: how to write an extension
+- `docs/protocol.md`: the messages between the player app and the runtime
 - `docs/bring-your-own-character.md`: use your own VRM model and animations
 
 ## Contributing
 
-Issues and pull requests are welcome. Most changes belong in a character folder or a new extension. `runtime/` should never special-case a single character.
+Issues and pull requests are welcome; see `CONTRIBUTING.md`. To report a security issue, see `SECURITY.md`.
 
 ## License
 

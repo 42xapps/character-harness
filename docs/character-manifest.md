@@ -51,8 +51,8 @@ rig:
       nod: nod.vrma
 
 extensions:
-  - path: ../../extensions/rewards
-    config: { points_per_turn: 10 }
+  - path: ../../extensions/director
+    config_file: director.yaml
 
 env_file: ../../.env
 ```

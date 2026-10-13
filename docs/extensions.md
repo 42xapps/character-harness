@@ -68,15 +68,18 @@ A blocking extension has 5 seconds by default. Set `timeout_ms` on the hook in `
 
 ## Examples
 
+The extensions in `extensions/` ship with the harness and show the shape:
+
 | Extension | Hooks | What it does |
 |---|---|---|
-| rewards | `after_turn`, non-blocking | reads how the character ended the turn (happy, annoyed) and awards points to the user |
-| observability / evals | `after_llm` or `after_turn`, non-blocking | sends the turn to a monitoring or eval service |
-| moderation | `before_llm` blocking + `after_turn` non-blocking | blocks a topic in the prompt; flags users after the fact |
+| `emotion-tags` | `on_sentence`, blocking (500 ms) | changes the face the moment a sentence starts, from the delivery tag it opens with and the character's `tags` map (`[teasing]` → `playful` for FoxGlove). No model call |
+| `director` | `on_sentence` blocking (10 s), `on_session_end` non-blocking | asks a second model to stage each line: an emotion, a talking style, a gesture and a camera move per phrase |
+
+Other ideas the hooks fit: awarding points from how the character ended a turn (`after_turn`), sending turns to a monitoring or eval service (`after_llm`, non-blocking), or blocking a topic before the model sees it (`before_llm`).
 
 ## Sharing extensions
 
-Not decided yet. For now, an extension is a folder or a URL.
+An extension is a folder with an `extension.yaml`; its `handler` is a file in that folder or an HTTP URL. A character uses one from anywhere by pointing `path` at its folder, so an extension can live in its own repo.
 
 ## What the runtime does not do
 
