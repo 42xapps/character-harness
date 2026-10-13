@@ -290,7 +290,8 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			const apiKey = process.env[character.chat.api_key_env] ?? "";
 			const request: Message[] = [{ role: "system", content: t.state.prompt ?? "" }, ...(t.state.messages ?? [])];
 			for await (const text of streamChat(character.chat, apiKey, request, ac.signal)) {
-				if (closed) break;
+				// what arrived in the same chunk as a cancel is not sent
+				if (closed || ac.signal.aborted) break;
 				reply += text;
 				if (decided) send({ t: "llm_delta", id, text });
 				else held.push(text);

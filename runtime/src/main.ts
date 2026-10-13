@@ -45,12 +45,11 @@ if (!existsSync(character.env_file))
 process.loadEnvFile(character.env_file);
 const missing = requiredKeys(character).filter((k) => !process.env[k]);
 // what the player must not inherit: every key the character names, and
-// everything .env sets, except the player's own HARNESS_* settings
-const secrets = new Set(
-	[...requiredKeys(character), ...Object.keys(parseEnv(readFileSync(character.env_file, "utf8")))].filter(
-		(k) => !k.startsWith("HARNESS_"),
-	),
-);
+// everything .env sets except the player's own HARNESS_* settings
+const secrets = new Set([
+	...requiredKeys(character),
+	...Object.keys(parseEnv(readFileSync(character.env_file, "utf8"))).filter((k) => !k.startsWith("HARNESS_")),
+]);
 if (missing.length) fail(`${character.env_file} is missing ${missing.join(", ")}`);
 
 const extensions = await loadExtensions(character.extensions).catch((e: unknown) =>
