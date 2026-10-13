@@ -45,4 +45,4 @@ Issues and pull requests are welcome; see `CONTRIBUTING.md`. To report a securit
 
 ## License
 
-TBD.
+MIT, see `LICENSE`. Included third-party work keeps its own licence: the Silero VAD model (MIT, `player/assets/vad/LICENSE`) and the MToon shading the player's shaders follow (MIT, credited in their headers). The Kaigen engine is not part of this repo.
