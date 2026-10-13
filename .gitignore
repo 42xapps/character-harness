@@ -3,3 +3,6 @@ node_modules/
 engine/bin/
 *.log
 .claude/
+
+# models the runtime prepares for the player
+.cache/

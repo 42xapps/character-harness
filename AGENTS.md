@@ -7,7 +7,7 @@ Read `docs/architecture.md` first.
 - A character is `characters/<id>/`. Its `character.yaml` is the single source of truth: it points to the prompt, voice, rig, emotions and extensions. Never hard-code character details in `runtime/`.
 - Personality: the file `character.yaml` names under `prompt` (usually `system.md`).
 - Voice and hearing: `voice:` and `stt:` in `character.yaml`.
-- Look: the engine profile under `rig:` and the emotion set under `emotions:`.
+- Look and body: `rig:`, a VRM model and the animations it plays (or a profile built into the player).
 - Behavior that runs every turn: an extension under `extensions/<name>/`, described by its `extension.yaml` and listed in the character's `extensions:`.
 
 ## Rules

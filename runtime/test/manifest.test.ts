@@ -1,0 +1,89 @@
+// The `rig` section of character.yaml. Run with `npm test`.
+
+import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { test } from "node:test";
+import { loadCharacter } from "../src/manifest.ts";
+
+// a minimal character whose rig is `rig` (YAML text), with empty files for its
+// model and clips
+function character(rig: string): string {
+	const dir = mkdtempSync(path.join(tmpdir(), "harness-character-"));
+	writeFileSync(
+		path.join(dir, "character.yaml"),
+		`schema: 1
+id: test
+name: Test
+description: A character for the tests.
+author: tests
+license: none
+prompt: system.md
+models:
+  chat: { api: chat_completions, base_url: "https://example.invalid/v1", api_key_env: TEST_KEY, model: m }
+stt: { provider: elevenlabs, model: scribe_v2_realtime }
+voice: { provider: elevenlabs, voice_id: v, model: eleven_v4_turbo }
+rig:
+${rig}
+extensions: []
+env_file: .env
+`,
+	);
+	writeFileSync(path.join(dir, "system.md"), "You are a test.");
+	writeFileSync(path.join(dir, "model.vrm"), "");
+	for (const clip of ["idle", "talk", "wave"]) writeFileSync(path.join(dir, `${clip}.vrma`), "");
+	return dir;
+}
+
+test("a model with animations loads, with .vrma files and clip names told apart", () => {
+	const dir = character(`  engine: ">=0.5.8"
+  model: model.vrm
+  animations:
+    idle: [idle.vrma, Breathing]
+    talk: { regular: talk.vrma }
+    gestures:
+      wave: wave.vrma
+      lean: { clip: Lean, hold: true }`);
+	const c = loadCharacter(dir);
+	assert.equal(c.rig.kind, "model");
+	if (c.rig.kind !== "model") return;
+	assert.deepEqual(c.rig.idle, [{ file: path.join(dir, "idle.vrma") }, { clip: "Breathing" }]);
+	assert.deepEqual(c.rig.gestures.get("lean"), { source: { clip: "Lean" }, hold: true });
+	assert.equal(c.rig.talk.get("regular")?.length, 1);
+});
+
+test("a rig takes a profile or a model, not both", () => {
+	assert.throws(
+		() => loadCharacter(character(`  engine: ">=0.5.8"\n  profile: x\n  model: model.vrm`)),
+		/takes `profile` or `model`, not both/,
+	);
+});
+
+test("a missing animation file is named", () => {
+	assert.throws(
+		() => loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  animations:\n    idle: missing.vrma`)),
+		/`rig.animations.idle` .*missing\.vrma does not exist/,
+	);
+});
+
+test("a gesture takes one clip, not a list", () => {
+	assert.throws(
+		() => loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  animations:\n    gestures: { wave: [wave.vrma, idle.vrma] }`)),
+		/`rig.animations.gestures.wave` takes one clip, not a list/,
+	);
+});
+
+test("a misspelt animations key is an error", () => {
+	assert.throws(
+		() => loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  animations:\n    idles: idle.vrma`)),
+		/`rig.animations.idles` is not a key/,
+	);
+});
+
+test("an animation file that isn't .vrma is named, not taken as a clip name", () => {
+	assert.throws(
+		() => loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  animations:\n    idle: idle.fbx`)),
+		/only VRM Animation \(\.vrma\) files are loaded/,
+	);
+});

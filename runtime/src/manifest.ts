@@ -48,6 +48,27 @@ export interface Extension {
 	config: unknown;
 }
 
+// where an animation comes from: a VRM Animation file, retargeted onto the
+// model, or a clip already inside the model, by name
+export type ClipSource = { file: string } | { clip: string };
+
+export interface Gesture {
+	source: ClipSource;
+	hold: boolean; // the pose holds until the next beat instead of settling back
+}
+
+// The body: a profile built into the player (FoxGlove), or a VRM model with
+// the animations it plays.
+export type Rig =
+	| { kind: "profile"; profile: string }
+	| {
+			kind: "model";
+			model: string; // absolute
+			idle: ClipSource[];
+			talk: Map<string, ClipSource[]>; // talking style -> its loops
+			gestures: Map<string, Gesture>;
+	  };
+
 export interface Character {
 	dir: string;
 	id: string;
@@ -56,6 +77,7 @@ export interface Character {
 	chat: ChatModel;
 	stt: Stt;
 	voice: Voice;
+	rig: Rig;
 	extensions: Extension[];
 	env_file: string; // absolute
 	manifest: Record<string, unknown>; // as written, for `state.character`
@@ -152,6 +174,56 @@ function readChat(file: string, models: Obj): ChatModel {
 	};
 }
 
+// animation files that aren't VRM Animation, so a path to one is an error, not a clip name
+const OTHER_FORMATS = /\.(fbx|glb|gltf|bvh|anim|vrm)$/i;
+
+// one clip, or a list of them; `.vrma` names a file, anything else a clip in the model
+function readSources(file: string, dir: string, at: string, v: unknown, one = false): ClipSource[] {
+	if (one && Array.isArray(v)) throw new ManifestError(`${file}: \`${at}\` takes one clip, not a list`);
+	const items = Array.isArray(v) ? v : [v];
+	if (!items.length || items.some((x) => typeof x !== "string" || !x.trim()))
+		throw new ManifestError(`${file}: \`${at}\` must be a clip, or a list of clips`);
+	return (items as string[]).map((x) => {
+		const name = x.trim();
+		if (OTHER_FORMATS.test(name))
+			throw new ManifestError(`${file}: \`${at}\` ${name}: only VRM Animation (.vrma) files are loaded`);
+		if (!/\.vrma$/i.test(name)) return { clip: name };
+		const abs = path.resolve(dir, name);
+		if (!existsSync(abs)) throw new ManifestError(`${file}: \`${at}\` ${abs} does not exist`);
+		return { file: abs };
+	});
+}
+
+function readRig(file: string, dir: string, rig: Obj): Rig {
+	const f = (k: string) => field(file, rig, "rig", k);
+	f("engine").str();
+	const profile = f("profile").optStr();
+	const model = f("model").optStr();
+	if (profile && model) throw new ManifestError(`${file}: \`rig\` takes \`profile\` or \`model\`, not both`);
+	if (profile) return { kind: "profile", profile };
+	if (!model) throw new ManifestError(`${file}: \`rig\` needs a \`model\` (a .vrm file) or a built-in \`profile\``);
+	const abs = path.resolve(dir, model);
+	if (!existsSync(abs)) throw new ManifestError(`${file}: \`rig.model\` ${abs} does not exist`);
+	const anims = f("animations").optObj();
+	const a = (k: string) => field(file, anims, "rig.animations", k);
+	for (const k of Object.keys(anims))
+		if (!["idle", "talk", "gestures"].includes(k))
+			throw new ManifestError(`${file}: \`rig.animations.${k}\` is not a key; they are idle, talk and gestures`);
+	const idle = anims.idle === undefined ? [] : readSources(file, dir, "rig.animations.idle", anims.idle);
+	const talk = new Map<string, ClipSource[]>();
+	for (const [style, v] of Object.entries(a("talk").optObj()))
+		talk.set(style, readSources(file, dir, `rig.animations.talk.${style}`, v));
+	const gestures = new Map<string, Gesture>();
+	for (const [name, v] of Object.entries(a("gestures").optObj())) {
+		const at = `rig.animations.gestures.${name}`;
+		if (isObj(v)) {
+			const g = (k: string) => field(file, v, at, k);
+			gestures.set(name, { source: readSources(file, dir, `${at}.clip`, g("clip").str(), true)[0], hold: g("hold").optBool() ?? false });
+		} else gestures.set(name, { source: readSources(file, dir, at, v, true)[0], hold: false });
+	}
+	return { kind: "model", model: abs, idle, talk, gestures };
+}
+
 function readHooks(file: string, ext: Obj): Map<HookName, HookOptions> {
 	const raw = ext.hooks;
 	const hooks = new Map<HookName, HookOptions>();
@@ -215,10 +287,9 @@ export function loadCharacter(dir: string): Character {
 	if (f("schema").optNum() !== 1) throw new ManifestError(`${file}: \`schema\` must be 1`);
 	// Required by the manifest contract even where the runtime does not read
 	// them: the app does, and a manifest missing them is not a whole character.
-	for (const k of ["description", "author", "license", "emotions"]) f(k).str();
-	const rig = f("rig").obj();
-	field(file, rig, "rig", "profile").str();
-	field(file, rig, "rig", "engine").str();
+	for (const k of ["description", "author", "license"]) f(k).str();
+	const rig = readRig(file, dir, f("rig").obj());
+	if (rig.kind === "profile") f("emotions").str();
 
 	const promptFile = path.resolve(dir, f("prompt").str());
 	if (!existsSync(promptFile)) throw new ManifestError(`${file}: \`prompt\` ${promptFile} does not exist`);
@@ -254,6 +325,7 @@ export function loadCharacter(dir: string): Character {
 			params: v("params").optObj(),
 			drop_tags: v("drop_tags").strList().map((t) => t.toLowerCase()),
 		},
+		rig,
 		extensions,
 		env_file: path.resolve(dir, f("env_file").str()),
 		manifest: m,

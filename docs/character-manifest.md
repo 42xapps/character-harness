@@ -39,10 +39,16 @@ voice:
     similarity_boost: 0.75
 
 rig:
-  profile: foxglove
   engine: ">=<engine-version>"
-
-emotions: foxglove
+  model: model.vrm
+  animations:
+    idle: idle.vrma
+    talk:
+      regular: talk.vrma
+      upbeat: talk_upbeat.vrma
+    gestures:
+      wave: wave.vrma
+      nod: nod.vrma
 
 extensions:
   - path: ../../extensions/rewards
@@ -97,13 +103,23 @@ Models an extension uses belong to that extension, not here. See "The chat model
 | `params` | no | Voice settings passed to the provider, like `stability` and `similarity_boost`. |
 | `drop_tags` | no | Delivery tags removed from each sentence before the voice gets it, like `[quiet, whispers]` for tags it renders too quietly. |
 
-## `rig`, `emotions`
+## `rig`
+
+The body. Either a VRM model with the animations it plays, or a profile built into the player (FoxGlove's).
 
 | Key | Required | What |
 |---|---|---|
-| `rig.profile` | yes | Her engine profile file. |
-| `rig.engine` | yes | Engine versions the profile works with. |
-| `emotions` | yes | Her emotion set file. |
+| `rig.engine` | yes | Engine versions the character works with. |
+| `rig.model` | one of these | A `.vrm` file (VRM 0.x or 1.0). |
+| `rig.profile` | one of these | A profile built into the player, like `foxglove`. Needs `emotions` too. |
+| `rig.animations.idle` | no | The loop she plays while listening. One clip or a list. |
+| `rig.animations.talk.<style>` | no | Loops she plays while talking, per talking style. `regular` is the default style; the others are what the director's `registers` pick from. |
+| `rig.animations.gestures.<name>` | no | One-shot gestures the director's `gestures` pick from. A clip, or `{ clip, hold: true }` for a pose that holds until the next beat. |
+| `emotions` | with `profile` | The profile's emotion set file. |
+
+A clip is a `.vrma` file (VRM Animation), retargeted onto the model when the runtime starts, or the name of an animation already inside the model. Without an idle clip the model stands in its rest pose.
+
+Gesture and style names are the words the director picks, so list the same names in its config (`director.yaml`). See `bring-your-own-character.md`.
 
 ## `extensions`
 
