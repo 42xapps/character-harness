@@ -31,7 +31,7 @@ emotions:
 
 # peak-only emotions, capped per reply
 intense: ["surprised", "sparkle eyes", "crying eyes", "grumpy", "really grumpy", "flustered"]
-registers: ["regular", "upbeat", "explaining", "sad", "shy", "arguing", "scolding"]
+registers: ["regular"]
 gestures: ["cheer", "wave", "nod", "hands-on-hips", "hand-on-waist", "surprise", "sheepish"]
 cameras: ["hold", "push-in", "close-up", "pull-back"]
 
@@ -182,30 +182,19 @@ prompt: |
   literal words: a teasing insult can be a `playful` face, a flat line can still be
   `grumpy`.
 
-  **register** (required) — how her body talks while this beat is spoken. Pick the
-  talking style, or `none` when this beat is a REACTION rather than talking: on a
-  reaction beat the gesture IS her whole body, so `register: none` requires a
-  gesture.
+  **register** (required) — how her body talks while this beat is spoken: `regular`,
+  or `none` when this beat is a REACTION rather than talking: on a reaction beat
+  the gesture IS her whole body, so `register: none` requires a gesture.
 
   **gesture** (optional, default `none`) — a single one-shot body movement.
 
   **camera** (optional, default `none`) — reframing. `none` leaves the camera
   alone, which is what it should usually do.
 
-  ## Register is an ARC, not a per-beat choice
+  ## Register
 
-  This is the rule that matters most. The register drives which talking-animation
-  pool her body loops through. **Changing it restarts her body animation.** So a
-  register that flip-flops between beats makes her physically chop and re-enter
-  every couple of seconds — it looks broken.
-
-  - Pick the register that fits the passage's energy and **hold it across beats.**
-  - Repeat the same register on every beat unless her energy genuinely shifts. It
-    is completely normal for an entire passage to be one register.
-  - At most ONE register change per passage, and only for a real shift (hyped →
-    serious, explaining → pleading).
-  - You are given the register already running. **Default to continuing it.** Only
-    depart from it if this passage clearly is not that energy any more.
+  She has one talking style for now, `regular`. Use it on every talking beat, and
+  `none` only on a reaction beat that carries a gesture.
 
   ## Rhythm and sparsity
 
@@ -238,14 +227,14 @@ prompt: |
   ```
 
   Correct staging — note the reaction beat opening it (no talking loop, the gesture
-  IS her body), one register held across everything else, a second beat inside the
-  long line, and exactly one camera move on the peak:
+  IS her body), `regular` on every other beat, a second beat inside the long line,
+  and exactly one camera move on the peak:
 
   {"beats":[
    {"span":"OH MY GOSH YESSS","emotion":"sparkle eyes","register":"none","gesture":"cheer","camera":"push-in"},
-   {"span":"you actually did it!","emotion":"happy","register":"upbeat","gesture":"none","camera":"none"},
-   {"span":"I'm literally bouncing in my chair","emotion":"playful","register":"upbeat","gesture":"none","camera":"none"},
-   {"span":"you poured everything into those demos","emotion":"warm","register":"upbeat","gesture":"hand-on-chest","camera":"none"}
+   {"span":"you actually did it!","emotion":"happy","register":"regular","gesture":"none","camera":"none"},
+   {"span":"I'm literally bouncing in my chair","emotion":"playful","register":"regular","gesture":"none","camera":"none"},
+   {"span":"you poured everything into those demos","emotion":"warm","register":"regular","gesture":"nod","camera":"none"}
   ]}
 
   Four beats over two lines. One gesture per ~two beats on a peak passage like
@@ -258,4 +247,5 @@ prompt: |
 
   {"beats":[{"span":"exact substring","emotion":"...","register":"...","gesture":"...","camera":"..."}]}
 
-  Every field is a string. Use `"none"` for register/gesture/camera when unused.
+  Every field is a string. Use `"none"` for gesture/camera when unused; register is
+  `regular`, or `"none"` on a reaction beat.
