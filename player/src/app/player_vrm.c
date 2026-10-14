@@ -42,7 +42,7 @@
 #include "os/os.h"
 
 // bump to invalidate every cached import when what we write changes
-#define PLAYER_VRM_CACHE_VERSION 6
+#define PLAYER_VRM_CACHE_VERSION 7
 // longest file name (without extension) imported; keeps every cache path
 // within PLAYER_VRM_PATH_MAX
 #define PLAYER_VRM_MAX_STEM 100
@@ -155,8 +155,10 @@ hz_global const PlayerVrmExpression player_vrm_expressions[] = {
     {"dreamy", "emotion", {VRM_RELAXED}, {0.9f}},
     {"sympathetic", "emotion", {VRM_SAD}, {0.55f}},
     {"fuming", "emotion", {VRM_ANGRY}, {0.8f}},
+    {"irked", "emotion", {VRM_ANGRY}, {0.6f}},
     {"tearful", "emotion", {VRM_SAD}, {1}},
     {"starstruck", "emotion", {VRM_HAPPY, VRM_SURPRISED}, {0.8f, 0.3f}},
+    {"dazzled", "emotion", {VRM_HAPPY, VRM_SURPRISED}, {0.9f, 0.4f}},
     {"pleading", "emotion", {VRM_SAD, VRM_SURPRISED}, {0.6f, 0.2f}},
     {"bashful", "emotion", {VRM_HAPPY}, {0.7f}},
     {"micro_brow_raise", "micro", {VRM_SURPRISED}, {0.3f}},

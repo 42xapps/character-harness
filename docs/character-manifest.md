@@ -105,7 +105,7 @@ Models an extension uses belong to that extension, not here. See "The chat model
 
 ## `rig`
 
-The body. Either a VRM model with the animations it plays, or a profile cooked into a player build (the player in this repo ships none).
+The body. Either a VRM model with the animations it plays, or a profile cooked into the player (FoxGlove's: `player/assets/characters/foxglove.hzt`).
 
 | Key | Required | What |
 |---|---|---|

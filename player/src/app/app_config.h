@@ -13,8 +13,8 @@
 #define PLAYER_URL_ENV "HARNESS_URL"
 #define PLAYER_URL_DEFAULT "ws://127.0.0.1:8788/session"
 // a path to a .vrm / .glb, imported on first load (player_vrm.c), or the name
-// or path of a profile cooked into the build (characters/<name>.hzt; this
-// repo ships none). The harness runtime always sets it; there is no default.
+// or path of a profile cooked into the build (characters/<name>.hzt, like
+// foxglove). The harness runtime always sets it; there is no default.
 #define PLAYER_CHARACTER_ENV "HARNESS_CHARACTER"
 #define PLAYER_ENV_MAX 512
 

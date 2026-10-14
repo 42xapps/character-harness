@@ -25,7 +25,7 @@ A character is a folder with a manifest, a personality prompt and a body: any VR
 Needs Node 23.6 or later, an ElevenLabs key and a key for the chat model the character uses.
 
 1. Copy `.env.example` to `.env` and fill in the keys.
-2. Run `npm install`, then `npm start -- characters/<id>` with a character whose body is a VRM model (`docs/bring-your-own-character.md`). FoxGlove's body is not included in this repo.
+2. Run `npm install`, then `npm start` for FoxGlove, or `npm start -- characters/<id>` for your own character (`docs/bring-your-own-character.md`).
 3. Start the player: a release build, or your own build (`player/README.md`). Set `HARNESS_PLAYER` in `.env` to the command that opens it, and `npm start` opens it too; otherwise the runtime prints what the player needs.
 4. Open Claude Code or Codex in this folder and ask it to change something. `AGENTS.md` tells it where everything lives.
 
@@ -45,4 +45,4 @@ Issues and pull requests are welcome; see `CONTRIBUTING.md`. To report a securit
 
 ## License
 
-MIT, see `LICENSE`. Included third-party work keeps its own licence: the Silero VAD model (MIT, `player/assets/vad/LICENSE`) and the MToon shading the player's shaders follow (MIT, credited in their headers). The Kaigen engine is not part of this repo.
+MIT, see `LICENSE`. That covers FoxGlove too: her character (`characters/foxglove/`) and her model and art (`player/assets/foxglove/`). Included third-party work keeps its own licence: the Silero VAD model (MIT, `player/assets/vad/LICENSE`) and the MToon shading the player's shaders follow (MIT, credited in their headers). The Kaigen engine is not part of this repo.

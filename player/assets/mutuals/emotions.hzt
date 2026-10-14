@@ -245,7 +245,7 @@ emotions 19
   overrides 0
 
   name "contempt"
-  reaction "fuming"
+  reaction "irked"
   hold "angry"
   react_rise 0.150000
   react_hold_min 0.800000
@@ -375,7 +375,7 @@ emotions 19
   overrides 0
 
   name "sparkle eyes"
-  reaction "starstruck"
+  reaction "dazzled"
   hold "starstruck"
   react_rise 0.150000
   react_hold_min 0.400000

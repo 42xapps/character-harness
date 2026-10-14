@@ -48,7 +48,7 @@ The runtime sets the first two when it starts the player.
 | Variable | Default | What |
 |---|---|---|
 | `HARNESS_URL` | `ws://127.0.0.1:8788/session` | the runtime's session socket. The runtime only accepts it with its token (`/session/<token>`), which it passes when it starts the player and prints otherwise |
-| `HARNESS_CHARACTER` | | the character: a path to a `.vrm` / `.glb` (the runtime passes a prepared one), or the name of a profile cooked into the build (this repo ships none) |
+| `HARNESS_CHARACTER` | | the character: a path to a `.vrm` / `.glb` (the runtime passes a prepared one), or the name of a profile cooked into the build (`foxglove`) |
 | `HARNESS_MIC_DEBUG` | `0` | `1` logs what the mic hears twice a second |
 | `HARNESS_PREVIEW` | | for checking a character without a conversation: `talk`, `talk:<style>`, `gesture:<name>` or `emotion:<name>`, repeated every few seconds |
 | `HARNESS_SCREENSHOT` | | saves frame `HARNESS_SCREENSHOT_FRAME` (default 240) to this `.png` and quits |
@@ -59,6 +59,10 @@ The runtime sets the first two when it starts the player.
 - Runs the engine's voice session against the runtime. The engine owns the socket, voice activity detection, playback and lip sync.
 - Applies beats: emotions reach the face, talking styles switch the body's loop, gestures play once, and camera words ease the framing toward `assets/mutuals/camera_moves.hzt`.
 - Never speaks first.
+
+## FoxGlove
+
+FoxGlove is a profile cooked into the player (`assets/characters/foxglove.hzt`): her model, rig, face and expressions are in `assets/foxglove/`, with hair, skirt and bust physics and her own expression effects (sparkling eyes, tears, blush). This repo has no animations for her, so she holds her rest pose.
 
 ## Loading a VRM
 
@@ -81,6 +85,7 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | `src/app/app_character.c`, `.h`, `app_emote_clips.c` | loading and swapping the character, emote clips |
 | `src/app/app.c` | the build's entry file, which includes the others |
 | `src/app/app_config.h` | every tunable and launch setting |
+| `assets/characters/foxglove.hzt`, `assets/foxglove/` | FoxGlove: her profile, model, rig, face, expressions and physics |
 | `assets/mutuals/` | the stage, camera moves, emotions, the lip sync profile, an empty upper-body mask the engine loads |
 | `assets/vad/` | the voice activity model ([Silero VAD](https://github.com/snakers4/silero-vad), MIT licence) |
 | `shaders/mutuals/` | the toon and outline shaders |

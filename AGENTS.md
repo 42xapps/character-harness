@@ -7,7 +7,7 @@ Read `docs/architecture.md` first.
 - A character is `characters/<id>/`. Its `character.yaml` is the single source of truth: it points to the prompt, voice, rig, emotions and extensions. Never hard-code character details in `runtime/`.
 - Personality: the file `character.yaml` names under `prompt` (usually `system.md`).
 - Voice and hearing: `voice:` and `stt:` in `character.yaml`.
-- Look and body: `rig:`, a VRM model and the animations it plays (or a profile cooked into a player build; this repo ships none).
+- Look and body: `rig:`, a VRM model and the animations it plays (or a profile cooked into the player, like FoxGlove's).
 - The app that shows the character: `player/`, C on the Kaigen engine. Building it needs a Kaigen licence.
 - Behavior that runs every turn: an extension under `extensions/<name>/`, described by its `extension.yaml` and listed in the character's `extensions:`.
 

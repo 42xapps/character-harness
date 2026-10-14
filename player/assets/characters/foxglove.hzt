@@ -1,0 +1,73 @@
+type AppCharacterProfileBlobAsset
+version 19
+---
+name "FoxGlove"
+model "foxglove/foxglove/foxglove.hza" ModelBlobAsset
+rig "foxglove/rig.hza" CharacterRigBlobAsset
+face_rig "foxglove/face_rig.hza" CharacterFaceRigBlobAsset
+expressions "foxglove/expressions.hza" ExpressionSetBlobAsset
+emotions "mutuals/emotions.hza" EmotionSetBlobAsset
+face_skin_material "Facial"
+face_eye_material "Eye_MAT"
+gaze
+  eye_range_deg 11.250000
+  saccade_interval_min 1.000000
+  saccade_interval_max 3.000000
+  microsaccade_deg 0.500000
+  aversion_chance 0.200000
+  aversion_yaw_deg 8.000000
+  aversion_pitch_deg 5.000000
+  head_follow 0.250000
+  head_damp_time 0.250000
+  yaw_sign 1.000000
+  pitch_sign 1.000000
+  eye_contact 0.350000
+  eye_contact_talking 0.850000
+  head_follow_talking 0.500000
+  eye_contact_max_deg 35.000000
+  aversion_chance_talking 0.150000
+  eye_lead 0.200000
+  eye_target 0.000000 0.000000 0.000000
+blink
+  blinks_per_minute 14.000000
+  rate_variation 0.490000
+  close_time 0.080000
+  hold_time 0.020000
+  reopen_time 0.180000
+  double_blink_chance 0.100000
+  half_blink_chance 0.120000
+  half_blink_amount 0.600000
+micro
+  interval_min 4.000000
+  interval_max 8.000000
+  amplitude 0.500000
+  rise_time 0.500000
+  hold_time 1.200000
+  fall_time 0.800000
+mood
+  interval_min 8.000000
+  interval_max 16.000000
+  transition 1.500000
+eye_life
+  move_every_min 2.000000
+  move_every_max 4.000000
+  move_amount 0.172222
+  transition_time 0.400000
+  hold_min 1.500000
+  hold_max 4.000000
+  widen_chance 0.300000
+  gaze_follow 0.400000
+  speech_squint 0.200000
+over_hair
+  push 0.070000
+  opacity 1.000000
+  fade_start 0.150000
+  fade_end 0.450000
+cloth 4
+  cloth "foxglove/cloth/long_hair_cloth.hza" ClothAuthoringBlobAsset
+
+  cloth "foxglove/cloth/front_hair_cloth.hza" ClothAuthoringBlobAsset
+
+  cloth "foxglove/cloth/skirt_cloth.hza" ClothAuthoringBlobAsset
+
+  cloth "foxglove/cloth/bust_cloth.hza" ClothAuthoringBlobAsset

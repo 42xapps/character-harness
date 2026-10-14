@@ -59,10 +59,7 @@ const extensions = await loadExtensions(character.extensions).catch((e: unknown)
 // what the player shows: a profile cooked into its build, or the character's model
 // with its animations baked in
 let shown: string;
-if (character.rig.kind === "profile") {
-	shown = character.rig.profile;
-	console.log(`${character.name}'s body is the player profile "${shown}"; the player in this repo ships no profiles, so it needs a build that includes it`);
-}
+if (character.rig.kind === "profile") shown = character.rig.profile;
 else {
 	const rig = character.rig;
 	const t0 = Date.now();

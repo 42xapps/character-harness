@@ -1,0 +1,188 @@
+type MaterialBlobAsset
+version 19
+---
+shader_source "/shaders/mutuals/mtoon.hz.glsl" ShaderVariantBlobAsset
+depth_test true
+depth_write true
+depth_compare GPU_COMPARE_GREATER_EQUAL
+cull_mode GPU_CULL_BACK
+is_transparent false
+alpha_cutoff true
+blend
+  enabled false
+  src_factor GPU_BLEND_ZERO
+  dst_factor GPU_BLEND_ZERO
+  op GPU_BLEND_OP_ADD
+  src_factor_alpha GPU_BLEND_ZERO
+  dst_factor_alpha GPU_BLEND_ZERO
+  op_alpha GPU_BLEND_OP_ADD
+depth_bias 0.000000
+slope_scaled_depth_bias 0.000000
+properties 27
+  name "lit_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.8490566
+    g 0.61765754
+    b 0.46724796
+    a 1.000000
+
+  name "shade_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.5686274
+    g 0.2980392
+    b 0.15294114
+    a 1.000000
+
+  name "rim_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 1.000000
+    g 1.000000
+    b 1.000000
+    a 1.000000
+
+  name "emissive"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 1.000000
+
+  name "matcap_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.000000
+    g 0.000000
+    b 0.000000
+    a 1.000000
+
+  name "toon"
+  type MAT_PROP_VEC4
+  v4 -0.117000 0.822000 11.800000 0.086000
+
+  name "highlight_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.9308176
+    g 0.8168358
+    b 0.73470193
+    a 0.000000
+
+  name "highlight_params"
+  type MAT_PROP_VEC4
+  v4 -0.540000 0.574000 1.000000 1.000000
+
+  name "face_params"
+  type MAT_PROP_VEC4
+  v4 0.000000 0.000000 0.000000 0.367000
+
+  name "gi_params"
+  type MAT_PROP_VEC4
+  v4 0.900000 1.000000 1.000000 1.000000
+
+  name "outline_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.20754716
+    g 0.16397291
+    b 0.15428975
+    a 1.000000
+
+  name "outline_params"
+  type MAT_PROP_VEC4
+  v4 0.001300 1.000000 2.000000 1.000000
+
+  name "alpha_cutoff"
+  type MAT_PROP_FLOAT
+  f 0.000000
+
+  name "shadow_strength"
+  type MAT_PROP_FLOAT
+  f 0.000000
+
+  name "map"
+  type MAT_PROP_TEXTURE
+  texture "/foxglove/textures/image_0_0.hzt" TextureBlobAsset
+
+  name "shade_map"
+  type MAT_PROP_TEXTURE
+  texture "/foxglove/textures/image_0_0.hzt" TextureBlobAsset
+
+  name "highlight_map"
+  type MAT_PROP_TEXTURE
+  texture "/foxglove/textures/image_0_0.hzt" TextureBlobAsset
+
+  name "blush_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 1.000000
+    g 0.72111076
+    b 0.71383643
+    a 1.000000
+
+  name "nervous_color"
+  type MAT_PROP_COLOR4
+  c4
+    r 0.600000
+    g 0.650000
+    b 1.000000
+    a 1.000000
+
+  name "blush_params"
+  type MAT_PROP_VEC4
+  v4 1.000000 0.000000 0.000000 0.000000
+
+  name "blush_mask"
+  type MAT_PROP_TEXTURE
+  texture "/foxglove/textures/shyMask.hzt" TextureBlobAsset
+
+  name "nervous_mask"
+  type MAT_PROP_TEXTURE
+  texture "/foxglove/textures/NervousMask.hzt" TextureBlobAsset
+
+  name "star_eyes_tint"
+  type MAT_PROP_COLOR4
+  c4
+    r 1.000000
+    g 1.000000
+    b 1.000000
+    a 1.000000
+
+  name "star_teary_params"
+  type MAT_PROP_VEC4
+  v4 0.000000 0.000000 1.000000 0.008000
+
+  name "teary_params2"
+  type MAT_PROP_VEC4
+  v4 3.000000 0.300000 0.000000 0.000000
+
+  name "over_hair_rect"
+  type MAT_PROP_VEC4
+  v4 0.000000 0.000000 0.000000 1.000000
+
+  name "over_hair_params"
+  type MAT_PROP_VEC4
+  v4 0.000000 0.000000 0.000000 1.000000
+keywords 0
+passes 1
+  source "/shaders/mutuals/mtoon_outline.hz.glsl"
+  phase RENDERER_PHASE_HDR_OPAQUE
+  order -1
+  state_mask 9
+  cull_mode GPU_CULL_FRONT
+  depth_compare GPU_COMPARE_GREATER_EQUAL
+  depth_write true
+  depth_bias -1.000000
+  slope_scaled_depth_bias -1.000000
+  blend
+    enabled false
+    src_factor GPU_BLEND_ZERO
+    dst_factor GPU_BLEND_ZERO
+    op GPU_BLEND_OP_ADD
+    src_factor_alpha GPU_BLEND_ZERO
+    dst_factor_alpha GPU_BLEND_ZERO
+    op_alpha GPU_BLEND_OP_ADD
+  keywords 0

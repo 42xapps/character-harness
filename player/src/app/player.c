@@ -761,6 +761,13 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
 
   lane_sync();
   if (is_main_thread()) {
+    // a profile with no clips holds its bind pose, whether imported or cooked
+    // in. Decided here, after every lane has scheduled this frame, so all of
+    // them read the same value the next one.
+    AppCharacterProfileBlobAsset *profile =
+        app_character_profile(&state->character, ecs_resource_get(w, AssetSystem));
+    if (profile)
+      state->bind_pose_body = !handle_is_valid(profile->idle_clip.handle);
     // plays emotes and loads assets, so only after every lane has synced
     player_beat_tick(state, w);
     player_preview_tick(state, w, memory->dt);

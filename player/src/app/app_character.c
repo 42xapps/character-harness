@@ -231,8 +231,8 @@ hz_internal EcsEntity app_character_spawn(
   ecs_component_set(
       w, e, EcsModelRef,
       {.model = blob_asset_ref_from_handle(ModelBlobAsset, p->model.handle)});
-  // a profile with no clips (an imported .vrm) gets no animation reference:
-  // the renderer would wait on it forever
+  // a profile with no clips (FoxGlove, an imported .vrm with none) gets no
+  // animation reference: the renderer would wait on it forever
   if (handle_is_valid(p->idle_clip.handle))
     ecs_component_set(w, e, EcsAnimationRef,
                       {.animation = blob_asset_ref_from_handle(

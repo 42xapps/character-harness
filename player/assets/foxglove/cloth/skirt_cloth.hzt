@@ -1,0 +1,224 @@
+type ClothAuthoringBlobAsset
+version 3
+---
+cloth_type 1
+target_mesh_name ""
+params
+  gravity_dir
+    x 0.000000
+    y -1.000000
+    z 0.000000
+  gravity 5.000000
+  gravity_falloff 0.000000
+  damping 0.060000
+  use_damping_curve false
+  damping_curve
+    s 16 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000 0.060000
+  stabilization_time 0.100000
+  animation_pose_ratio 0.000000
+  distance_stiffness 1.000000
+  use_distance_curve true
+  distance_stiffness_curve
+    s 16 1.000000 0.966667 0.933333 0.900000 0.866667 0.833333 0.800000 0.766667 0.733333 0.700000 0.666667 0.633333 0.600000 0.566667 0.533333 0.500000
+  distance_iterations 0
+  distance_velocity_attenuation 0.300000
+  tether_compression 0.300000
+  use_angle_restoration true
+  angle_restoration_stiffness 0.150000
+  use_angle_restoration_curve true
+  angle_restoration_curve
+    s 16 0.150000 0.142029 0.134058 0.126087 0.118116 0.110145 0.102174 0.094203 0.086232 0.078261 0.070290 0.062319 0.054348 0.046377 0.038406 0.030435
+  angle_restoration_velocity_attenuation 0.700000
+  angle_restoration_gravity_falloff 0.000000
+  use_angle_limit true
+  angle_limit_deg 60.000000
+  angle_limit_stiffness 0.811000
+  use_angle_limit_curve true
+  angle_limit_curve
+    s 16 3.884766 10.973850 17.489140 23.452670 28.886480 33.812610 38.253100 42.229990 45.765310 48.881110 51.599420 53.942280 55.931730 57.589810 58.938560 60.000000
+  use_max_distance false
+  max_distance 0.300000
+  use_max_distance_curve false
+  max_distance_curve
+    s 16 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000
+  motion_stiffness 0.502000
+  use_backstop true
+  backstop_radius 10.000000
+  backstop_distance 0.100000
+  use_backstop_distance_curve true
+  backstop_distance_curve
+    s 16 0.011694 0.021922 0.031682 0.040940 0.049661 0.057809 0.065348 0.072244 0.078461 0.083963 0.088716 0.092684 0.095832 0.098124 0.099525 0.100000
+  normal_axis 0
+  is_spring false
+  spring_power 0.040000
+  spring_limit_distance 0.100000
+  spring_normal_limit_ratio 1.000000
+  spring_noise 0.000000
+  radius 0.020000
+  use_radius_curve false
+  radius_curve
+    s 16 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000
+  use_collision true
+  collision_friction 0.050000
+  use_self_collision false
+  self_collision_thickness 0.010000
+  use_self_thickness_curve true
+  self_thickness_curve
+    s 16 0.005000 0.005333 0.005667 0.006000 0.006333 0.006667 0.007000 0.007333 0.007667 0.008000 0.008333 0.008667 0.009000 0.009333 0.009667 0.010000
+  self_collision_cloth_mass 0.500000
+  world_inertia 0.500000
+  depth_inertia 0.600000
+  movement_inertia_smoothing 0.400000
+  movement_speed_limit 3.000000
+  rotation_speed_limit 720.000000
+  local_inertia 1.000000
+  local_movement_speed_limit 0.000000
+  local_rotation_speed_limit 0.000000
+  particle_speed_limit 4.000000
+  centrifugal_acceleration 0.100000
+  teleport_mode 1
+  teleport_distance 0.500000
+  wind_mode 0
+  wind_dir
+    x 0.000000
+    y 0.000000
+    z 0.000000
+  wind_main 0.000000
+  wind_influence 1.000000
+  wind_turbulence 1.000000
+  wind_depth_weight 0.834000
+  wind_frequency 1.000000
+  wind_blend 0.700000
+  wind_synchronization 0.700000
+  wind_zone_center
+    x 0.000000
+    y 0.000000
+    z 0.000000
+  wind_zone_radius 0.000000
+  use_bending false
+  bending_stiffness 1.000000
+  blend_weight 1.000000
+  rotational_interpolation 0.500000
+  root_rotation 0.500000
+reduction
+  simple_distance 0.000000
+  shape_distance 0.000000
+selection_max_connection_distance 0.000000
+normal_alignment_mode 0
+normal_alignment_pos
+  x 0.000000
+  y 0.000000
+  z 0.000000
+target_vertex_count 0
+selection_positions 0
+selection_attributes 0
+colliders 6
+  type 1
+  bone_name "J_Bip_C_Hips"
+  local_pos
+    x 0.000000
+    y 0.147000
+    z 0.007000
+  local_rot
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  direction 0
+  size
+    x 0.080000
+    y 0.080000
+    z 0.080000
+  aligned_center false
+
+  type 1
+  bone_name "J_Bip_C_Hips"
+  local_pos
+    x 0.049000
+    y 0.029000
+    z -0.011000
+  local_rot
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  direction 0
+  size
+    x 0.091000
+    y 0.091000
+    z 0.091000
+  aligned_center false
+
+  type 1
+  bone_name "J_Bip_C_Hips"
+  local_pos
+    x -0.049000
+    y 0.029000
+    z -0.011000
+  local_rot
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  direction 0
+  size
+    x 0.091000
+    y 0.091000
+    z 0.091000
+  aligned_center false
+
+  type 1
+  bone_name "J_Bip_C_Spine"
+  local_pos
+    x 0.000000
+    y 0.160000
+    z 0.000000
+  local_rot
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  direction 0
+  size
+    x 0.100000
+    y 0.100000
+    z 0.100000
+  aligned_center false
+
+  type 2
+  bone_name "J_Bip_L_UpperLeg"
+  local_pos
+    x 0.001000
+    y -0.220000
+    z 0.009000
+  local_rot
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  direction 1
+  size
+    x 0.081000
+    y 0.081000
+    z 0.427000
+  aligned_center true
+
+  type 2
+  bone_name "J_Bip_R_UpperLeg"
+  local_pos
+    x 0.001000
+    y -0.220000
+    z 0.009000
+  local_rot
+    x 0.000000
+    y 0.000000
+    z 0.000000
+    w 1.000000
+  direction 1
+  size
+    x 0.081000
+    y 0.081000
+    z 0.427000
+  aligned_center true
+bone_names 18 "J_Sec_R_SkirtBack_01" "J_Sec_R_SkirtBack_end_01" "J_Sec_R_SkirtBack_end_01_end" "J_Sec_L_SkirtBack_01" "J_Sec_L_SkirtBack_end_01" "J_Sec_L_SkirtBack_end_01_end" "J_Sec_R_SkirtSide_01" "J_Sec_R_SkirtSide_end_01" "J_Sec_R_SkirtSide_end_01_end" "J_Sec_L_SkirtSide_01" "J_Sec_L_SkirtSide_end_01" "J_Sec_L_SkirtSide_end_01_end" "J_Sec_R_SkirtFront_01" "J_Sec_R_SkirtFront_end_01" "J_Sec_R_SkirtFront_end_01_end" "J_Sec_L_SkirtFront_01" "J_Sec_L_SkirtFront_end_01" "J_Sec_L_SkirtFront_end_01_end"
+bone_attributes 18 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2
