@@ -3,10 +3,13 @@ version 19
 ---
 name "FoxGlove"
 model "foxglove/foxglove/foxglove.hza" ModelBlobAsset
+clip_dir "foxglove/foxglove/"
+idle_clip "foxglove/foxglove/idle_breathing.hza" AnimationBlobAsset
 rig "foxglove/rig.hza" CharacterRigBlobAsset
 face_rig "foxglove/face_rig.hza" CharacterFaceRigBlobAsset
 expressions "foxglove/expressions.hza" ExpressionSetBlobAsset
 emotions "mutuals/emotions.hza" EmotionSetBlobAsset
+states "foxglove/states.hza" CharacterStatesBlobAsset
 face_skin_material "Facial"
 face_eye_material "Eye_MAT"
 gaze

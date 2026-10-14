@@ -1,0 +1,41 @@
+type CharacterStatesBlobAsset
+version 16
+---
+idle
+  loops 2
+    emote "foxglove/emotes/idle_breathing.hza" EmoteBlobAsset
+    weight 1.000000
+
+    emote "foxglove/emotes/idle_listening.hza" EmoteBlobAsset
+    weight 1.000000
+  breaks 4
+    emote "foxglove/emotes/break_look_around.hza" EmoteBlobAsset
+    weight 1.000000
+
+    emote "foxglove/emotes/break_look_at_hands.hza" EmoteBlobAsset
+    weight 1.000000
+
+    emote "foxglove/emotes/break_look_back.hza" EmoteBlobAsset
+    weight 1.000000
+
+    emote "foxglove/emotes/break_stretch.hza" EmoteBlobAsset
+    weight 1.000000
+  swap_min 14.000000
+  swap_max 26.000000
+  break_min 20.000000
+  break_max 30.000000
+  transition_time 0.300000
+talking
+  loops 2
+    emote "foxglove/emotes/idle_breathing.hza" EmoteBlobAsset
+    weight 1.000000
+
+    emote "foxglove/emotes/idle_listening.hza" EmoteBlobAsset
+    weight 1.000000
+  breaks 0
+  swap_min 6.000000
+  swap_max 12.000000
+  break_min 0.000000
+  break_max 0.000000
+  transition_time 0.300000
+registers 0

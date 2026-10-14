@@ -57,8 +57,8 @@
 #define PLAYER_STAGE_FOV 20.0f
 
 // the beat vocabulary: gesture word -> emote, camera word -> framing preset.
-// A cooked-in profile's gestures are this set, when a build ships one; an
-// imported character brings its own.
+// A cooked-in profile's gestures are this set (FoxGlove's); an imported
+// character brings its own.
 #define PLAYER_GESTURES "mutuals/gestures.hzt"
 #define PLAYER_GESTURES_COOKED "cooked/mutuals/gestures.hza"
 #define PLAYER_CAMERA_MOVES "mutuals/camera_moves.hzt"

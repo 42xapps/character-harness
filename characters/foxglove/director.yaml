@@ -32,7 +32,7 @@ emotions:
 # peak-only emotions, capped per reply
 intense: ["surprised", "sparkle eyes", "crying eyes", "grumpy", "really grumpy", "flustered"]
 registers: ["regular", "upbeat", "explaining", "sad", "shy", "arguing", "scolding"]
-gestures: ["bashful", "cheer", "point", "shrug", "wave", "nod", "hands-on-hips", "hand-on-chest", "hand-on-waist", "surprise", "cry", "motivated", "reach-out", "fist-up", "peace-sign", "flex", "sheepish"]
+gestures: ["cheer", "wave", "nod", "hands-on-hips", "hand-on-waist", "surprise", "sheepish"]
 cameras: ["hold", "push-in", "close-up", "pull-back"]
 
 # moves allowed in one reply

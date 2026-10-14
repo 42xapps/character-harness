@@ -62,7 +62,7 @@ The runtime sets the first two when it starts the player.
 
 ## FoxGlove
 
-FoxGlove is a profile cooked into the player (`assets/characters/foxglove.hzt`): her model, rig, face and expressions are in `assets/foxglove/`, with hair, skirt and bust physics and her own expression effects (sparkling eyes, tears, blush). This repo has no animations for her, so she holds her rest pose.
+FoxGlove is a profile cooked into the player (`assets/characters/foxglove.hzt`): her model, rig, face and expressions are in `assets/foxglove/`, with hair, skirt and bust physics and her own expression effects (sparkling eyes, tears, blush). Her idle loops, idle breaks and gestures are animations in her model, played through `assets/foxglove/states.hzt`, `assets/foxglove/emotes/` and `assets/mutuals/gestures.hzt`; their `.vrma` sources are in `characters/foxglove/animations/`. She has no talking loops yet: while she talks she stays in her idle loop.
 
 ## Loading a VRM
 
@@ -85,8 +85,8 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | `src/app/app_character.c`, `.h`, `app_emote_clips.c` | loading and swapping the character, emote clips |
 | `src/app/app.c` | the build's entry file, which includes the others |
 | `src/app/app_config.h` | every tunable and launch setting |
-| `assets/characters/foxglove.hzt`, `assets/foxglove/` | FoxGlove: her profile, model, rig, face, expressions and physics |
-| `assets/mutuals/` | the stage, camera moves, emotions, the lip sync profile, an empty upper-body mask the engine loads |
+| `assets/characters/foxglove.hzt`, `assets/foxglove/` | FoxGlove: her profile, model and animations, rig, face, expressions, physics, states and emotes |
+| `assets/mutuals/` | the stage, camera moves, emotions, the gesture set of a cooked-in profile, the lip sync profile, an empty upper-body mask the engine loads |
 | `assets/vad/` | the voice activity model ([Silero VAD](https://github.com/snakers4/silero-vad), MIT licence) |
 | `shaders/mutuals/` | the toon and outline shaders |
 
