@@ -4,6 +4,20 @@ The app that shows the character: it renders it, plays its voice, captures the m
 
 Builds will be attached to this repo's GitHub Releases; using one needs no Kaigen licence. To change the player, you build it yourself, which needs a Kaigen licence.
 
+## Install a release (macOS)
+
+1. Download `character-player-<version>-macos-arm64.dmg` and `SHA256SUMS` from the release (Apple Silicon Macs), and check it (`shasum -a 256 -c --ignore-missing SHA256SUMS`).
+2. Open it and drag Character Player to Applications.
+3. Put this in the harness's `.env`, so `npm start` opens it:
+
+   ```
+   HARNESS_PLAYER="'/Applications/Character Player.app/Contents/MacOS/'*"
+   ```
+
+4. On its first start, allow the microphone when macOS asks. When `npm start` opens the player, macOS asks for the app you ran `npm start` in (your terminal or editor); if it doesn't ask, allow it in System Settings > Privacy & Security > Microphone.
+
+The app keeps what it writes, like the cache of imported models and its logs, in `~/Library/Application Support/com.mutuals.characterplayer`.
+
 ## Build
 
 1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt`.
@@ -48,7 +62,7 @@ The runtime sets the first two when it starts the player.
 
 ## Loading a VRM
 
-The runtime prepares a character's model: its `.vrm` with the character's animations retargeted onto it, and a table of which clip is idle, which talking style, which gesture. The first load imports it with the engine's glTF importer (`src/app/player_vrm.c`) and caches it under `cooked/vrm/<name>/`, a few seconds for a typical model; later loads reuse the cache until the file changes.
+The runtime prepares a character's model: its `.vrm` with the character's animations retargeted onto it, and a table of which clip is idle, which talking style, which gesture. The first load imports it with the engine's glTF importer (`src/app/player_vrm.c`) and caches it under `cooked/vrm/<name>/` (in this folder for your own build, in the app's Application Support folder for a release), a few seconds for a typical model; later loads reuse the cache until the file changes.
 
 - **Body:** the baked clips become the character's idle loop, talking styles and gestures. Without them it stands in its rest pose.
 - **Face:** built from the model's own VRM expressions (happy, sad, blink, the vowels for lip sync), with the emotions in `assets/mutuals/emotions.hzt` mixed from those.
@@ -59,7 +73,8 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 
 | Path | What |
 |---|---|
-| `hzproject.hzt` | the project: name, folders, engine version |
+| `hzproject.hzt` | the project: name, folders, engine version, and the app's name, bundle id and version for a release |
+| `release-macos.sh`, `macos.entitlements` | builds, signs and notarizes a release from a tag, and attaches it to a draft GitHub release; the entitlements let the signed app use the mic |
 | `src/app/player.c`, `player.h` | the app: init, frame loop, mic, beats, camera |
 | `src/app/player_vrm.c`, `.h` | runtime VRM import and caching: clips, face, rig and the generated character profile |
 | `src/app/player_json.c`, `.h` | a small JSON reader for the VRM extensions and the runtime's clip table |
@@ -69,3 +84,13 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | `assets/mutuals/` | the stage, camera moves, emotions, the lip sync profile, an empty upper-body mask the engine loads |
 | `assets/vad/` | the voice activity model ([Silero VAD](https://github.com/snakers4/silero-vad), MIT licence) |
 | `shaders/mutuals/` | the toon and outline shaders |
+
+## Releasing (macOS)
+
+From a clean checkout of a `vX.Y.Z` tag pushed to GitHub, on a Mac with your Kaigen licence activated, a Developer ID Application certificate and a notarytool keychain profile:
+
+```bash
+MACOS_SIGNING_IDENTITY="Developer ID Application: <name> (<team id>)" MACOS_NOTARY_PROFILE=<profile> player/release-macos.sh vX.Y.Z
+```
+
+It builds the app with the engine's publish build, signs it with the microphone entitlement (`macos.entitlements`), notarizes it, packages the `.zip` and `.dmg`, writes `SHA256SUMS`, and creates a draft release with them. Review the draft and publish it. CI doesn't build the player, so releases are made this way.

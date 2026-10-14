@@ -531,9 +531,54 @@ hz_internal String player_vrm_stem(String path) {
   return (String){path.value + start, end - start};
 }
 
+// A published build may read some asset types from a zstd-compressed sibling
+// (<file>.zst) that its cook made. What the import writes gets one too: a zstd
+// frame of raw (stored) blocks, which any zstd decoder reads. (A published
+// macOS app runs in ~/Library/Application Support/<bundle id>, so the cache
+// is written there, outside the signed app.)
+#ifndef PLAYER_VRM_ZST
+#ifdef HZ_PUBLISH
+#define PLAYER_VRM_ZST 1
+#else
+#define PLAYER_VRM_ZST 0
+#endif
+#endif
+#define PLAYER_ZST_BLOCK (128u * 1024u)
+
+hz_internal b32 player_vrm_write_zst(CString path, const u8 *data, u32 len, Allocator *alloc) {
+  // the frame must fit a u32 too; no cached asset comes near that
+  if (len > 0xF0000000u)
+    return false;
+  u32 blocks = len ? (len + PLAYER_ZST_BLOCK - 1) / PLAYER_ZST_BLOCK : 1;
+  u32 size = 4 + 1 + 8 + blocks * 3 + len;
+  u8 *out = ALLOC_ARRAY(alloc, u8, size);
+  u8 *at = out;
+  const u8 magic[4] = {0x28, 0xB5, 0x2F, 0xFD};
+  mem_cpy(at, magic, 4);
+  at += 4;
+  // descriptor: 8-byte content size, single segment, no checksum, no dictionary
+  *at++ = 0xE0;
+  for (u32 i = 0; i < 8; i++)
+    *at++ = i < 4 ? (u8)(len >> (8 * i)) : 0;
+  for (u32 b = 0; b < blocks; b++) {
+    u32 n = len - b * PLAYER_ZST_BLOCK < PLAYER_ZST_BLOCK ? len - b * PLAYER_ZST_BLOCK : PLAYER_ZST_BLOCK;
+    // block header: last flag, raw type (0), size
+    u32 header = (n << 3) | (b + 1 == blocks ? 1u : 0u);
+    *at++ = (u8)header;
+    *at++ = (u8)(header >> 8);
+    *at++ = (u8)(header >> 16);
+    if (n)
+      mem_cpy(at, data + b * PLAYER_ZST_BLOCK, n);
+    at += n;
+  }
+  return os_write_file(str_format(alloc, "%.zst", fmt_cstr(path)).value, out, size);
+}
+
 hz_internal b32 player_vrm_write(CString path, void *data, u32 len, Allocator *alloc) {
   cook_ensure_parent_dir(path, alloc);
-  return os_write_file(path, (u8 *)data, len);
+  if (!os_write_file(path, (u8 *)data, len))
+    return false;
+  return !PLAYER_VRM_ZST || player_vrm_write_zst(path, (const u8 *)data, len, alloc);
 }
 
 hz_internal b32 player_vrm_cook(CString text, const char *type, CString asset_path,
@@ -870,7 +915,8 @@ b32 player_vrm_load(CString vrm_path, PlayerVrm *out) {
       CString record = str_format(&alloc, "%%\n%\n%\n", fmt_cstr(stamp), fmt_cstr(out->profile),
                                   fmt_cstr(out->gestures[0] ? out->gestures : "-"),
                                   fmt_cstr(out->animated ? "1" : "0")).value;
-      player_vrm_write(stamp_path, (void *)record, cstr_len(record), &alloc);
+      // the stamp is the player's own record, never loaded as an asset
+      os_write_file(stamp_path, (u8 *)record, cstr_len(record));
     }
   }
   arena_destroy(arena);

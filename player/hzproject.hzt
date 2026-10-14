@@ -6,6 +6,11 @@ engine hz
 src_roots 1 src
 asset_roots 1 assets
 shader_roots 1 shaders
+macos_bundle_name "Character Player"
+macos_bundle_id com.mutuals.characterplayer
 engine_version 0.5.8
 publish
   product_name "Character Player"
+  version 0.1.0
+  company "Mutuals"
+  copyright "Copyright (c) 2026 Mutuals"

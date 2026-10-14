@@ -10,3 +10,5 @@
 /logs/
 /crashes/
 /window.dat
+# put back by release-macos.sh when the build ends
+/hzproject.hzt.release-backup
