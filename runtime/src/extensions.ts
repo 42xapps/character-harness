@@ -5,11 +5,14 @@
 //   in:  { event, state, config }      out: { state }, or nothing for "no change"
 //
 // A module handler is a file whose default export is that function, sync or
-// async. An HTTP handler gets the same object as a JSON POST and answers the
+// async. It may also export `check({ config, body })`, which `npm run check`
+// and `npm start` call to check its config against the character (check.ts).
+// An HTTP handler gets the same object as a JSON POST and answers the
 // same way. Keys come from .env, which the runtime loads into process.env.
 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import type { Body, Problems } from "./check.ts";
 import type { Extension } from "./manifest.ts";
 import type { HookName, State } from "./state.ts";
 
@@ -21,8 +24,11 @@ export interface HookInput {
 type HookOutput = { state?: State } | null | undefined | void;
 type Handler = (input: HookInput) => HookOutput | Promise<HookOutput>;
 
+type Check = (input: { config: unknown; body: Body }) => Problems | void | Promise<Problems | void>;
+
 export interface Loaded extends Extension {
 	call: Handler;
+	check?: Check;
 }
 
 class TimedOut extends Error {}
@@ -48,10 +54,10 @@ export async function loadExtensions(exts: Extension[]): Promise<Loaded[]> {
 			continue;
 		}
 		const file = path.join(e.dir, e.handler);
-		const mod = (await import(pathToFileURL(file).href)) as { default?: unknown };
+		const mod = (await import(pathToFileURL(file).href)) as { default?: unknown; check?: unknown };
 		if (typeof mod.default !== "function")
 			throw new Error(`${file}: the extension's handler must export a default function`);
-		out.push({ ...e, call: mod.default as Handler });
+		out.push({ ...e, call: mod.default as Handler, check: typeof mod.check === "function" ? (mod.check as Check) : undefined });
 	}
 	return out;
 }

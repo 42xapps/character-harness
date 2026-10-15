@@ -14,6 +14,7 @@
   },
   "scripts": {
     "start": "node runtime/src/main.ts",
+    "check": "node runtime/src/main.ts --check",
     "test": "node --test \"runtime/test/*.test.ts\"",
     "typecheck": "tsc -p runtime"
   },

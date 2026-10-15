@@ -25,7 +25,7 @@ A character is a folder with a manifest, a personality prompt and a body: any VR
 Needs Node 23.6 or later, an ElevenLabs key and a key for the chat model the character uses.
 
 1. Copy `.env.example` to `.env` and fill in the keys.
-2. Run `npm install`, then `npm start` for FoxGlove, or `npm start -- characters/<id>` for your own character (`docs/bring-your-own-character.md`).
+2. Run `npm install`, then `npm start` for FoxGlove, or `npm start -- characters/<id>` for your own character (`docs/bring-your-own-character.md`). `npm run check -- characters/<id>` checks a character without starting it.
 3. Start the player: a release build, or your own build (`player/README.md`). Set `HARNESS_PLAYER` in `.env` to the command that opens it, and `npm start` opens it too; otherwise the runtime prints what the player needs.
 4. Open Claude Code or Codex in this folder and ask it to change something. `AGENTS.md` tells it where everything lives.
 

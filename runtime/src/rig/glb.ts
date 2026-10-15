@@ -62,6 +62,8 @@ const CHUNK_BIN = 0x004e4942;
 const FLOAT = 5126;
 // larger than any avatar or clip; a bigger file is refused before it is read
 const MAX_FILE_BYTES = 512 * 1024 * 1024;
+// a model's JSON is a few MB; parsed, it takes many times its size in memory
+const MAX_JSON_BYTES = 64 * 1024 * 1024;
 // an accessor with no data is all zeros; this many is more than any clip needs
 const MAX_ZERO_VALUES = 1 << 24;
 // Many accessors can name the same bytes, and small components read as
@@ -83,7 +85,10 @@ export function readGlb(path: string): Glb {
 		const type = b.readUInt32LE(at + 4);
 		if (at + 8 + len > b.length) throw new Error(`${path} is cut short`);
 		const data = b.subarray(at + 8, at + 8 + len);
-		if (type === CHUNK_JSON) json = JSON.parse(data.toString("utf8"));
+		if (type === CHUNK_JSON) {
+			if (len > MAX_JSON_BYTES) throw new Error(`${path}'s glTF JSON is larger than ${MAX_JSON_BYTES >> 20} MB`);
+			json = JSON.parse(data.toString("utf8"));
+		}
 		else if (type === CHUNK_BIN) bin = Buffer.from(data);
 		at += 8 + len;
 	}

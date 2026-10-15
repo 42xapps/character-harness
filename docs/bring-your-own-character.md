@@ -15,7 +15,7 @@ Any VRM model (0.x or 1.0) can be a character's body.
        gestures: { wave: wave.vrma }
    ```
 
-3. To have the character move and react while it talks, add the extensions and a `director.yaml` with your character's words (copy `characters/foxglove/director.yaml`; the keys are in `extensions.md`):
+3. To have the character move and react while it talks, add the extensions and a `director.yaml` with your character's words (copy `characters/foxglove/director.yaml` and keep only the gestures and talking styles your character has, which `npm run check` warns about; the keys are in `extensions.md`):
 
    ```yaml
    extensions:
@@ -26,7 +26,8 @@ Any VRM model (0.x or 1.0) can be a character's body.
    ```
 
    Without them it still talks, in its idle and `regular` talking loops, with no gestures.
-4. Run `npm start -- characters/<id>`. With `HARNESS_PLAYER` in `.env`, the player opens too.
+4. Run `npm run check -- characters/<id>` to check it without starting anything: the manifest, the keys, the model (prepared as the player will show it) and the words the director may pick against what the character has. It needs no keys or player, and prints every problem at once.
+5. Run `npm start -- characters/<id>`. It runs the same checks first and stops on an error. With `HARNESS_PLAYER` in `.env`, the player opens too.
 
 ## The body
 

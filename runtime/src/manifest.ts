@@ -3,7 +3,7 @@
 // Anything missing or misspelt fails here, at startup, with the key's full name,
 // rather than as a confusing error halfway through a call.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
 import { HOOKS } from "./state.ts";
@@ -190,6 +190,7 @@ function readSources(file: string, dir: string, at: string, v: unknown, one = fa
 		if (!/\.vrma$/i.test(name)) return { clip: name };
 		const abs = path.resolve(dir, name);
 		if (!existsSync(abs)) throw new ManifestError(`${file}: \`${at}\` ${abs} does not exist`);
+		if (!statSync(abs).isFile()) throw new ManifestError(`${file}: \`${at}\` ${abs} is not a file`);
 		return { file: abs };
 	});
 }
@@ -200,10 +201,14 @@ function readRig(file: string, dir: string, rig: Obj): Rig {
 	const profile = f("profile").optStr();
 	const model = f("model").optStr();
 	if (profile && model) throw new ManifestError(`${file}: \`rig\` takes \`profile\` or \`model\`, not both`);
+	// a bare name, as the player takes it: no path, no extension
+	if (profile && /[/\\.":\u0000-\u001f\u007f]/.test(profile))
+		throw new ManifestError(`${file}: \`rig.profile\` must be a profile's name, without /, \\, ., : or quotes (got "${profile}")`);
 	if (profile) return { kind: "profile", profile };
 	if (!model) throw new ManifestError(`${file}: \`rig\` needs a \`model\` (a .vrm file) or a player \`profile\``);
 	const abs = path.resolve(dir, model);
 	if (!existsSync(abs)) throw new ManifestError(`${file}: \`rig.model\` ${abs} does not exist`);
+	if (!statSync(abs).isFile()) throw new ManifestError(`${file}: \`rig.model\` ${abs} is not a file`);
 	const anims = f("animations").optObj();
 	const a = (k: string) => field(file, anims, "rig.animations", k);
 	for (const k of Object.keys(anims))

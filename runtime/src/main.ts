@@ -1,9 +1,12 @@
 // npm start [characters/<id>]
+// npm run check [characters/<id>]
 //
-// Loads the character and its extensions, checks every key it needs is in
-// .env, prepares the model the player shows (rig/prepare.ts), serves the app's
-// session socket on ws://HOST:PORT/session/<token>, and starts the player when
-// HARNESS_PLAYER gives the command that opens it (player.ts).
+// Loads the character and its extensions, checks it (check.ts: every key it
+// needs is in .env, its body, what its extensions ask of the player), prepares
+// the model the player shows (rig/prepare.ts), serves the app's session socket
+// on ws://HOST:PORT/session/<token>, and starts the player when HARNESS_PLAYER
+// gives the command that opens it (player.ts). With --check it stops after the
+// checks and prints them all; a missing key or .env is then only a warning.
 // HOST defaults to 127.0.0.1; set HOST=0.0.0.0 to reach it from another device on the network.
 //
 // The socket spends the keys in .env, so only the player may use it: the
@@ -16,18 +19,22 @@ import { createServer, type IncomingMessage } from "node:http";
 import { parseEnv } from "node:util";
 import path from "node:path";
 import { WebSocketServer } from "ws";
+import { checkCharacter, printable, printReport, shortPath } from "./check.ts";
 import { loadExtensions } from "./extensions.ts";
 import { ManifestError, loadCharacter, requiredKeys } from "./manifest.ts";
 import { manualStart, playerLog, startPlayer, type PlayerLaunch } from "./player.ts";
-import { prepareModel } from "./rig/prepare.ts";
 import { runSession } from "./session.ts";
 
 function fail(message: string): never {
-	console.error(message);
+	console.error(printable(message));
 	process.exit(1);
 }
 
-const dir = path.resolve(process.argv[2] ?? "characters/foxglove");
+const args = process.argv.slice(2);
+const checkOnly = args.includes("--check");
+const unknownFlag = args.find((a) => a.startsWith("--") && a !== "--check");
+if (unknownFlag) fail(`unknown option ${unknownFlag}; the only one is --check`);
+const dir = path.resolve(args.find((a) => !a.startsWith("--")) ?? "characters/foxglove");
 const host = process.env.HOST ?? "127.0.0.1";
 const port = Number(process.env.PORT ?? 8788);
 // the largest message the app sends is an `llm` with the whole conversation
@@ -40,38 +47,37 @@ try {
 	fail(e instanceof ManifestError ? e.message : String(e));
 }
 
-if (!existsSync(character.env_file))
+const hasEnv = existsSync(character.env_file);
+if (!hasEnv && !checkOnly)
 	fail(`${character.env_file} does not exist. Copy .env.example to .env and fill in the keys.`);
-process.loadEnvFile(character.env_file);
-const missing = requiredKeys(character).filter((k) => !process.env[k]);
+if (hasEnv) process.loadEnvFile(character.env_file);
 // what the player must not inherit: every key the character names, and
 // everything .env sets except the player's own HARNESS_* settings
 const secrets = new Set([
 	...requiredKeys(character),
-	...Object.keys(parseEnv(readFileSync(character.env_file, "utf8"))).filter((k) => !k.startsWith("HARNESS_")),
+	...(hasEnv ? Object.keys(parseEnv(readFileSync(character.env_file, "utf8"))) : []).filter((k) => !k.startsWith("HARNESS_")),
 ]);
-if (missing.length) fail(`${character.env_file} is missing ${missing.join(", ")}`);
 
 const extensions = await loadExtensions(character.extensions).catch((e: unknown) =>
 	fail(e instanceof Error ? e.message : String(e)),
 );
 
-// what the player shows: a profile cooked into its build, or the character's model
-// with its animations baked in
-let shown: string;
-if (character.rig.kind === "profile") shown = character.rig.profile;
-else {
-	const rig = character.rig;
-	const t0 = Date.now();
-	try {
-		const prepared = prepareModel(character.id, rig);
-		shown = prepared.file;
-		if (prepared.rebuilt)
-			console.log(`prepared ${path.basename(rig.model)} with ${prepared.clips} animations in ${Date.now() - t0} ms`);
-	} catch (e) {
-		fail(`could not prepare ${rig.model}: ${e instanceof Error ? e.message : String(e)}`);
-	}
+// the checks prepare the model too, as the player will show it
+const report = await checkCharacter(character, extensions, process.env, !checkOnly);
+if (checkOnly) {
+	printReport(character, report, true);
+	// the report goes out whole before the process ends, even into a pipe
+	await new Promise((done) => process.stdout.write("", done));
+	process.exit(report.errors.length ? 1 : 0);
 }
+printReport(character, report, false);
+if (report.errors.length) fail(`${character.name} can't start; \`npm run check -- ${shortPath(dir)}\` shows every check`);
+if (report.prepared?.rebuilt && character.rig.kind === "model")
+	console.log(printable(`prepared ${path.basename(character.rig.model)} with ${report.prepared.clips} animations`));
+
+// what the player shows: a profile cooked into its build, or the character's
+// model with its animations baked in
+const shown = character.rig.kind === "profile" ? character.rig.profile : report.prepared!.file;
 
 const server = createServer((_req, res) => {
 	res.writeHead(200, { "content-type": "text/plain" });
@@ -93,7 +99,7 @@ server.on("error", listenFailed);
 wss.on("error", listenFailed);
 server.listen(port, host, () => {
 	const exts = extensions.map((e) => e.name).join(", ") || "none";
-	console.log(`${character.name} on ws://${host}:${port}${sessionPath} (extensions: ${exts})`);
+	console.log(printable(`${character.name} on ws://${host}:${port}${sessionPath} (extensions: ${exts})`));
 	// the player is local: loopback, unless the runtime listens on one address only
 	const reach = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
 	const launch: PlayerLaunch = { url: `ws://${reach}:${port}${sessionPath}`, character: shown };

@@ -300,3 +300,51 @@ export default async function ({ event, state, config }: Input) {
 	if (!beats.length) return;
 	return { state: { ...state, beats: [...(state.beats ?? []), ...beats] } };
 }
+
+// What `npm run check` and `npm start` ask before a call. An incomplete config
+// is an error: the director can't work, so the character doesn't start. A word
+// the character has nothing for (`body`) is a warning: on stage it would only
+// do nothing.
+interface Body {
+	emotions: string[] | null;
+	registers: string[] | null;
+	gestures: string[] | null;
+	cameras: string[] | null;
+}
+
+export function check({ config, body }: { config: Partial<Config>; body: Body }) {
+	const errors: string[] = [];
+	const warnings: string[] = [];
+	const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
+	for (const k of ["base_url", "api_key_env", "model"] as const)
+		if (typeof config.model?.[k] !== "string" || !config.model[k]) errors.push(`\`model.${k}\` is required`);
+	if (typeof config.prompt !== "string" || !config.prompt.trim()) errors.push("`prompt` is required");
+	const emotions = config.emotions && typeof config.emotions === "object" && !Array.isArray(config.emotions) ? Object.keys(config.emotions) : [];
+	if (!emotions.length) errors.push("`emotions` must map at least one emotion to what it means");
+	// a key left empty in YAML reads as null, which is the same as leaving it out
+	for (const k of ["intense", "registers", "gestures", "cameras"] as const)
+		if (config[k] !== undefined && config[k] !== null && !strings(config[k])) errors.push(`\`${k}\` must be a list of words`);
+	if (errors.length) return { errors };
+
+	const unknown = (what: string, words: string[], have: string[] | null, where: string) => {
+		if (!have) return;
+		const missing = words.filter((w) => w !== "none" && !have.includes(w));
+		if (missing.length) warnings.push(`${what} ${missing.map((w) => `"${w}"`).join(", ")} ${missing.length > 1 ? "aren't" : "isn't"} in ${where}`);
+	};
+	unknown("emotion", emotions, body.emotions, "the player's emotion set");
+	unknown("talking style", config.registers ?? [], body.registers, "the character's talking styles");
+	unknown("gesture", config.gestures ?? [], body.gestures, "the character's gestures");
+	unknown("camera move", config.cameras ?? [], body.cameras, "the player's camera moves");
+
+	// these only do nothing for the director, so they're worth a note, not a stop
+	const outside = (words: string[]) => [...new Set(words)].filter((w) => !emotions.includes(w));
+	const intense = outside(config.intense ?? []);
+	if (intense.length) warnings.push(`\`intense\` lists ${intense.map((w) => `"${w}"`).join(", ")}, not in \`emotions\``);
+	const tags = outside(config.tags && typeof config.tags === "object" ? Object.values(config.tags) : []);
+	if (tags.length) warnings.push(`\`tags\` maps to ${tags.map((w) => `"${w}"`).join(", ")}, which the director never picks`);
+	const unused = (body.gestures ?? []).filter((g) => !(config.gestures ?? []).includes(g));
+	if (unused.length) warnings.push(`never picks gesture ${unused.map((w) => `"${w}"`).join(", ")}, which the character has`);
+	const styles = (body.registers ?? []).filter((r) => r !== "regular" && !(config.registers ?? []).includes(r));
+	if (styles.length) warnings.push(`never picks talking style ${styles.map((w) => `"${w}"`).join(", ")}, which the character has`);
+	return { errors, warnings };
+}

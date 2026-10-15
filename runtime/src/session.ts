@@ -31,6 +31,7 @@
 
 import { randomUUID } from "node:crypto";
 import WebSocket from "ws";
+import { printable } from "./check.ts";
 import { hasHook, runHook } from "./extensions.ts";
 import type { Loaded } from "./extensions.ts";
 import { LlmHttpError, LlmStreamError, streamChat } from "./llm.ts";
@@ -152,7 +153,8 @@ export function applyExt(ext: State["ext"], c: ExtChanges): State["ext"] {
 
 export function runSession(ws: WebSocket, character: Character, exts: Loaded[]): void {
 	const sessionId = randomUUID();
-	const log = (line: string) => console.log(`[${sessionId.slice(0, 8)}] ${line}`);
+	// a log line can carry the character's and its providers' text
+	const log = (line: string) => console.log(printable(`[${sessionId.slice(0, 8)}] ${line}`));
 	const session: State["session"] = { id: sessionId, channel: "voice" };
 	let closed = false;
 	// extension data, carried from turn to turn for the whole session

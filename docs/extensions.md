@@ -59,6 +59,10 @@ A module's default export is that function, sync or async. Returning nothing mea
 
 An extension runs with the runtime's access: your keys, your files, the network. Only use extensions you trust (see `SECURITY.md`).
 
+### Checking its config
+
+A module may also export `check({ config, body })` (the name is reserved for this), which `npm run check` and `npm start` call before any conversation. `body` is what the player has for the character: `{ emotions, registers, gestures, cameras }`, each a list of names, or `null` when it can't be told from here (a profile this checkout doesn't have, say). It returns `{ errors, warnings }`, lists of messages, or nothing when all is well. The extension picks how serious each problem is: a warning is shown and the character starts anyway; an error is shown and `npm start` stops. The runtime only shows what it gets. The director, for example, makes a missing model or prompt an error, since it can't work without them, and a gesture, emotion, talking style or camera move the character doesn't have a warning, since on stage it would only do nothing.
+
 ## Blocking and non-blocking
 
 - **Blocking** (default): the turn waits; the returned state goes to the next extension.
