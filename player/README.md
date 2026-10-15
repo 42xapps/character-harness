@@ -87,7 +87,7 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | `src/app/app.c` | the build's entry file, which includes the others |
 | `src/app/app_config.h` | every tunable and launch setting |
 | `assets/characters/foxglove.hzt`, `assets/foxglove/` | FoxGlove: her profile, model and animations, rig, face, expressions, physics, states and emotes |
-| `assets/mutuals/` | the stage, camera moves, emotions, the gesture set of a cooked-in profile, the lip sync profile, an empty upper-body mask the engine loads |
+| `assets/mutuals/` | the stage, camera moves, emotions, the gesture set of a cooked-in profile, the lip sync profile, an upper-body mask (empty; the engine expects one) |
 | `assets/vad/` | the voice activity model ([Silero VAD](https://github.com/snakers4/silero-vad), MIT licence) |
 | `shaders/mutuals/` | the toon and outline shaders |
 

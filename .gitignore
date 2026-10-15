@@ -2,6 +2,11 @@
 node_modules/
 *.log
 .claude/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
 
 # models the runtime prepares for the player
 .cache/

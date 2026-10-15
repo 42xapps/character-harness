@@ -32,7 +32,7 @@ Any VRM model (0.x or 1.0) can be a character's body.
 
 List the character's animations under `rig.animations` in `character.yaml`: an idle loop, talking loops per style, and gestures. Without them the model stands in its rest pose.
 
-- **`.vrma` files (VRM Animation).** The runtime retargets each one onto your model's skeleton when it starts, through VRM's standard humanoid bones, so a clip made for any VRM fits yours. Export them from VRoid Studio, Blender (with the VRM add-on) or a motion capture tool.
+- **`.vrma` files (VRM Animation).** The runtime retargets each one onto your model's skeleton when it starts, through VRM's standard humanoid bones, so a clip made for any VRM fits yours. Make them in Blender (with the VRM add-on) or a motion capture tool, or start from FoxGlove's, in `characters/foxglove/animations/`, which fit any VRM.
 - **Clips inside your model.** If your model file already has animations made for it, name them instead of a file: `idle: Breathing`.
 
 The result is cached in `.cache/characters/<id>/` and rebuilt only when the model or a clip changes. On the way, the runtime rewrites what the player can't load as it is: a model with several skins (common in VRMs exported from Unity) gets them merged into one, and a VRM 0.x model is turned to face forward and its MToon materials converted to VRM 1.0's.

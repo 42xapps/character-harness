@@ -37,7 +37,7 @@ A blocking extension on `before_reply` or `before_llm` ends the turn by setting 
 
 | Hook | Fires | State ready | Typical use |
 |---|---|---|---|
-| `on_session_start` | a session opens | `character`, `session` | prefetch memories of who joined, open a gamification session |
+| `on_session_start` | a session opens | `character`, `session` | prefetch memories, open a gamification session |
 | `before_reply` | input arrived; runs alongside `before_llm` and the LLM call | `input`, `messages` | the gate (reply or stay quiet), moderation that cancels the turn |
 | `before_llm` | the prompt is being built | `input`, `messages`, `prompt` | memory recall, context injection, blocking a topic |
 | `after_llm` | the full reply is written; early sentences may already be playing | `+ reply` | observability spans, logging the reply |
@@ -128,7 +128,7 @@ Every event carries one JSON state object. Extensions receive it, may change it,
 |---|---|
 | `schema` | state version |
 | `character` | the loaded manifest |
-| `session` | session id, who is in it, the channel, and the end reason on `on_session_end` |
+| `session` | session id, the channel, and the end reason on `on_session_end` |
 | `input` | what came in this turn: `text`, and `channel` (`voice`, `chat` or `screen`) |
 | `messages` | recent conversation |
 | `prompt` | the system prompt being built |

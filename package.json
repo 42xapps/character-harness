@@ -2,6 +2,12 @@
   "name": "mutuals-character-harness",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mutuals-inc/character-harness.git"
+  },
+  "homepage": "https://github.com/mutuals-inc/character-harness#readme",
+  "bugs": "https://github.com/mutuals-inc/character-harness/issues",
   "type": "module",
   "engines": {
     "node": ">=23.6"
