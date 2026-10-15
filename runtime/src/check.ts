@@ -211,7 +211,8 @@ export async function checkCharacter(
 	r.ok.push(`manifest, prompt, ${extensions.length} extension${extensions.length === 1 ? "" : "s"}`);
 
 	const keys = requiredKeys(c);
-	const missing = keys.filter((k) => !env[k]);
+	// own string values only: `constructor` and the like aren't keys
+	const missing = keys.filter((k) => !Object.hasOwn(env, k) || typeof env[k] !== "string" || !env[k]);
 	const where = shortPath(c.env_file);
 	if (!missing.length) r.ok.push(`keys: ${keys.join(", ")}`);
 	else

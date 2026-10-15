@@ -23,7 +23,7 @@ requires_env: [MY_EXTENSION_API_KEY]
 | `hooks` | yes | A list of hook names, or a map of hook name to options. In the list form every hook is blocking. |
 | `hooks.<hook>.blocking` | no | Default `true`. |
 | `hooks.<hook>.timeout_ms` | no | Blocking hooks only. Default `5000`. |
-| `requires_env` | no | Keys the extension needs from `.env`. The runtime checks them at startup. |
+| `requires_env` | no | Keys the extension needs from `.env`: names, or `{ config: model.api_key_env }` for a key the character's config for the extension names (dotted path). The runtime checks them at startup and keeps them from the player. |
 
 Hooks: `on_session_start`, `before_reply`, `before_llm`, `after_llm`, `on_sentence`, `on_speak`, `after_turn`, `on_session_end`.
 
@@ -97,7 +97,7 @@ The director reads its words from the character's config, usually a `director.ya
 | `tags` | `{ tag: emotion }`: delivery tags and near-miss words mapped to an emotion (`emotion-tags` reads it too) |
 | `prompt` | the director's instructions |
 
-Its `extension.yaml` lists `XAI_API_KEY` in `requires_env`, so the runtime asks for that key even when `model.api_key_env` names another; set both, or edit `requires_env`.
+Its `extension.yaml` asks for the key `model.api_key_env` names, so the runtime checks whichever key the character's director uses.
 
 Other ideas the hooks fit: awarding points from how the character ended a turn (`after_turn`), sending turns to a monitoring or eval service (`after_llm`, non-blocking), or blocking a topic before the model sees it (`before_llm`).
 

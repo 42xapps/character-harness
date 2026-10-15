@@ -90,6 +90,10 @@ export const ELEVENLABS_KEY = "ELEVENLABS_API_KEY";
 
 type Obj = Record<string, unknown>;
 
+// what an environment variable's name looks like (and not an object's own
+// machinery, like __proto__)
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 class ManifestError extends Error {}
 
 function isObj(v: unknown): v is Obj {
@@ -274,14 +278,34 @@ function readExtension(characterFile: string, characterDir: string, entry: unkno
 	const configFile = field(characterFile, entry, at, "config_file").optStr();
 	const fromFile = configFile ? readYaml(path.resolve(characterDir, configFile)) : {};
 	const inline = field(characterFile, entry, at, "config").optObj();
+	const config = { ...fromFile, ...inline };
 	return {
 		name: f("name").str(),
 		dir,
 		handler,
 		hooks: readHooks(file, ext),
-		requires_env: f("requires_env").strList(),
-		config: { ...fromFile, ...inline },
+		requires_env: readRequiresEnv(file, f("requires_env").list(), config, characterFile, at),
+		config,
 	};
+}
+
+// The keys an extension needs: names, or `{ config: a.b }` for a key the
+// character's config for it names (a provider's key, say), so the runtime
+// checks and withholds whichever key the character picked.
+function readRequiresEnv(file: string, list: unknown[], config: Obj, characterFile: string, at: string): string[] {
+	return list.map((item, i) => {
+		if (typeof item === "string" && item.trim()) return item.trim();
+		const ref = isObj(item) ? item.config : undefined;
+		if (typeof ref !== "string" || !ref.trim())
+			throw new ManifestError(`${file}: \`requires_env[${i}]\` must be a key's name, or { config: <key in the config> }`);
+		let v: unknown = config;
+		for (const k of ref.trim().split(".")) v = isObj(v) && Object.hasOwn(v, k) ? v[k] : undefined;
+		const where = `${characterFile}: \`${at}\` config (its config_file or config)`;
+		if (v === undefined) throw new ManifestError(`${where} needs \`${ref.trim()}\`, the name of the key it uses`);
+		if (typeof v !== "string" || !ENV_NAME.test(v.trim()) || v.trim() in Object.prototype)
+			throw new ManifestError(`${where}: \`${ref.trim()}\` must be a key's name, like MY_API_KEY`);
+		return v.trim();
+	});
 }
 
 export function loadCharacter(dir: string): Character {

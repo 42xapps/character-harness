@@ -3,4 +3,5 @@ handler: index.ts
 hooks:
   on_sentence: { timeout_ms: 10000 }
   on_session_end: { blocking: false }
-requires_env: [XAI_API_KEY]
+# the key its config's model names, whichever provider that is
+requires_env: [{ config: model.api_key_env }]

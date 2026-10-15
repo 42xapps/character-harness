@@ -2,7 +2,7 @@
 // and the director's and emotion-tags' own. Run with `npm test`.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
@@ -10,7 +10,7 @@ import { check as directorCheck } from "../../extensions/director/index.ts";
 import { check as tagsCheck } from "../../extensions/emotion-tags/index.ts";
 import { bodyOf, checkCharacter, printable, type Body, type Report } from "../src/check.ts";
 import { loadExtensions } from "../src/extensions.ts";
-import { loadCharacter } from "../src/manifest.ts";
+import { loadCharacter, requiredKeys } from "../src/manifest.ts";
 import { writeGlb, type Glb } from "../src/rig/glb.ts";
 
 const FOXGLOVE = path.resolve(import.meta.dirname, "../../characters/foxglove");
@@ -245,4 +245,31 @@ test("a VRM 0.x preset name that isn't a string doesn't crash the check", async 
 	const r = await checkCharacter(c, [], keys, true);
 	done(c);
 	assert.deepEqual(r.errors, []);
+});
+
+// a character with one extension whose extension.yaml asks for `requires`
+function withExtension(requires: string, config: string): string {
+	const dir = tempDir();
+	const ext = path.join(dir, "ext");
+	mkdirSync(ext);
+	writeFileSync(path.join(ext, "extension.yaml"), `name: ext\nhandler: index.ts\nhooks: [on_sentence]\nrequires_env: ${requires}\n`);
+	writeFileSync(path.join(ext, "index.ts"), "export default () => {};\n");
+	const manifest = readFileSync(path.join(FOXGLOVE, "character.yaml"), "utf8").replace(/extensions:[\s\S]*?\nenv_file/, `extensions:\n  - path: ext\n    config: ${config}\nenv_file`);
+	writeFileSync(path.join(dir, "character.yaml"), manifest);
+	writeFileSync(path.join(dir, "system.md"), "You are a test.");
+	return dir;
+}
+
+test("an extension can ask for the key its config names", () => {
+	const c = loadCharacter(withExtension("[OTHER_KEY, { config: model.api_key_env }]", "{ model: { api_key_env: ANTHROPIC_API_KEY } }"));
+	assert.deepEqual(c.extensions[0].requires_env, ["OTHER_KEY", "ANTHROPIC_API_KEY"]);
+	assert.ok(requiredKeys(c).includes("ANTHROPIC_API_KEY"));
+});
+
+test("a key named by a config that doesn't have it, or an odd requires_env entry, is refused", () => {
+	assert.throws(() => loadCharacter(withExtension("[{ config: model.api_key_env }]", "{ model: {} }")), /model\.api_key_env/);
+	assert.throws(() => loadCharacter(withExtension("[{ config: __proto__.x }]", "{}")), /__proto__\.x/);
+	assert.throws(() => loadCharacter(withExtension("[42]", "{}")), /requires_env\[0\]/);
+	assert.throws(() => loadCharacter(withExtension("[{ config: model.api_key_env }]", "{ model: { api_key_env: 42 } }")), /must be a key's name/);
+	assert.throws(() => loadCharacter(withExtension("[{ config: model.api_key_env }]", '{ model: { api_key_env: "__proto__" } }')), /must be a key's name/);
 });
