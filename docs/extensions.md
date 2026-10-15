@@ -39,7 +39,7 @@ extensions:
 
 The runtime passes `config` to the extension untouched. For a long config, `config_file` names a YAML file in the character's folder instead.
 
-Two extensions ship with the harness: `emotion-tags` changes the face from the tag that opens each sentence, and `director` stages each sentence with beats (see "Beats" in `architecture.md`).
+Three extensions ship with the harness: `emotion-tags` changes the face from the tag that opens each sentence, `director` stages each sentence with beats (see "Beats" in `architecture.md`), and `memory` remembers what the user tells her about their life.
 
 ## Handlers
 
@@ -80,6 +80,7 @@ The extensions in `extensions/` ship with the harness and show the shape:
 |---|---|---|
 | `emotion-tags` | `on_sentence`, blocking (500 ms) | changes the face the moment a sentence starts, from the delivery tag it opens with and the character's `tags` map (`[teasing]` → `playful` for FoxGlove). No model call |
 | `director` | `on_sentence` blocking (10 s), `on_session_end` non-blocking | asks a second model to stage each line: an emotion, a talking style, a gesture and a camera move per phrase |
+| `memory` | `before_llm` blocking (1.5 s), `after_turn` and `on_session_end` non-blocking | asks Typesafe's Jev whether what the user said is worth keeping, keeps it in their own words in a tree per character, marks what it makes out of date, and puts what she remembers in the prompt. See `extensions/memory/README.md` |
 
 ### The director's config
 

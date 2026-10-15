@@ -1,0 +1,10 @@
+name: memory
+handler: index.ts
+hooks:
+  # waits up to the config's recall_ms for Jev, then hands the prompt on
+  before_llm: { timeout_ms: 1500 }
+  # writes what Jev decided, whenever its answer arrives
+  after_turn: { blocking: false }
+  on_session_end: { blocking: false }
+# the key its config's model names (the config must name it)
+requires_env: [{ config: model.api_key_env }]
