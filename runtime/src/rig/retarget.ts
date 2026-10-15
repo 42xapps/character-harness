@@ -12,6 +12,12 @@ import { HUMAN_BONES, worldRotation, type HumanBone, type Humanoid } from "./hum
 import { decompose, IDENTITY_Q, minv, mpoint, qinv, qmul, qnorm, qslerp, type Quat, type Vec3 } from "./math.ts";
 
 const FPS = 30;
+// far longer than any gesture or loop; a longer clip is refused, since every
+// second of it is baked into the model
+const MAX_SECONDS = 600;
+// each frame works out the world rotation of every node above a bone; this
+// many of those, over the whole clip, at most (a humanoid has about 60 nodes)
+const MAX_NODE_FRAMES = 20_000_000;
 
 // each bone's parent in the VRM humanoid, for bones the animation lacks
 const PARENT: Partial<Record<HumanBone, HumanBone>> = {
@@ -79,14 +85,17 @@ export function retarget(anim: Glb, animHumanoid: Humanoid, model: Humanoid): Cl
 	const rotations = new Map<number, Sampler>();
 	const translations = new Map<number, Sampler>();
 	let duration = 0;
+	// an accessor several channels share is read once
+	const read = new Map<number, Float32Array>();
+	const values = (i: number) => read.get(i) ?? read.set(i, readAccessor(anim, i)).get(i)!;
 	for (const ch of a.channels) {
 		const node = ch.target.node;
 		const smp = a.samplers[ch.sampler];
 		if (node === undefined || !smp || (ch.target.path !== "rotation" && ch.target.path !== "translation")) continue;
 		const comps = ch.target.path === "rotation" ? 4 : 3;
 		const s: Sampler = {
-			times: readAccessor(anim, smp.input),
-			values: readAccessor(anim, smp.output),
+			times: values(smp.input),
+			values: values(smp.output),
 			comps,
 			interpolation: smp.interpolation ?? "LINEAR",
 		};
@@ -94,9 +103,18 @@ export function retarget(anim: Glb, animHumanoid: Humanoid, model: Humanoid): Cl
 		(comps === 4 ? rotations : translations).set(node, s);
 	}
 
+	if (duration > MAX_SECONDS) throw new Error(`the animation is ${Math.round(duration)} s long; the most is ${MAX_SECONDS} s`);
 	// a pose (one key) still needs two increasing times to be a valid clip
 	const length = duration > 0 ? duration : 1 / FPS;
 	const frames = Math.max(2, Math.round(length * FPS) + 1);
+	// the nodes above the bones, which every frame visits
+	const above = (parent: number[], from: (number | undefined)[]) => {
+		const seen = new Set<number>();
+		for (let n of from) while (n !== undefined && n >= 0 && !seen.has(n)) seen.add(n), (n = parent[n]);
+		return seen.size;
+	};
+	const visited = above(animHumanoid.parent, Object.values(animHumanoid.bones)) + above(model.parent, Object.values(model.bones));
+	if (visited * frames > MAX_NODE_FRAMES) throw new Error(`the animation and the model have too many nodes above their bones (${visited}) for a clip this long`);
 	const times = new Float32Array(frames);
 	for (let f = 0; f < frames; f++) times[f] = (length * f) / (frames - 1);
 

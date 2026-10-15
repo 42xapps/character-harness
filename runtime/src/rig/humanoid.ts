@@ -39,7 +39,8 @@ export interface Rest {
 }
 
 export interface Humanoid {
-	// "1" for VRM 1.0 and VRM Animation, "0" for VRM 0.x (which faces -Z)
+	// "1" for VRM 1.0 and VRM Animation, "0" for VRM 0.x (which faces -Z),
+	// unless the runtime turned it to face +Z (rig/normalize.ts)
 	version: "0" | "1";
 	bones: Partial<Record<HumanBone, number>>;
 	parent: number[]; // per node, -1 for a root

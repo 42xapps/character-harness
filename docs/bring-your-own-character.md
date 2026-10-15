@@ -35,7 +35,7 @@ List the character's animations under `rig.animations` in `character.yaml`: an i
 - **`.vrma` files (VRM Animation).** The runtime retargets each one onto your model's skeleton when it starts, through VRM's standard humanoid bones, so a clip made for any VRM fits yours. Export them from VRoid Studio, Blender (with the VRM add-on) or a motion capture tool.
 - **Clips inside your model.** If your model file already has animations made for it, name them instead of a file: `idle: Breathing`.
 
-The result is cached in `.cache/characters/<id>/` and rebuilt only when the model or a clip changes.
+The result is cached in `.cache/characters/<id>/` and rebuilt only when the model or a clip changes. On the way, the runtime rewrites what the player can't load as it is: a model with several skins (common in VRMs exported from Unity) gets them merged into one, and a VRM 0.x model is turned to face forward and its MToon materials converted to VRM 1.0's.
 
 Gestures and talking styles are what the director picks between. List the same names in the director's `gestures` and `registers` (`director.yaml`), or it will pick ones your character doesn't have.
 
@@ -46,6 +46,5 @@ The player builds the face from the model's own VRM expressions: happy, angry, s
 ## Not yet
 
 - Hair and cloth physics (VRM spring bones). Hair stays still.
-- Models with several skins (common in VRMs exported from Unity).
-- VRM 0.x models with transparent materials.
+- A VRM 0.x model with sparse accessors (some exporters write morph targets that way) isn't turned, so it faces away from the camera.
 - Expressions in `.vrma` files are ignored. The face follows the conversation.

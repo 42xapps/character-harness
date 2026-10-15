@@ -64,6 +64,13 @@ const FLOAT = 5126;
 const MAX_FILE_BYTES = 512 * 1024 * 1024;
 // an accessor with no data is all zeros; this many is more than any clip needs
 const MAX_ZERO_VALUES = 1 << 24;
+// Many accessors can name the same bytes, and small components read as
+// floats grow fourfold, so what a file's accessors read is capped: this much,
+// or this many times its binary data, if more, up to a limit.
+const MIN_READ_BYTES = 256 * 1024 * 1024;
+const READ_PER_BIN_BYTE = 8;
+const MAX_READ_BYTES = 1024 * 1024 * 1024;
+const readSoFar = new WeakMap<Glb, number>();
 
 export function readGlb(path: string): Glb {
 	if (statSync(path).size > MAX_FILE_BYTES) throw new Error(`${path} is larger than ${MAX_FILE_BYTES >> 20} MB`);
@@ -117,9 +124,16 @@ export function readAccessor(glb: Glb, index: number): Float32Array {
 	if (!comps || !size) throw new Error(`accessor ${index} has an unsupported type`);
 	if (a.sparse) throw new Error(`accessor ${index} is sparse, which isn't supported`);
 	if (!Number.isSafeInteger(a.count) || a.count < 0) throw new Error(`accessor ${index} has a bad count`);
+	const charge = () => {
+		const total = (readSoFar.get(glb) ?? 0) + a.count * comps * 4;
+		if (total > Math.min(MAX_READ_BYTES, Math.max(MIN_READ_BYTES, READ_PER_BIN_BYTE * glb.bin.length)))
+			throw new Error("the file's accessors read far more data than it holds; is it valid?");
+		readSoFar.set(glb, total);
+	};
 	if (a.bufferView === undefined) {
 		// all zeros, per the spec
 		if (a.count * comps > MAX_ZERO_VALUES) throw new Error(`accessor ${index} is too large`);
+		charge();
 		return new Float32Array(a.count * comps);
 	}
 	const view = glb.json.bufferViews?.[a.bufferView];
@@ -133,6 +147,7 @@ export function readAccessor(glb: Glb, index: number): Float32Array {
 	const end = a.count === 0 ? base : base + (a.count - 1) * stride + comps * size;
 	if (end > (view.byteOffset ?? 0) + view.byteLength || end > glb.bin.length)
 		throw new Error(`accessor ${index} runs past its buffer`);
+	charge();
 	const out = new Float32Array(a.count * comps);
 	for (let i = 0; i < a.count; i++) {
 		for (let c = 0; c < comps; c++) {
@@ -152,22 +167,45 @@ export function readAccessor(glb: Glb, index: number): Float32Array {
 	return out;
 }
 
-// Appends float data as a new accessor in the GLB's own buffer; returns its index.
-export function addAccessor(glb: Glb, data: Float32Array, type: "SCALAR" | "VEC3" | "VEC4", withBounds = false): number {
+// the backing buffer each GLB's BIN chunk is appended into
+const spare = new WeakMap<Glb, Buffer>();
+
+// Appends data as a new accessor in the GLB's own buffer: floats, or unsigned
+// shorts (joint indices); returns its index.
+export function addAccessor(
+	glb: Glb,
+	data: Float32Array | Uint16Array,
+	type: "SCALAR" | "VEC3" | "VEC4" | "MAT4",
+	withBounds = false,
+): number {
 	const comps = COMPONENTS[type];
+	const size = data instanceof Uint16Array ? 2 : 4;
 	const start = Math.ceil(glb.bin.length / 4) * 4;
-	const bytes = Buffer.alloc(start - glb.bin.length + data.length * 4);
-	for (let i = 0; i < data.length; i++) bytes.writeFloatLE(data[i], start - glb.bin.length + i * 4);
-	glb.bin = Buffer.concat([glb.bin, bytes]);
+	const end = start + data.length * size;
+	// the BIN chunk grows into spare room, doubling when it runs out, so many
+	// appends cost about as much as one
+	let room = spare.get(glb);
+	if (!room || room.buffer !== glb.bin.buffer || room.byteLength < end) {
+		const grown = Buffer.alloc(Math.max(end, glb.bin.length * 2, 1024));
+		glb.bin.copy(grown);
+		room = grown;
+		spare.set(glb, room);
+	}
+	room.fill(0, glb.bin.length, start);
+	for (let i = 0; i < data.length; i++) {
+		if (size === 2) room.writeUInt16LE(data[i], start + i * size);
+		else room.writeFloatLE(data[i], start + i * size);
+	}
+	glb.bin = room.subarray(0, end);
 	const json = glb.json;
 	json.buffers ??= [];
 	if (!json.buffers.length) json.buffers.push({ byteLength: 0 });
 	json.buffers[0].byteLength = glb.bin.length;
 	json.bufferViews ??= [];
-	json.bufferViews.push({ buffer: 0, byteOffset: start, byteLength: data.length * 4 });
+	json.bufferViews.push({ buffer: 0, byteOffset: start, byteLength: data.length * size });
 	const accessor: GltfAccessor = {
 		bufferView: json.bufferViews.length - 1,
-		componentType: FLOAT,
+		componentType: size === 2 ? 5123 : FLOAT,
 		count: data.length / comps,
 		type,
 	};

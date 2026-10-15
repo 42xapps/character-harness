@@ -1,6 +1,7 @@
 // Builds the model the player loads for a character with `rig.model`: the
 // character's .vrm with every animation it names baked onto its skeleton, and
-// a table of which clip is idle, which talking style, which gesture.
+// a table of which clip is idle, which talking style, which gesture. Skins and
+// VRM 0.x materials the player can't read are rewritten first (normalize.ts).
 //
 // The table goes in the file's root `extras.mutualsHarness`:
 //   { version, idle: [clip], talk: { style: [clip] }, gestures: { name: { clip, hold } } }
@@ -18,6 +19,7 @@ import path from "node:path";
 import type { ClipSource, Rig } from "../manifest.ts";
 import { addAccessor, readGlb, writeGlb, type Glb } from "./glb.ts";
 import { readHumanoid, type Humanoid } from "./humanoid.ts";
+import { convertV0Materials, isObject, mergeSkins, turnV0 } from "./normalize.ts";
 import { retarget } from "./retarget.ts";
 
 // bump when the prepared file's layout changes
@@ -55,7 +57,14 @@ function fingerprint(rig: ModelRig): string {
 
 function bake(rig: ModelRig): { glb: Glb; clips: number } {
 	const glb = readGlb(rig.model);
+	// what the player can't load as it is: several skins, VRM 0.x materials,
+	// a VRM 0.x model facing away
+	mergeSkins(glb);
+	convertV0Materials(glb);
+	const turned = turnV0(glb);
 	const model = readHumanoid(glb);
+	// turned, it faces +Z like a VRM 1.0 model, so its motion isn't flipped
+	if (model && turned) model.version = "1";
 	// the model's own clips, before any are appended
 	const own = [...(glb.json.animations ?? [])];
 	const named = (s: ClipSource, at: string): number => {
@@ -86,15 +95,23 @@ function bake(rig: ModelRig): { glb: Glb; clips: number } {
 		talk: Object.fromEntries([...rig.talk].map(([style, list]) => [style, list.map((s, i) => clip(s, `talk.${style}[${i}]`))])),
 		gestures: Object.fromEntries([...rig.gestures].map(([name, g]) => [name, { clip: clip(g.source, `gestures.${name}`), hold: g.hold }])),
 	};
-	glb.json.extras = { ...(glb.json.extras ?? {}), mutualsHarness: table };
+	glb.json.extras = { ...(isObject(glb.json.extras) ? glb.json.extras : {}), mutualsHarness: table };
 	return { glb, clips: done.size };
 }
+
+// what the baked clips may add to a model, all together: about eight clips of
+// the longest kind, far more than a character's gestures and loops need
+const MAX_BAKED_BYTES = 128 * 1024 * 1024;
+const baked = new WeakMap<Glb, number>();
 
 function appendRetargeted(glb: Glb, model: Humanoid, file: string, role: string): number {
 	const anim = readGlb(file);
 	const human = readHumanoid(anim);
 	if (!human) throw new Error(`${file} is not a VRM Animation (no VRMC_vrm_animation humanoid)`);
 	const clip = retarget(anim, human, model);
+	const bytes = (baked.get(glb) ?? 0) + clip.times.byteLength + clip.tracks.reduce((sum, t) => sum + t.values.byteLength, 0);
+	if (bytes > MAX_BAKED_BYTES) throw new Error(`the animations add up to more than ${MAX_BAKED_BYTES >> 20} MB once baked; ${file} is one too many, or too long`);
+	baked.set(glb, bytes);
 	const input = addAccessor(glb, clip.times, "SCALAR", true);
 	const channels = [];
 	const samplers = [];
