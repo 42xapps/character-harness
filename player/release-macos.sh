@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
-# Builds the macOS player from a release tag, signs and notarizes it, and
-# attaches it to a draft GitHub release.
+# Builds the macOS player from a release tag, signs it, and attaches it to a
+# draft GitHub release. Signed and notarized with a Developer ID:
 #
 #   MACOS_SIGNING_IDENTITY="Developer ID Application: <name> (<team id>)" \
 #   MACOS_NOTARY_PROFILE=<profile> \
 #   player/release-macos.sh v0.1.0 [--no-release]
 #
+# or, with neither set, unsigned: signed ad hoc and not notarized, so macOS
+# asks people to allow it on its first start (player/README.md says how).
+#
 # Needs, on this Mac:
 # - the Kaigen SDK linked at player/hz, with your Kaigen licence activated
-# - a Developer ID Application certificate in the keychain
-# - a notarytool keychain profile (xcrun notarytool store-credentials <profile>)
+# - for a signed release: a Developer ID Application certificate in the
+#   keychain and a notarytool keychain profile
+#   (xcrun notarytool store-credentials <profile>)
 # - gh, signed in with access to the repo
 #
 # The tag must be checked out with a clean tree and pushed. The version comes
-# from the tag (v0.1.0 -> 0.1.0). --no-release builds, signs and notarizes but
-# leaves the files in player/out/release/ without creating the release.
+# from the tag (v0.1.0 -> 0.1.0). --no-release builds and signs (and
+# notarizes, if signed) but leaves the files in player/out/release/ without
+# creating the release.
 #
 # The engine's publish build makes the app; this script signs it, because the
 # app needs the microphone entitlement (macos.entitlements) under the
-# hardened runtime, then notarizes it and packages the .zip and .dmg.
+# hardened runtime, then notarizes a signed one and packages the .zip and .dmg.
 set -euo pipefail
 
 tag="${1:-}"
@@ -33,8 +38,16 @@ if [[ ! "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
 	exit 1
 fi
 version="${BASH_REMATCH[1]}"
-: "${MACOS_SIGNING_IDENTITY:?set MACOS_SIGNING_IDENTITY to the Developer ID Application identity}"
-: "${MACOS_NOTARY_PROFILE:?set MACOS_NOTARY_PROFILE to the notarytool keychain profile}"
+# both set: signed and notarized; neither: unsigned
+signed=false
+if [ -n "${MACOS_SIGNING_IDENTITY:-}" ] && [ -n "${MACOS_NOTARY_PROFILE:-}" ]; then
+	signed=true
+elif [ -n "${MACOS_SIGNING_IDENTITY:-}${MACOS_NOTARY_PROFILE:-}" ]; then
+	echo "set both MACOS_SIGNING_IDENTITY and MACOS_NOTARY_PROFILE for a signed release, or neither for an unsigned one" >&2
+	exit 1
+else
+	echo "no signing identity: making an unsigned release (signed ad hoc, not notarized)" >&2
+fi
 
 cd "$(dirname "$0")"
 repo_root="$(git rev-parse --show-toplevel)"
@@ -93,7 +106,11 @@ mkdir -p "$out"
 zip="$out/character-player-$version-macos-arm64.zip"
 dmg="$out/character-player-$version-macos-arm64.dmg"
 
-sign() { codesign --force --timestamp --options runtime -s "$MACOS_SIGNING_IDENTITY" "$@"; }
+if $signed; then
+	sign() { codesign --force --timestamp --options runtime -s "$MACOS_SIGNING_IDENTITY" "$@"; }
+else
+	sign() { codesign --force --options runtime -s - "$@"; }
+fi
 notarize() { xcrun notarytool submit "$1" --keychain-profile "$MACOS_NOTARY_PROFILE" --wait; }
 
 # code nested in the app is signed before the app itself
@@ -107,13 +124,15 @@ entitlements="$(codesign -d --entitlements - "$app" 2>/dev/null)"
 grep -q "com.apple.security.device.audio-input" <<<"$entitlements" ||
 	{ echo "the signed app is missing the microphone entitlement" >&2; exit 1; }
 
-# the app is notarized through a zip of it, then the ticket is stapled to it,
-# so it opens offline too; the zip and the disk image are made from the
-# stapled app
-ditto -c -k --keepParent "$app" "$out/notarize.zip"
-notarize "$out/notarize.zip"
-rm "$out/notarize.zip"
-xcrun stapler staple "$app"
+# when signed, the app is notarized through a zip of it, then the ticket is
+# stapled to it, so it opens offline too; the zip and the disk image are made
+# from the app after that
+if $signed; then
+	ditto -c -k --keepParent "$app" "$out/notarize.zip"
+	notarize "$out/notarize.zip"
+	rm "$out/notarize.zip"
+	xcrun stapler staple "$app"
+fi
 ditto -c -k --keepParent "$app" "$zip"
 
 stage="$out/dmg"
@@ -122,11 +141,13 @@ ditto "$app" "$stage/$name.app"
 ln -s /Applications "$stage/Applications"
 hdiutil create -volname "$name" -srcfolder "$stage" -ov -format UDZO "$dmg"
 rm -rf "$stage"
-codesign --force --timestamp -s "$MACOS_SIGNING_IDENTITY" "$dmg"
-notarize "$dmg"
-xcrun stapler staple "$dmg"
-spctl -a -t exec -vv "$app"
-spctl -a -t open --context context:primary-signature -vv "$dmg"
+if $signed; then
+	codesign --force --timestamp -s "$MACOS_SIGNING_IDENTITY" "$dmg"
+	notarize "$dmg"
+	xcrun stapler staple "$dmg"
+	spctl -a -t exec -vv "$app"
+	spctl -a -t open --context context:primary-signature -vv "$dmg"
+fi
 
 (cd "$out" && shasum -a 256 character-player-* > SHA256SUMS)
 cat "$out/SHA256SUMS"
@@ -136,8 +157,13 @@ if ! $create_release; then
 	exit 0
 fi
 notes="$out/notes.md"
+if $signed; then
+	kind="signed and notarized"
+else
+	kind="unsigned: macOS blocks it on its first start; see \`player/README.md\` for allowing it"
+fi
 cat > "$notes" <<EOF
-The player app for macOS (Apple Silicon), signed and notarized.
+The player app for macOS (Apple Silicon), $kind.
 
 Built from $tag ($commit) with Kaigen $(sed -n 's/^engine_version //p' hzproject.hzt). See \`player/README.md\` for installing it and pointing the runtime at it.
 

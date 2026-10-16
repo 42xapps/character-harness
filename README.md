@@ -2,7 +2,7 @@
 
 The harness [Mutuals](https://github.com/mutuals-inc) uses to give life to its characters: a character you can talk to by voice, with a face and body that react to what it says.
 
-> Status: pre-release. The runtime and the player work end to end; player builds will be attached to this repo's GitHub Releases.
+> Status: pre-release. The runtime and the player work end to end. Ready-made player builds are on this repo's GitHub Releases, or you can build the player yourself with the Kaigen engine.
 
 ## How it works
 
@@ -23,7 +23,12 @@ A character is a folder with a manifest, a personality prompt and a body: any VR
 
 ## Quickstart
 
-Needs Node 23.6 or later, an ElevenLabs key and a key for the chat model the character uses.
+Needs Node 23.6 or later and the keys the character uses. FoxGlove needs two:
+
+- `ELEVENLABS_API_KEY` ([ElevenLabs](https://elevenlabs.io)): speech to text and her voice.
+- `XAI_API_KEY` ([xAI](https://x.ai)): her chat model and the director that stages her lines.
+
+The `memory` and `reactions` extensions, if a character uses them, need `TYPESAFE_API_KEY` ([Typesafe](https://typesafe.ai)).
 
 1. Copy `.env.example` to `.env` and fill in the keys.
 2. Run `npm install`, then `npm start` for FoxGlove, or `npm start -- characters/<id>` for your own character (`docs/bring-your-own-character.md`). `npm run check -- characters/<id>` checks a character without starting it.

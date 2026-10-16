@@ -2,12 +2,19 @@
 
 The app that shows the character: it renders it, plays its voice, captures the mic, and talks to the runtime over the session WebSocket (`../docs/protocol.md`). It is written in C on the [Kaigen](https://kaigen3d.com) engine.
 
-Builds will be attached to this repo's GitHub Releases; using one needs no Kaigen licence. To change the player, you build it yourself, which needs a Kaigen licence.
+Ready-made builds are on this repo's GitHub Releases; using one needs no Kaigen licence. To change the player, you build it yourself, which needs a Kaigen licence.
 
 ## Install a release (macOS)
 
 1. Download `character-player-<version>-macos-arm64.dmg` and `SHA256SUMS` from the release (Apple Silicon Macs), and check it (`shasum -a 256 -c --ignore-missing SHA256SUMS`).
 2. Open it and drag Character Player to Applications.
+
+   If the release notes say the build is unsigned, macOS blocks it the first time you open it. Open it once, then go to System Settings > Privacy & Security, click Open Anyway and confirm (on macOS 14 and earlier, Control-click the app and choose Open). Or, after checking the checksum, allow it from Terminal:
+
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Character Player.app"
+   ```
+
 3. Put this in the harness's `.env`, so `npm start` opens it:
 
    ```
@@ -80,7 +87,7 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | Path | What |
 |---|---|
 | `hzproject.hzt` | the project: name, folders, engine version, and the app's name, bundle id and version for a release |
-| `release-macos.sh`, `macos.entitlements` | builds, signs and notarizes a release from a tag, and attaches it to a draft GitHub release; the entitlements let the signed app use the mic |
+| `release-macos.sh`, `macos.entitlements` | builds a release from a tag, signs it (ad hoc, or with a Developer ID and notarized), and attaches it to a draft GitHub release; the entitlements let the app use the mic |
 | `src/app/player.c`, `player.h` | the app: init, frame loop, mic, beats, camera |
 | `src/app/player_vrm.c`, `.h` | runtime VRM import and caching: clips, face, rig and the generated character profile |
 | `src/app/player_json.c`, `.h` | a small JSON reader for the VRM extensions and the runtime's clip table |
@@ -94,10 +101,16 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 
 ## Releasing (macOS)
 
-From a clean checkout of a `vX.Y.Z` tag pushed to GitHub, on a Mac with your Kaigen licence activated, a Developer ID Application certificate and a notarytool keychain profile:
+From a clean checkout of a `vX.Y.Z` tag pushed to GitHub, on a Mac with your Kaigen licence activated:
+
+```bash
+player/release-macos.sh vX.Y.Z
+```
+
+It builds the app with the engine's publish build, signs it ad hoc with the microphone entitlement (`macos.entitlements`), packages the `.zip` and `.dmg`, writes `SHA256SUMS`, and creates a draft release with them. Gatekeeper treats such a build as unsigned, so people allow it on its first start (see "Install a release"). With both a Developer ID Application certificate (`MACOS_SIGNING_IDENTITY`) and a notarytool keychain profile (`MACOS_NOTARY_PROFILE`) set, it signs and notarizes it instead, and it opens with no warning; set both or neither:
 
 ```bash
 MACOS_SIGNING_IDENTITY="Developer ID Application: <name> (<team id>)" MACOS_NOTARY_PROFILE=<profile> player/release-macos.sh vX.Y.Z
 ```
 
-It builds the app with the engine's publish build, signs it with the microphone entitlement (`macos.entitlements`), notarizes it, packages the `.zip` and `.dmg`, writes `SHA256SUMS`, and creates a draft release with them. Review the draft and publish it. CI doesn't build the player, so releases are made this way.
+Either way, review the draft and publish it. CI doesn't build the player, so releases are made this way.
