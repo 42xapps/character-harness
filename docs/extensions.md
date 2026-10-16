@@ -2,6 +2,8 @@
 
 An extension subscribes to events in the turn loop, receives the state, changes it, and passes it on.
 
+New to extensions? `your-first-extension.md` builds a small one step by step, with its check and tests.
+
 ## The extension manifest
 
 Every extension is a folder with an `extension.yaml`. The extension decides which hooks it runs on and which `.env` keys it needs.
