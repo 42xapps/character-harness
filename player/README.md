@@ -13,7 +13,7 @@ build steps for your platform below. The player alone does not run the conversat
 
 ## Install a release (macOS)
 
-1. Download `character-player-<version>-macos-arm64.dmg` and `SHA256SUMS` from the release (Apple Silicon Macs), and check it (`shasum -a 256 -c --ignore-missing SHA256SUMS`).
+1. Download `character-player-<version>-macos-arm64.dmg` and `SHA256SUMS-macos-arm64` from the release (Apple Silicon Macs), and check it (`shasum -a 256 -c --ignore-missing SHA256SUMS-macos-arm64`).
 2. Open it and drag Character Player to Applications.
 
    If the release notes say the build is unsigned, macOS blocks it the first time you open it. Open it once, then go to System Settings > Privacy & Security, click Open Anyway and confirm (on macOS 14 and earlier, Control-click the app and choose Open). Or, after checking the checksum, allow it from Terminal:
@@ -162,16 +162,16 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 
 ## Releasing (macOS)
 
-From a clean checkout of a `vX.Y.Z` tag pushed to GitHub, on a Mac with your Kaigen licence activated:
+From a clean checkout of a `vX.Y.Z-macos-arm64` tag pushed to GitHub, on a Mac with your Kaigen licence activated:
 
 ```bash
-player/release-macos.sh vX.Y.Z
+player/release-macos.sh vX.Y.Z-macos-arm64
 ```
 
-It builds the app with the engine's publish build, signs it ad hoc with the microphone entitlement (`macos.entitlements`), packages the `.zip` and `.dmg`, writes `SHA256SUMS`, and creates a draft release with them. Gatekeeper treats such a build as unsigned, so people allow it on its first start (see "Install a release"). With both a Developer ID Application certificate (`MACOS_SIGNING_IDENTITY`) and a notarytool keychain profile (`MACOS_NOTARY_PROFILE`) set, it signs and notarizes it instead, and it opens with no warning; set both or neither:
+It builds the app with the engine's publish build, signs it ad hoc with the microphone entitlement (`macos.entitlements`), packages the `.zip` and `.dmg`, writes `SHA256SUMS-macos-arm64`, and creates a draft release with them and notes on running the full harness. Gatekeeper treats such a build as unsigned, so people allow it on its first start (see "Install a release"). With both a Developer ID Application certificate (`MACOS_SIGNING_IDENTITY`) and a notarytool keychain profile (`MACOS_NOTARY_PROFILE`) set, it signs and notarizes it instead, and it opens with no warning; set both or neither:
 
 ```bash
-MACOS_SIGNING_IDENTITY="Developer ID Application: <name> (<team id>)" MACOS_NOTARY_PROFILE=<profile> player/release-macos.sh vX.Y.Z
+MACOS_SIGNING_IDENTITY="Developer ID Application: <name> (<team id>)" MACOS_NOTARY_PROFILE=<profile> player/release-macos.sh vX.Y.Z-macos-arm64
 ```
 
 Either way, review the draft and publish it. CI doesn't build the player, so releases are made this way.
