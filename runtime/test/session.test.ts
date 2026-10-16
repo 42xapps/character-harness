@@ -1,8 +1,15 @@
-// How the session merges what overlapping hooks wrote to `ext`. Run with `npm test`.
+// How the session merges what overlapping hooks wrote to `ext`, and how it
+// keeps each reply and sentence apart from others on the same id, driven over
+// a fake socket with a fake `fetch`. Run with `npm test`.
 
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { applyExt, extChanges } from "../src/session.ts";
+import { EventEmitter } from "node:events";
+import { test, type TestContext } from "node:test";
+import WebSocket from "ws";
+import type { HookInput, Loaded } from "../src/extensions.ts";
+import type { Character } from "../src/manifest.ts";
+import type { HookName } from "../src/state.ts";
+import { applyExt, extChanges, runSession } from "../src/session.ts";
 
 test("a hook's stale copy of ext does not undo what another hook wrote", () => {
 	const start = { a: { n: 1 }, b: 1 };
@@ -22,4 +29,234 @@ test("a hook that hands back no ext changes nothing, and a value JSON can't writ
 	assert.deepEqual(extChanges({ a: 1 }, undefined as never), { set: {}, removed: [] });
 	assert.deepEqual(extChanges(undefined as never, { a: 1 }), { set: { a: 1 }, removed: [] });
 	assert.deepEqual(extChanges({ a: 1n }, { a: 1n }).set, { a: 1n });
+});
+
+// A socket that keeps what the session sends; the test plays the app with `app`.
+function fakeSocket() {
+	const ws = Object.assign(new EventEmitter(), {
+		readyState: WebSocket.OPEN,
+		sent: [] as Record<string, unknown>[],
+		send(data: unknown) {
+			if (typeof data === "string") ws.sent.push(JSON.parse(data));
+		},
+	});
+	const app = (msg: unknown) => ws.emit("message", Buffer.from(JSON.stringify(msg)), false);
+	return { ws, app };
+}
+
+const character = {
+	dir: "",
+	id: "test",
+	name: "Test",
+	prompt: "You are a test.",
+	chat: { api: "chat_completions", base_url: "http://chat.test", api_key_env: "SESSION_TEST_KEY", model: "m", params: {} },
+	stt: { provider: "elevenlabs", model: "s", keyterms: [] },
+	// not a dialogue model, so sentences go over plain HTTP and no socket opens
+	voice: { provider: "elevenlabs", voice_id: "v", model: "eleven_test", params: {}, drop_tags: [] },
+	rig: {},
+	extensions: [],
+	env_file: "",
+	manifest: {},
+} as unknown as Character;
+
+// A body that sends nothing until its request is aborted, like a model or a
+// voice still thinking.
+function hanging(signal: AbortSignal): Response {
+	return new Response(
+		new ReadableStream({
+			start(c) {
+				signal.addEventListener("abort", () => c.error(new DOMException("aborted", "AbortError")));
+			},
+		}),
+	);
+}
+
+const reply = (text: string) =>
+	new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\ndata: [DONE]\n\n`);
+const noText = () => new Response("data: [DONE]\n\n");
+
+// an extension with one blocking hook
+function hook(name: HookName, call: (input: HookInput) => unknown): Loaded {
+	return {
+		name: "test",
+		dir: "",
+		handler: "",
+		hooks: new Map([[name, { blocking: true, timeout_ms: 5000 }]]),
+		requires_env: [],
+		config: {},
+		call,
+	} as unknown as Loaded;
+}
+
+function gate() {
+	let open = () => {};
+	const shut = new Promise<void>((r) => { open = r; });
+	return { shut, open };
+}
+
+async function until(done: () => boolean, what: string) {
+	const deadline = Date.now() + 2000;
+	while (!done()) {
+		if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+		await new Promise((r) => setTimeout(r, 1));
+	}
+}
+
+// One session over a fake socket. `answer` plays every upstream request (the
+// chat model and the voice), so nothing leaves the machine.
+function session(t: TestContext, answer: (n: number, signal: AbortSignal) => Response, exts: Loaded[] = []) {
+	const lines: string[] = [];
+	t.mock.method(console, "log", (line: string) => { lines.push(line); });
+	const calls: AbortSignal[] = [];
+	t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
+		const signal = init.signal as AbortSignal;
+		calls.push(signal);
+		return answer(calls.length - 1, signal);
+	});
+	const { ws, app } = fakeSocket();
+	runSession(ws as unknown as WebSocket, character, exts);
+	const logged = (text: string) => lines.some((l) => l.includes(text));
+	return {
+		app,
+		calls,
+		logged,
+		// what the app got for one id, without the staging beats
+		sentFor: (id: number) => ws.sent.filter((m) => m.id === id && m.t !== "beat"),
+		close: async () => {
+			ws.emit("close");
+			await until(() => logged("closed:"), "the session to close");
+		},
+	};
+}
+
+const history = [{ role: "user", content: "hi" }];
+const answered = (text: string) => [
+	{ t: "llm_delta", id: 5, text },
+	{ t: "llm_done", id: 5 },
+];
+
+test("an llm that reuses a cancelled reply's id is answered, and the cancelled reply sends nothing more", async (t) => {
+	const s = session(t, (n, signal) => (n === 0 ? hanging(signal) : reply("hello again")));
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.calls.length === 1, "the first reply to start");
+	// the user barges in, and the app's next reply happens to get the same id
+	s.app({ t: "cancel", id: 5 });
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.logged("turn 5: replied") && s.logged("turn 5: cut off by the app"), "both replies to end");
+	assert.deepEqual(s.sentFor(5), answered("hello again"));
+	await s.close();
+});
+
+test("a reply cancelled before the session is ready never runs, and its id can be reused", async (t) => {
+	const ready = gate();
+	const s = session(t, () => reply("hello"), [hook("on_session_start", () => ready.shut)]);
+	s.app({ t: "llm", id: 5, history });
+	s.app({ t: "cancel", id: 5 });
+	s.app({ t: "llm", id: 5, history });
+	ready.open();
+	await until(() => s.logged("turn 5: replied"), "the second reply");
+	assert.equal(s.calls.length, 1);
+	assert.deepEqual(s.sentFor(5), answered("hello"));
+	await s.close();
+});
+
+test("a reply cancelled during before_llm sends nothing, and its id can be reused", async (t) => {
+	const held = gate();
+	let runs = 0;
+	const s = session(t, () => reply("hello"), [hook("before_llm", () => (runs++ === 0 ? held.shut : undefined))]);
+	s.app({ t: "llm", id: 5, history });
+	await until(() => runs === 1, "before_llm");
+	s.app({ t: "cancel", id: 5 });
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.logged("turn 5: replied"), "the second reply");
+	held.open();
+	await until(() => s.logged("turn 5: cut off by the app"), "the first reply to wind down");
+	// the first reply never reached the model
+	assert.equal(s.calls.length, 1);
+	assert.deepEqual(s.sentFor(5), answered("hello"));
+	await s.close();
+});
+
+test("a reply cancelled while before_reply holds it sends nothing, and its id can be reused", async (t) => {
+	const held = gate();
+	let runs = 0;
+	const s = session(t, (n) => reply(n === 0 ? "first" : "second"), [
+		hook("before_reply", () => (runs++ === 0 ? held.shut : undefined)),
+	]);
+	s.app({ t: "llm", id: 5, history });
+	await until(() => runs === 1 && s.calls.length === 1, "the first reply to be held");
+	s.app({ t: "cancel", id: 5 });
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.logged("turn 5: replied"), "the second reply");
+	held.open();
+	await until(() => s.logged("turn 5: cut off by the app"), "the first reply to wind down");
+	assert.deepEqual(s.sentFor(5), answered("second"));
+	await s.close();
+});
+
+test("a reply with no text on a reused id gets llm_empty, not llm_done", async (t) => {
+	const s = session(t, (n, signal) => (n === 0 ? hanging(signal) : noText()));
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.calls.length === 1, "the first reply to start");
+	s.app({ t: "cancel", id: 5 });
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.logged("turn 5: failed: llm_empty") && s.logged("turn 5: cut off by the app"), "both replies to end");
+	assert.deepEqual(s.sentFor(5), [{ t: "error", id: 5, text: "llm_empty" }]);
+	await s.close();
+});
+
+test("an llm on the id of a reply still running is refused, and the running one can still be cancelled", async (t) => {
+	const s = session(t, (_n, signal) => hanging(signal));
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.calls.length === 1, "the reply to start");
+	s.app({ t: "llm", id: 5, history });
+	assert.deepEqual(s.sentFor(5), [{ t: "error", id: 5, text: "llm_busy" }]);
+	s.app({ t: "cancel", id: 5 });
+	assert.equal(s.calls[0].aborted, true);
+	await until(() => s.logged("turn 5: cut off by the app"), "the reply to wind down");
+	assert.equal(s.calls.length, 1);
+	assert.deepEqual(s.sentFor(5), [{ t: "error", id: 5, text: "llm_busy" }]);
+	await s.close();
+});
+
+test("a tts on the id of a sentence still being voiced is refused, and the running one can still be cancelled", async (t) => {
+	const s = session(t, (_n, signal) => hanging(signal));
+	s.app({ t: "tts", id: 7, text: "One." });
+	await until(() => s.calls.length === 1, "the sentence to start");
+	s.app({ t: "tts", id: 7, text: "Two." });
+	await until(() => s.sentFor(7).length > 0, "the refusal");
+	assert.deepEqual(s.sentFor(7), [{ t: "error", id: 7, text: "tts_busy" }]);
+	assert.equal(s.calls.length, 1);
+	s.app({ t: "cancel", id: 7 });
+	assert.equal(s.calls[0].aborted, true);
+	await s.close();
+});
+
+test("a sentence that reuses a cancelled sentence's id can itself be cancelled", async (t) => {
+	const s = session(t, (_n, signal) => hanging(signal));
+	s.app({ t: "tts", id: 7, text: "One." });
+	await until(() => s.calls.length === 1, "the first sentence to start");
+	s.app({ t: "cancel", id: 7 });
+	s.app({ t: "tts", id: 7, text: "One." });
+	await until(() => s.calls.length === 2, "the second sentence to start");
+	// let the first sentence's aborted request wind down
+	await new Promise((r) => setImmediate(r));
+	assert.equal(s.calls[0].aborted, true);
+	assert.equal(s.calls[1].aborted, false);
+	s.app({ t: "cancel", id: 7 });
+	assert.equal(s.calls[1].aborted, true);
+	await s.close();
+	assert.deepEqual(s.sentFor(7), []);
+});
+
+test("closing the session aborts every reply and sentence still running, and a repeated id starts nothing", async (t) => {
+	const s = session(t, (_n, signal) => hanging(signal));
+	for (let i = 0; i < 5; i++) s.app({ t: "llm", id: 5, history });
+	s.app({ t: "llm", id: 6, history });
+	for (let i = 0; i < 5; i++) s.app({ t: "tts", id: 7, text: "One." });
+	s.app({ t: "tts", id: 8, text: "Two." });
+	await until(() => s.calls.length === 4, "two replies and two sentences to start");
+	await s.close();
+	assert.deepEqual(s.calls.map((c) => c.aborted), [true, true, true, true]);
+	assert.equal(s.calls.length, 4);
 });

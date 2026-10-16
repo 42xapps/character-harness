@@ -161,8 +161,9 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	let ext: Record<string, unknown> = {};
 	let turn: Turn | null = null;
 	const llmStreams = new Map<number, AbortController>();
-	// replies the app cancelled: nothing more may be sent for them
-	const cancelledByApp = new Set<number>();
+	// replies the app cancelled: nothing more may be sent for them. Kept by
+	// request, not id, since the app may reuse the id while one winds down.
+	const cancelledByApp = new WeakSet<AbortController>();
 	const spoken = new Map<number, Spoken>();
 
 	const send = (obj: unknown) => {
@@ -224,9 +225,8 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		llmStreams.set(id, ac);
 		await started;
 		// cancelled before the session was ready: it never became a turn
-		if (cancelledByApp.has(id) && llmStreams.get(id) === ac) {
-			llmStreams.delete(id);
-			cancelledByApp.delete(id);
+		if (cancelledByApp.has(ac)) {
+			if (llmStreams.get(id) === ac) llmStreams.delete(id);
 			return;
 		}
 		if (turn) void closeTurn(turn);
@@ -245,10 +245,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		turn = t;
 		const finish = (how: string) => {
 			// the app may have reused the id for a newer reply
-			if (llmStreams.get(id) === ac) {
-				llmStreams.delete(id);
-				cancelledByApp.delete(id);
-			}
+			if (llmStreams.get(id) === ac) llmStreams.delete(id);
 			t.llmDone = true;
 			log(`turn ${id}: ${how}`);
 			settle(t);
@@ -267,7 +264,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 
 		t.state = await runHook(exts, "before_llm", t.state, log);
 		if (closed) return;
-		if (cancelledByApp.has(id)) return finish("cut off by the app");
+		if (cancelledByApp.has(ac)) return finish("cut off by the app");
 		if (t.state.cancel === true) return silent();
 
 		// The reply streams as it is written, but nothing reaches the app until
@@ -307,7 +304,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		const cancelled = await replyCancelled;
 		if (closed) return;
 		// a barge-in: the app tore the turn down and expects nothing more for it
-		if (cancelledByApp.has(id)) return finish("cut off by the app");
+		if (cancelledByApp.has(ac)) return finish("cut off by the app");
 		if (cancelled) return silent();
 		t.state.reply = reply;
 		if (failure) {
@@ -368,7 +365,10 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 
 	const onTts = async (id: number, text: string) => {
 		if (!text || text.trim() === SILENT_TURN) return;
-		if (spoken.size >= MAX_TTS_IN_FLIGHT) {
+		// a sentence still running on this id stays the one the id names, so it
+		// can be cancelled and counts against the limit
+		const live = spoken.get(id);
+		if (spoken.size >= MAX_TTS_IN_FLIGHT || (live && !live.cancelled)) {
 			send({ t: "error", id, text: "tts_busy" });
 			return;
 		}
@@ -425,7 +425,8 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 				flushBeats(sp);
 			},
 		});
-		spoken.delete(id);
+		// the app may have reused the id for a newer sentence
+		if (spoken.get(id) === sp) spoken.delete(id);
 		if (end === "cancelled") sp.cancelled = true;
 		sp.ended = true;
 		flushBeats(sp);
@@ -452,7 +453,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	const cancel = (id: number) => {
 		const ac = llmStreams.get(id);
 		if (ac) {
-			cancelledByApp.add(id);
+			cancelledByApp.add(ac);
 			ac.abort();
 		}
 		const sp = spoken.get(id);
@@ -479,7 +480,12 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		if ((msg.t === "llm" || msg.t === "tts" || msg.t === "cancel") && !hasId) return;
 		// a reply the app cancelled no longer counts, even while it winds down
 		const replying = [...llmStreams.values()].filter((ac) => !ac.signal.aborted).length;
-		if (msg.t === "llm" && replying >= MAX_LLM_IN_FLIGHT) {
+		// a reply still running on this id is refused, so the id keeps naming the
+		// running one and it can still be cancelled and counted; one an extension
+		// silenced is still winding down, so it counts as running until it's done
+		const running = llmStreams.get(id as number);
+		const live = running !== undefined && !cancelledByApp.has(running);
+		if (msg.t === "llm" && (replying >= MAX_LLM_IN_FLIGHT || live)) {
 			send({ t: "error", id, text: "llm_busy" });
 			return;
 		}

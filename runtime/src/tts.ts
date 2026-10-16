@@ -120,7 +120,8 @@ export class Tts {
 			// an abort is a cancel, not something the app should retry
 			return ac.signal.aborted ? "cancelled" : { error: "tts_network" };
 		} finally {
-			this.http.delete(req.id);
+			// the app may have reused the id for a newer sentence
+			if (this.http.get(req.id) === ac) this.http.delete(req.id);
 		}
 	}
 }
