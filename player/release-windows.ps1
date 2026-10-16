@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-Build the Windows player and attach its EXE and portable ZIP to a draft GitHub release.
+Build the Windows player and attach its portable ZIP and checksums to a draft GitHub release.
 .EXAMPLE
 .\player\release-windows.ps1 v0.1.0 -NoRelease
 .EXAMPLE
@@ -154,33 +154,30 @@ This build is unsigned; Windows may show a publisher warning.
 Built from $Tag ($commit), Kaigen $engineVersion.
 "@
     [IO.File]::WriteAllText((Join-Path $stage 'README.txt'), $readme, [Text.UTF8Encoding]::new($false))
-    $releaseExe = Join-Path $output "$packageName.exe"
-    Copy-Item -LiteralPath (Join-Path $stage $exe.Name) -Destination $releaseExe
     $zip = Join-Path $output "$packageName.zip"
     Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal
     $checksum = Join-Path $output 'SHA256SUMS-windows-x64'
-    $sumLines = @($releaseExe, $zip) | ForEach-Object {
+    $sumLines = @($zip) | ForEach-Object {
         "$((Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_))"
     }
     [IO.File]::WriteAllText($checksum, (($sumLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
     Write-Host "Player executable: $(Join-Path $stage $exe.Name)"
-    Write-Host "EXE release asset: $releaseExe (keep runtime files from the ZIP beside it)"
     Write-Host "Portable ZIP: $zip"
     $sumLines | ForEach-Object { Write-Host $_ }
     if ($NoRelease) { Write-Host 'Local build complete; no GitHub release created.'; return }
 
     $notes = Join-Path $output 'notes.md'
-    $releaseNotes = "Windows x64 player, unsigned. Extract the complete ZIP; it contains $($exe.Name) and its runtime files. The separate EXE is the same player binary and needs the runtime files from the ZIP beside it. No Kaigen installation is required. See player/README.md for connecting the Node harness.`n`nBuilt from $Tag ($commit), Kaigen $engineVersion.`n`nSHA-256:`n$($sumLines -join "`n")`n"
+    $releaseNotes = "Windows x64 player, unsigned. Extract the complete ZIP; it contains $($exe.Name) and its runtime files. Keep the extracted folder together. No Kaigen installation is required. See player/README.md for connecting the Node harness.`n`nBuilt from $Tag ($commit), Kaigen $engineVersion.`n`nSHA-256:`n$($sumLines -join "`n")`n"
     [IO.File]::WriteAllText($notes, $releaseNotes, [Text.UTF8Encoding]::new($false))
     # Reuse a macOS draft without overwriting its notes or checksum asset.
     $releases = Invoke-Checked gh @('release', 'list', '--limit', '1000', '--json', 'tagName,isDraft') | ConvertFrom-Json
     $existing = @($releases | Where-Object { $_.tagName -eq $Tag })
     if ($existing.Count) {
         if (-not $existing[0].isDraft) { throw 'This release is already public; refusing to change it.' }
-        Invoke-Checked gh @('release', 'upload', $Tag, $releaseExe, $zip, $checksum)
+        Invoke-Checked gh @('release', 'upload', $Tag, $zip, $checksum)
     }
     else {
-        Invoke-Checked gh @('release', 'create', $Tag, '--draft', '--verify-tag', '--title', $Tag, '--notes-file', $notes, $releaseExe, $zip, $checksum)
+        Invoke-Checked gh @('release', 'create', $Tag, '--draft', '--verify-tag', '--title', $Tag, '--notes-file', $notes, $zip, $checksum)
     }
     Write-Host "Draft release $Tag updated; review it on GitHub before publishing."
 }
