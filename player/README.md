@@ -195,7 +195,6 @@ player/out/release/windows-x64/
   character-player-0.1.0-windows-x64/
     Character Player.exe
     ...published runtime files, README and licences...
-  character-player-0.1.0-windows-x64.exe
   character-player-0.1.0-windows-x64.zip
   SHA256SUMS-windows-x64
 ```
@@ -205,10 +204,10 @@ During the release build, MSVC's compiler PDB is directed to
 compiler environment options and restores them after success or failure.
 Direct `hzbuild` calls still use the SDK's default PDB location.
 
-The `.exe` release asset is the native player application, also included inside
-the ZIP. It needs any published runtime files beside it; it is not a
-self-extracting installer. Recommend the ZIP for a complete download and keep
-the separate EXE alongside those same-version runtime files when using it.
+The ZIP contains the native player executable and its required runtime files.
+Keep the entire extracted folder together. The executable is not published as
+a separate download because it cannot run without those files. This is a
+portable package, not an installer.
 The script includes the external `cooked/` assets even when publish output omits
 them from its publish output, including the `.zst` files the native publish
 build reads. Browser-only `.br` sidecars are excluded.
@@ -222,7 +221,7 @@ For a local preview of uncommitted work, without creating a tag or uploading:
 .\player\release-windows.ps1 v0.1.0 -NoRelease -AllowDirty
 ```
 
-To attach the EXE, ZIP and checksums to a draft GitHub release, push the tag and run
+To attach the ZIP and checksums to a draft GitHub release, push the tag and run
 without `-NoRelease` (requires `gh` installed and authenticated):
 
 ```powershell
