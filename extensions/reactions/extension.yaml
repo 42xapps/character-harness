@@ -1,0 +1,11 @@
+name: reactions
+handler: index.ts
+hooks:
+  # asks the judge while the chat model writes; the reply's first sentence
+  # waits for it, at most this long
+  before_reply: { timeout_ms: 1500 }
+  # puts the decision on the reply's first sentence
+  on_sentence: { timeout_ms: 500 }
+  on_session_end: { blocking: false }
+# the key its config's model names
+requires_env: [{ config: model.api_key_env }]

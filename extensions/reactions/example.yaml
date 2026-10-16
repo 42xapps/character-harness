@@ -1,0 +1,74 @@
+# An example config for the reactions extension, written for FoxGlove. She
+# doesn't use it; to try it, copy it to characters/foxglove/reactions.yaml and
+# list the extension after emotion-tags and before the director in her
+# character.yaml, so its emotion starts her line and the director stages the
+# rest (README.md says what the other orders do):
+#
+#   - path: ../../extensions/emotion-tags
+#     config_file: director.yaml
+#   - path: ../../extensions/reactions
+#     config_file: reactions.yaml
+#   - path: ../../extensions/director
+#     config_file: director.yaml
+#
+# The words must match what the player has for her: emotions from
+# player/assets/mutuals/emotions.hzt, gestures from player/assets/mutuals/gestures.hzt.
+
+model:
+  api_key_env: TYPESAFE_API_KEY
+  model: jev-latest
+
+# what the judge knows about her besides her name and description
+about: >-
+  A virtual popstar, three weeks old, loud and proud, who never makes herself
+  smaller. Her fans are her "little comets"; her rescue cat is Comet Jr. Her
+  white-and-orange look is hers, and calling the orange pastel annoys her.
+  She is afraid of being forgotten.
+
+# her reaction to the message: option -> the emotion she answers with when it's
+# strong. These options have built-in rubrics; a new one needs { emotion, rubric }.
+beat:
+  nothing: ""
+  brow_flick: surprised
+  lean_in: thoughtful
+  held_smile: warm
+  delight: happy
+  lit_up: sparkle eyes
+  tease: playful
+  startle: surprised
+  flustered: flustered
+  soften: sympathetic
+  stung: sad
+  flare: grumpy
+  turn_it_over: thoughtful
+
+# the mood the message puts her in, for when the reaction isn't strong: option -> emotion
+settle:
+  neutral: neutral
+  content: happy
+  warm: warm
+  thoughtful: thoughtful
+  playful: playful
+  confident: confident
+  dreamy: dreamy
+  low: sad
+  shy:
+    emotion: shy
+    rubric: "Bashful: still a little pink from a compliment or being teased."
+  sulky:
+    emotion: grumpy
+    rubric: "Put out and sulking, though not really angry."
+
+# when each of her gestures fits; "still" (no movement) is always there
+gestures:
+  nod: "Agreeing with something the user said: yes, exactly."
+  wave: "Hello or goodbye, when the user greets her or leaves."
+  cheer: "Celebrating the user's good news or win with them."
+  surprise: "A startled jump at something sudden or alarming; not for sad news or compliments."
+  sheepish: "She is the one caught out or embarrassed."
+  hands-on-hips: "Indignant: standing up to rudeness or an unfair remark."
+  hand-on-waist: "Sassy and self-assured: answering a tease or a challenge."
+
+# for a really funny line
+laugh:
+  emotion: happy
