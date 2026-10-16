@@ -8,7 +8,7 @@ The runtime fires an event at each step of a turn and knows nothing about what e
 
 ```
 input (voice, chat, screen)
-  ├→ before_reply   should she reply?
+  ├→ before_reply   reply at all?
   └→ before_llm     build the prompt; inject context
      → llm          the character's model writes the reply
      → after_llm    the full reply is written
@@ -29,9 +29,9 @@ on_session_end     the call or conversation ended
 
 ## Cancelling a turn
 
-`before_reply` decides whether she replies. It runs alongside `before_llm` and the LLM call, so it doesn't add its time to every turn. The first sentence waits until it finishes. Its extensions work on their own copy of the state, and the runtime keeps only `cancel` from them.
+`before_reply` decides whether the character replies. It runs alongside `before_llm` and the LLM call, so it doesn't add its time to every turn. The first sentence waits until it finishes. Its extensions work on their own copy of the state, and the runtime keeps only `cancel` from them.
 
-A blocking extension on `before_reply` or `before_llm` ends the turn by setting `cancel: true`. The runtime skips or aborts the LLM call, nothing is spoken, and `after_turn` still fires. If a `before_reply` extension times out, she replies.
+A blocking extension on `before_reply` or `before_llm` ends the turn by setting `cancel: true`. The runtime skips or aborts the LLM call, nothing is spoken, and `after_turn` still fires. If a `before_reply` extension times out, the character replies.
 
 ## Hooks
 
