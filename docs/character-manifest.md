@@ -112,6 +112,7 @@ The body. Either a VRM model with the animations it plays, or a profile cooked i
 | `rig.engine` | yes | Engine versions the character works with (not checked by the runtime yet). |
 | `rig.model` | one of these | A `.vrm` file (VRM 0.x or 1.0). |
 | `rig.profile` | one of these | A profile cooked into a player build, by its bare name (no path or extension). Needs `emotions` too. |
+| `rig.springs` | no | With `rig.model`: `false` keeps the model's VRM spring bones (hair, skirts) still. Default `true`. |
 | `rig.animations.idle` | no | The loop she plays while listening. One clip or a list. |
 | `rig.animations.talk.<style>` | no | Loops she plays while talking, per talking style. `regular` is the default style; the others are what the director's `registers` pick from. |
 | `rig.animations.gestures.<name>` | no | One-shot gestures the director's `gestures` pick from. A clip, or `{ clip, hold: true }` for a pose that holds until the next beat. |

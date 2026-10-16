@@ -9,6 +9,8 @@
 //                                          styles and gestures
 //   cooked/vrm/<name>/expressions.hza, face_rig.hza
 //                                          its face, from its VRM expressions
+//   cooked/vrm/<name>/cloth/               its spring bones (hair, skirts) as
+//                                          bone cloth, from the harness table
 //   cooked/vrm/<name>/<name>_profile.hza   the character profile tying it up
 //   cooked/vrm/<name>/encode/              the image encoder's intermediates
 //   cooked/vrm/<name>/source.stamp         size + mtime of the file cached, and
@@ -33,6 +35,7 @@
 #include "animation/animation.h"
 #include "assets/asset_importer.h"
 #include "assets/asset_cook_utils.h"
+#include "ecs/ecs_cloth/ecs_cloth.h"
 #include "rendering/mesh.h"
 #include "rendering/material.h"
 #include "lib/hztext.h"
@@ -42,7 +45,7 @@
 #include "os/os.h"
 
 // bump to invalidate every cached import when what we write changes
-#define PLAYER_VRM_CACHE_VERSION 7
+#define PLAYER_VRM_CACHE_VERSION 8
 // longest file name (without extension) imported; keeps every cache path
 // within PLAYER_VRM_PATH_MAX
 #define PLAYER_VRM_MAX_STEM 100
@@ -675,11 +678,262 @@ hz_internal CString player_vrm_rig_text(PJson *gltf, Allocator *alloc) {
   return sb_get(&sb);
 }
 
+// ---------------------------------------------------------------------------
+// springs: the VRM's spring bones -> the engine's bone cloth
+// ---------------------------------------------------------------------------
+
+// the runtime writes a model's springs in the harness table (springs, in
+// runtime/src/rig/springs.ts): bones, roots, stiffness, gravity, gravity_dir,
+// drag, radius and colliders, VRM's own values. Each becomes one bone cloth.
+// the engine simulates this many cloths per model
+#define PLAYER_VRM_MAX_SPRINGS ECS_CLOTH_MAX_PER_MODEL
+// colliders one model may use in all
+#define PLAYER_VRM_MAX_SPRING_COLLIDERS 256
+// what one spring may hold, and how many entries are looked at, whatever the
+// file says
+#define PLAYER_VRM_MAX_SPRING_BONES 256
+#define PLAYER_VRM_MAX_SPRING_SCAN 64
+#define PLAYER_VRM_MAX_BONE_NAME 255
+
+hz_internal f32 player_vrm_clampf(f32 v, f32 lo, f32 hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// a curve of 16 samples from the root of a chain to its tip, `from` to `to`
+hz_internal void player_vrm_ramp(StringBuilder *sb, const char *name, f32 from, f32 to) {
+  sb_append_format(sb, "  %\n    s 16", fmt_cstr(name));
+  for (u32 i = 0; i < 16; i++)
+    sb_append_format(sb, " %", fmt_f32_p(from + (to - from) * (f32)i / 15, 6));
+  sb_append(sb, "\n");
+}
+
+// a curve of 16 samples, all the same
+hz_internal void player_vrm_curve(StringBuilder *sb, const char *name, f32 v) {
+  player_vrm_ramp(sb, name, v, v);
+}
+
+hz_internal void player_vrm_v3(StringBuilder *sb, const char *indent, const char *name, f32 x,
+                               f32 y, f32 z) {
+  sb_append_format(sb, "%%\n%  x %\n%  y %\n%  z %\n", fmt_cstr(indent), fmt_cstr(name),
+                   fmt_cstr(indent), fmt_f32_p(x, 6), fmt_cstr(indent), fmt_f32_p(y, 6),
+                   fmt_cstr(indent), fmt_f32_p(z, 6));
+}
+
+hz_internal f32 player_vrm_num(PJson *v, f32 fallback, f32 lo, f32 hi) {
+  f64 n = pjson_number(v, fallback);
+  if (n != n) // NaN
+    return fallback;
+  // clamped as a double, so the conversion to f32 is always in range
+  return (f32)(n < lo ? lo : n > hi ? hi : n);
+}
+
+// is `name` exactly one of the model's joints? The cloth finds its bones by
+// name, so a name two joints share could move the wrong one.
+hz_internal b32 player_vrm_has_joint(ModelBlobAsset *mb, const char *name) {
+  Array(StringBlob) joints = blob_array_get(StringBlob, &mb->joint_names);
+  u32 found = 0;
+  for (u32 i = 0; i < joints.len && found < 2; i++)
+    found += cstr_equal(string_blob_get(&joints.items[i]), name) ? 1 : 0;
+  return found == 1;
+}
+
+// the name of node `i`, when the cloth can use it
+hz_internal const char *player_vrm_spring_node(PJson *gltf, ModelBlobAsset *mb, PJson *i) {
+  PJson *nodes = pjson_get(gltf, "nodes");
+  i32 node = pjson_index(i, pjson_count(nodes));
+  const char *name = node < 0 ? NULL : pjson_string(pjson_get(pjson_at(nodes, (u32)node), "name"), NULL);
+  u32 len = 0;
+  while (name && name[len] && len <= PLAYER_VRM_MAX_BONE_NAME)
+    len++;
+  return name && len <= PLAYER_VRM_MAX_BONE_NAME && player_vrm_safe_name(name) &&
+                 player_vrm_has_joint(mb, name)
+             ? name
+             : NULL;
+}
+
+// one collider: a sphere, or a capsule from offset to tail, on its node
+hz_internal b32 player_vrm_collider(StringBuilder *sb, PJson *gltf, ModelBlobAsset *mb, PJson *c) {
+  const char *bone = player_vrm_spring_node(gltf, mb, pjson_get(c, "node"));
+  PJson *off = pjson_get(c, "offset");
+  PJson *tail = pjson_get(c, "tail");
+  f32 r = player_vrm_num(pjson_get(c, "radius"), 0, 0, 10);
+  if (!bone || pjson_count(off) != 3 || r <= 0)
+    return false;
+  f32 a[3], b[3];
+  for (u32 k = 0; k < 3; k++) {
+    a[k] = player_vrm_num(pjson_at(off, k), 0, -1000, 1000);
+    b[k] = pjson_count(tail) == 3 ? player_vrm_num(pjson_at(tail, k), a[k], -1000, 1000) : a[k];
+  }
+  f32 d[3] = {b[0] - a[0], b[1] - a[1], b[2] - a[2]};
+  f32 len = __builtin_sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  b32 capsule = len > 1e-5f;
+  // a capsule runs along its local X (direction 0): turn X onto the segment
+  f32 q[4] = {0, 0, 0, 1};
+  if (capsule) {
+    f32 u[3] = {d[0] / len, d[1] / len, d[2] / len};
+    f32 w = 1 + u[0]; // cos of the angle from X, plus one
+    if (w < 1e-6f) {
+      q[0] = 0, q[1] = 0, q[2] = 1, q[3] = 0; // opposite X: half a turn about Z
+    } else {
+      // the shortest arc from X: axis X cross u, normalised with w
+      f32 n = __builtin_sqrtf(w * w + u[2] * u[2] + u[1] * u[1]);
+      q[0] = 0, q[1] = -u[2] / n, q[2] = u[1] / n, q[3] = w / n;
+    }
+  }
+  sb_append_format(sb, "  type %\n  bone_name \"%\"\n", fmt_u32(capsule ? 2 : 1), fmt_cstr(bone));
+  player_vrm_v3(sb, "  ", "local_pos", (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  sb_append_format(sb, "  local_rot\n    x %\n    y %\n    z %\n    w %\n", fmt_f32_p(q[0], 6),
+                   fmt_f32_p(q[1], 6), fmt_f32_p(q[2], 6), fmt_f32_p(q[3], 6));
+  sb_append(sb, "  direction 0\n");
+  // a sphere's size is its radius; a capsule's, its end radii and full length
+  player_vrm_v3(sb, "  ", "size", r, capsule ? r : 0, capsule ? len + 2 * r : 0);
+  sb_append_format(sb, "  aligned_center %\n\n", fmt_cstr(capsule ? "true" : "false"));
+  return true;
+}
+
+// The bone cloth of one spring, or NULL when none of its bones can swing.
+// VRM's spring model and the engine's cloth differ; these mappings keep a
+// spring's character: stiffer springs hold their shape, heavier ones hang,
+// draggier ones settle sooner.
+hz_internal CString player_vrm_spring_text(PJson *gltf, ModelBlobAsset *mb, PJson *spring,
+                                           u32 *collider_budget, Allocator *alloc) {
+  PJson *bones = pjson_get(spring, "bones");
+  PJson *roots = pjson_get(spring, "roots");
+  if (pjson_count(bones) < 2 || pjson_count(roots) == 0)
+    return NULL;
+  u32 nroots = MIN(pjson_count(roots), PLAYER_VRM_MAX_SPRING_BONES);
+  StringBuilder names = sb_create(KB(4), alloc);
+  StringBuilder attrs = sb_create(KB(1), alloc);
+  u32 n = 0, moving = 0, fixed = 0;
+  for (u32 i = 0; i < pjson_count(bones) && i < PLAYER_VRM_MAX_SPRING_BONES; i++) {
+    const char *bone = player_vrm_spring_node(gltf, mb, pjson_at(bones, i));
+    if (!bone)
+      continue;
+    b32 root = false;
+    f64 node = pjson_number(pjson_at(bones, i), -2);
+    for (u32 r = 0; r < nroots && !root; r++)
+      root = pjson_number(pjson_at(roots, r), -1) == node;
+    sb_append_format(&names, " \"%\"", fmt_cstr(bone));
+    sb_append_format(&attrs, " %", fmt_u32(root ? 1 : 2));
+    moving += root ? 0 : 1;
+    fixed += root ? 1 : 0;
+    n++;
+  }
+  // a chain needs something attached to the body and something to swing
+  if (!moving || !fixed)
+    return NULL;
+
+  f32 stiffness = player_vrm_num(pjson_get(spring, "stiffness"), 1, 0, 4);
+  f32 gravity = player_vrm_num(pjson_get(spring, "gravity"), 0, 0, 2);
+  f32 drag = player_vrm_num(pjson_get(spring, "drag"), 0.5f, 0, 1);
+  f32 radius = player_vrm_num(pjson_get(spring, "radius"), 0, 0, 1);
+  PJson *gd = pjson_get(spring, "gravity_dir");
+  f32 g[3] = {0, -1, 0};
+  if (pjson_count(gd) == 3) {
+    f32 v[3];
+    for (u32 k = 0; k < 3; k++)
+      v[k] = player_vrm_num(pjson_at(gd, k), 0, -1, 1);
+    f32 len = __builtin_sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    // a direction, so a longer one doesn't pull harder; none at all means down
+    if (len > 1e-4f)
+      for (u32 k = 0; k < 3; k++)
+        g[k] = v[k] / len;
+  }
+
+  StringBuilder sb = sb_create(KB(16), alloc);
+  sb_append(&sb, "type ClothAuthoringBlobAsset\nversion 3\n---\ncloth_type 1\ntarget_mesh_name \"\"\nparams\n");
+  player_vrm_v3(&sb, "  ", "gravity_dir", g[0], g[1], g[2]);
+  sb_append_format(&sb, "  gravity %\n  gravity_falloff 0\n", fmt_f32_p(gravity * 9.8f, 6));
+  f32 damping = player_vrm_clampf(0.05f + 0.25f * drag, 0.03f, 0.5f);
+  sb_append_format(&sb, "  damping %\n  use_damping_curve false\n", fmt_f32_p(damping, 6));
+  player_vrm_curve(&sb, "damping_curve", damping);
+  sb_append(&sb, "  stabilization_time 0.1\n  animation_pose_ratio 0\n  distance_stiffness 1\n"
+                 "  use_distance_curve false\n");
+  player_vrm_curve(&sb, "distance_stiffness_curve", 1);
+  sb_append(&sb, "  distance_iterations 0\n  distance_velocity_attenuation 0.3\n"
+                 "  tether_compression 0.8\n  use_angle_restoration true\n");
+  // held firmly at the root and loosely at the tip, as a strand of hair is
+  f32 restore = player_vrm_clampf(0.08f + 0.12f * stiffness, 0.08f, 0.6f);
+  sb_append_format(&sb, "  angle_restoration_stiffness %\n  use_angle_restoration_curve true\n",
+                   fmt_f32_p(restore, 6));
+  player_vrm_ramp(&sb, "angle_restoration_curve", restore, restore * 0.15f);
+  sb_append(&sb, "  angle_restoration_velocity_attenuation 0.8\n"
+                 "  angle_restoration_gravity_falloff 0\n  use_angle_limit true\n"
+                 "  angle_limit_deg 75\n  angle_limit_stiffness 0.9\n  use_angle_limit_curve false\n");
+  player_vrm_curve(&sb, "angle_limit_curve", 75);
+  sb_append(&sb, "  use_max_distance false\n  max_distance 0.3\n  use_max_distance_curve false\n");
+  player_vrm_curve(&sb, "max_distance_curve", 0.3f);
+  sb_append(&sb, "  motion_stiffness 1\n  use_backstop false\n  backstop_radius 10\n"
+                 "  backstop_distance 0\n  use_backstop_distance_curve false\n");
+  player_vrm_curve(&sb, "backstop_distance_curve", 0);
+  sb_append(&sb, "  normal_axis 0\n  is_spring false\n  spring_power 0.04\n"
+                 "  spring_limit_distance 0.1\n  spring_normal_limit_ratio 1\n  spring_noise 0\n");
+  f32 r = player_vrm_clampf(radius, 0.005f, 0.2f);
+  sb_append_format(&sb, "  radius %\n  use_radius_curve false\n", fmt_f32_p(r, 6));
+  player_vrm_curve(&sb, "radius_curve", r);
+  sb_append(&sb, "  use_collision true\n  collision_friction 0.1\n  use_self_collision false\n"
+                 "  self_collision_thickness 0.005\n  use_self_thickness_curve false\n");
+  player_vrm_curve(&sb, "self_thickness_curve", 0.005f);
+  sb_append(&sb, "  self_collision_cloth_mass 0\n  world_inertia 1\n  depth_inertia 0\n"
+                 "  movement_inertia_smoothing 0.4\n  movement_speed_limit 3\n"
+                 "  rotation_speed_limit 720\n  local_inertia 1\n  local_movement_speed_limit 0\n"
+                 "  local_rotation_speed_limit 0\n  particle_speed_limit 3\n"
+                 "  centrifugal_acceleration 0\n  teleport_mode 1\n  teleport_distance 0.5\n"
+                 "  wind_mode 0\n");
+  player_vrm_v3(&sb, "  ", "wind_dir", 0, 0, 0);
+  sb_append(&sb, "  wind_main 0\n  wind_influence 1\n  wind_turbulence 1\n  wind_depth_weight 0\n"
+                 "  wind_frequency 1\n  wind_blend 0.4\n  wind_synchronization 0.35\n");
+  player_vrm_v3(&sb, "  ", "wind_zone_center", 0, 0, 0);
+  sb_append(&sb, "  wind_zone_radius 0\n  use_bending false\n  bending_stiffness 0.5\n"
+                 "  blend_weight 1\n  rotational_interpolation 0.5\n  root_rotation 0.5\n"
+                 "reduction\n  simple_distance 0\n  shape_distance 0\n"
+                 "selection_max_connection_distance 0\nnormal_alignment_mode 0\n");
+  player_vrm_v3(&sb, "", "normal_alignment_pos", 0, 0, 0);
+  sb_append(&sb, "target_vertex_count 0\nselection_positions 0\nselection_attributes 0\n");
+
+  PJson *colliders = pjson_get(spring, "colliders");
+  StringBuilder cs = sb_create(KB(4), alloc);
+  u32 nc = 0;
+  for (u32 i = 0; i < pjson_count(colliders) && i < 64; i++) {
+    if (!*collider_budget) {
+      log_warn("vrm: the model's springs name more than % colliders; the rest are left out",
+               fmt_u32(PLAYER_VRM_MAX_SPRING_COLLIDERS));
+      break;
+    }
+    if (player_vrm_collider(&cs, gltf, mb, pjson_at(colliders, i))) {
+      nc++;
+      (*collider_budget)--;
+    }
+  }
+  sb_append_format(&sb, "colliders %\n%", fmt_u32(nc), fmt_cstr(sb_get(&cs)));
+  sb_append_format(&sb, "bone_names %%\nbone_attributes %%\n", fmt_u32(n), fmt_cstr(sb_get(&names)),
+                   fmt_u32(n), fmt_cstr(sb_get(&attrs)));
+  return sb_get(&sb);
+}
+
+// cooks each spring of the harness table into cloth/spring_<i>.hza; returns
+// how many, with their paths in `out`
+hz_internal u32 player_vrm_springs(PJson *gltf, ModelBlobAsset *mb, PJson *table, CString dir,
+                                   CString *out, Allocator *alloc) {
+  PJson *springs = pjson_get(table, "springs");
+  u32 n = 0;
+  u32 colliders = PLAYER_VRM_MAX_SPRING_COLLIDERS;
+  for (u32 i = 0; i < pjson_count(springs) && i < PLAYER_VRM_MAX_SPRING_SCAN &&
+                  n < PLAYER_VRM_MAX_SPRINGS;
+       i++) {
+    CString text = player_vrm_spring_text(gltf, mb, pjson_at(springs, i), &colliders, alloc);
+    if (!text)
+      continue;
+    CString path = str_format(alloc, "%cloth/spring_%.hza", fmt_cstr(dir), fmt_u32(n)).value;
+    if (player_vrm_cook(text, "ClothAuthoringBlobAsset", path, alloc))
+      out[n++] = path;
+  }
+  return n;
+}
+
 // fields in the order AppCharacterProfileBlobAsset declares them, which the
 // text format requires
 hz_internal CString player_vrm_profile_text(String stem, CString model_ref, CString dir,
-                                            b32 face, CString idle_clip,
-                                            Allocator *alloc) {
+                                            b32 face, CString idle_clip, CString *cloth,
+                                            u32 cloth_count, Allocator *alloc) {
   StringBuilder sb = sb_create(KB(8), alloc);
   sb_append(&sb, "type AppCharacterProfileBlobAsset\nversion 19\n---\n");
   sb_append_format(&sb, "name \"%\"\n", fmt_str(stem));
@@ -698,6 +952,11 @@ hz_internal CString player_vrm_profile_text(String stem, CString model_ref, CStr
   if (idle_clip)
     sb_append_format(&sb, "states \"%states.hza\" CharacterStatesBlobAsset\n", fmt_cstr(dir));
   sb_append(&sb, PLAYER_VRM_PROFILE_LIVENESS);
+  if (cloth_count) {
+    sb_append_format(&sb, "cloth %\n", fmt_u32(cloth_count));
+    for (u32 i = 0; i < cloth_count; i++)
+      sb_append_format(&sb, "  cloth \"%\" ClothAuthoringBlobAsset\n\n", fmt_cstr(cloth[i]));
+  }
   return sb_get(&sb);
 }
 
@@ -831,19 +1090,24 @@ hz_internal b32 player_vrm_import(CString vrm_path, String stem, CString dir,
     return false;
   }
 
+  // hair, skirts and the like swing as bone cloth
+  CString cloth[PLAYER_VRM_MAX_SPRINGS];
+  u32 cloth_count = table ? player_vrm_springs(gltf, mb, table, dir, cloth, alloc) : 0;
+
   CString profile_ref = str_format(alloc, "%%_profile.hza", fmt_cstr(dir), fmt_str(stem)).value;
-  if (!player_vrm_cook(player_vrm_profile_text(stem, model_ref, dir, face, idle_clip, alloc),
+  if (!player_vrm_cook(player_vrm_profile_text(stem, model_ref, dir, face, idle_clip, cloth,
+                                               cloth_count, alloc),
                        "AppCharacterProfileBlobAsset", profile_ref, alloc)) {
     log_error("vrm: could not build a character profile for %", fmt_cstr(vrm_path));
     return false;
   }
 
   log_info("vrm: imported % in % ms: % textures (% encoded images), % materials, "
-           "% joints, % clips; face %; body %",
+           "% joints, % clips, % springs; face %; body %",
            fmt_str(stem), fmt_f64(os_ticks_to_ms(os_time_diff(os_time_now(), t0))),
            fmt_u32(imp->textures.len), fmt_u32(images), fmt_u32(imp->materials.len),
            fmt_u32(blob_array_get(StringBlob, &mb->joint_names).len),
-           fmt_u32(imp->animations.len), fmt_cstr(!face ? "none" : presets.presets ? "from its VRM expressions" : "still (no VRM expressions)"),
+           fmt_u32(imp->animations.len), fmt_u32(cloth_count), fmt_cstr(!face ? "none" : presets.presets ? "from its VRM expressions" : "still (no VRM expressions)"),
            fmt_cstr(idle_clip ? (gestures ? "animated, with gestures" : "animated")
                               : "bind pose (no harness clips)"));
   player_vrm_copy(out->profile, profile_ref);

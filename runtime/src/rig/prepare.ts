@@ -4,8 +4,9 @@
 // VRM 0.x materials the player can't read are rewritten first (normalize.ts).
 //
 // The table goes in the file's root `extras.mutualsHarness`:
-//   { version, idle: [clip], talk: { style: [clip] }, gestures: { name: { clip, hold } } }
-// where a clip is an index into the file's animations. VRM Animation files are
+//   { version, idle: [clip], talk: { style: [clip] }, gestures: { name: { clip, hold } }, springs? }
+// where a clip is an index into the file's animations, and springs are the
+// model's spring bones (springs.ts). VRM Animation files are
 // retargeted (retarget.ts) and appended; clips already in the model are used
 // as they are.
 //
@@ -19,8 +20,9 @@ import path from "node:path";
 import type { ClipSource, Rig } from "../manifest.ts";
 import { addAccessor, readGlb, writeGlb, type Glb } from "./glb.ts";
 import { readHumanoid, type Humanoid } from "./humanoid.ts";
-import { convertV0Materials, isObject, mergeSkins, turnV0 } from "./normalize.ts";
+import { convertV0Materials, densifySparse, isObject, mergeSkins, turnV0 } from "./normalize.ts";
 import { retarget } from "./retarget.ts";
+import { addSpringJoints, readSprings } from "./springs.ts";
 
 // bump when the prepared file's layout changes
 const VERSION = 1;
@@ -51,7 +53,7 @@ function fingerprint(rig: ModelRig): string {
 	};
 	stamp(rig.model);
 	for (const s of sources(rig)) if ("file" in s) stamp(s.file);
-	h.update(JSON.stringify({ idle: rig.idle, talk: [...rig.talk], gestures: [...rig.gestures] }));
+	h.update(JSON.stringify({ idle: rig.idle, talk: [...rig.talk], gestures: [...rig.gestures], springs: rig.springs !== false }));
 	return h.digest("hex");
 }
 
@@ -59,6 +61,7 @@ function bake(rig: ModelRig): { glb: Glb; clips: number } {
 	const glb = readGlb(rig.model);
 	// what the player can't load as it is: several skins, VRM 0.x materials,
 	// a VRM 0.x model facing away
+	densifySparse(glb);
 	mergeSkins(glb);
 	convertV0Materials(glb);
 	const turned = turnV0(glb);
@@ -89,11 +92,16 @@ function bake(rig: ModelRig): { glb: Glb; clips: number } {
 		if (!done.has(key)) done.set(key, named(s, at));
 		return done.get(key)!;
 	};
+	// the springs (hair, skirts) swing in the player as its cloth; their nodes
+	// join the skin so the player finds them
+	const springs = model && rig.springs !== false ? readSprings(glb, turned) : [];
+	if (model && springs.length) addSpringJoints(glb, springs, model);
 	const table = {
 		version: VERSION,
 		idle: rig.idle.map((s, i) => clip(s, `idle[${i}]`)),
 		talk: Object.fromEntries([...rig.talk].map(([style, list]) => [style, list.map((s, i) => clip(s, `talk.${style}[${i}]`))])),
 		gestures: Object.fromEntries([...rig.gestures].map(([name, g]) => [name, { clip: clip(g.source, `gestures.${name}`), hold: g.hold }])),
+		...(springs.length ? { springs } : {}),
 	};
 	glb.json.extras = { ...(isObject(glb.json.extras) ? glb.json.extras : {}), mutualsHarness: table };
 	return { glb, clips: done.size };

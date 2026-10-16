@@ -71,8 +71,9 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 - **Body:** the baked clips become the character's idle loop, talking styles and gestures. Without them it stands in its rest pose.
 - **Face:** built from the model's own VRM expressions (happy, sad, blink, the vowels for lip sync), with the emotions in `assets/mutuals/emotions.hzt` mixed from those.
 - **Rig:** head, neck, eyes and chest come from the model's VRM humanoid.
+- **Hair and cloth:** the model's VRM spring bones, which the runtime lists in the same table, become bone cloth (`cooked/vrm/<name>/cloth/`), with their colliders.
 - **Prepared by the runtime:** a model with several skins gets them merged into one, and a VRM 0.x model is turned to face forward with its MToon materials converted to VRM 1.0's (`runtime/src/rig/normalize.ts`), so load models through the runtime.
-- **Not yet:** hair and cloth physics, and turning a VRM 0.x model with sparse accessors.
+- **Not yet:** turning a VRM 0.x model whose joint or triangle data is stored sparse.
 
 ## Layout
 

@@ -120,50 +120,84 @@ const COMPONENTS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 
 const SIZES: Record<number, number> = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
 
 // An accessor's values as floats, flattened. Normalized integer data (allowed
-// for rotations) is scaled to [-1, 1] or [0, 1].
+// for rotations) is scaled to [-1, 1] or [0, 1]. A sparse accessor (some
+// exporters write morph targets that way) is read whole: its base, or zeros,
+// with its listed values put in place.
 export function readAccessor(glb: Glb, index: number): Float32Array {
 	const a = glb.json.accessors?.[index];
 	if (!a) throw new Error(`accessor ${index} does not exist`);
 	const comps = COMPONENTS[a.type];
 	const size = SIZES[a.componentType];
 	if (!comps || !size) throw new Error(`accessor ${index} has an unsupported type`);
-	if (a.sparse) throw new Error(`accessor ${index} is sparse, which isn't supported`);
 	if (!Number.isSafeInteger(a.count) || a.count < 0) throw new Error(`accessor ${index} has a bad count`);
-	const charge = () => {
-		const total = (readSoFar.get(glb) ?? 0) + a.count * comps * 4;
+	const charge = (values: number) => {
+		const total = (readSoFar.get(glb) ?? 0) + values * 4;
 		if (total > Math.min(MAX_READ_BYTES, Math.max(MIN_READ_BYTES, READ_PER_BIN_BYTE * glb.bin.length)))
 			throw new Error("the file's accessors read far more data than it holds; is it valid?");
 		readSoFar.set(glb, total);
 	};
+	let out: Float32Array;
 	if (a.bufferView === undefined) {
 		// all zeros, per the spec
 		if (a.count * comps > MAX_ZERO_VALUES) throw new Error(`accessor ${index} is too large`);
-		charge();
-		return new Float32Array(a.count * comps);
+		charge(a.count * comps);
+		out = new Float32Array(a.count * comps);
+	} else out = readValues(glb, `accessor ${index}`, a.bufferView, a.byteOffset, a.componentType, a.normalized, a.count, comps, charge) as Float32Array;
+	if (a.sparse === undefined || a.sparse === null) return out;
+
+	const sp = a.sparse as { count?: unknown; indices?: Record<string, unknown>; values?: Record<string, unknown> };
+	const n = sp.count;
+	if (!Number.isSafeInteger(n) || (n as number) < 1 || (n as number) > a.count || typeof sp.indices !== "object" || typeof sp.values !== "object" || !sp.indices || !sp.values)
+		throw new Error(`accessor ${index} has a bad sparse part`);
+	const indexType = sp.indices.componentType as number;
+	if (![5121, 5123, 5125].includes(indexType)) throw new Error(`accessor ${index} has bad sparse indices`);
+	const at = readValues(glb, `accessor ${index}'s sparse indices`, sp.indices.bufferView, sp.indices.byteOffset, indexType, false, n as number, 1, charge, Float64Array);
+	const values = readValues(glb, `accessor ${index}'s sparse values`, sp.values.bufferView, sp.values.byteOffset, a.componentType, a.normalized, n as number, comps, charge);
+	for (let i = 0; i < (n as number); i++) {
+		const k = at[i];
+		if (k >= a.count) throw new Error(`accessor ${index} has a sparse index past its count`);
+		for (let c = 0; c < comps; c++) out[k * comps + c] = values[i * comps + c];
 	}
-	const view = glb.json.bufferViews?.[a.bufferView];
-	if (!view || view.buffer !== 0) throw new Error(`accessor ${index} is not in the GLB's own buffer`);
+	return out;
+}
+
+// `count` values of `comps` components each from a buffer view, as floats
+function readValues(
+	glb: Glb,
+	what: string,
+	bufferView: unknown,
+	byteOffset: unknown,
+	componentType: number,
+	normalized: unknown,
+	count: number,
+	comps: number,
+	charge: (values: number) => void,
+	// indices past 2^24 lose precision in floats, so they're read as doubles
+	as: Float32ArrayConstructor | Float64ArrayConstructor = Float32Array,
+): Float32Array | Float64Array {
+	const size = SIZES[componentType];
+	const view = Number.isSafeInteger(bufferView) ? glb.json.bufferViews?.[bufferView as number] : undefined;
+	if (!size || !view || view.buffer !== 0) throw new Error(`${what} is not in the GLB's own buffer`);
 	const stride = view.byteStride ?? comps * size;
-	const base = (view.byteOffset ?? 0) + (a.byteOffset ?? 0);
+	const base = (view.byteOffset ?? 0) + ((byteOffset as number | undefined) ?? 0);
 	const whole = (x: unknown) => Number.isSafeInteger(x) && (x as number) >= 0;
 	if (!whole(stride) || stride < comps * size || !whole(base) || !whole(view.byteLength))
-		throw new Error(`accessor ${index} has a bad offset or stride`);
+		throw new Error(`${what} has a bad offset or stride`);
 	// checked before anything is allocated, so a lying count can't exhaust memory
-	const end = a.count === 0 ? base : base + (a.count - 1) * stride + comps * size;
-	if (end > (view.byteOffset ?? 0) + view.byteLength || end > glb.bin.length)
-		throw new Error(`accessor ${index} runs past its buffer`);
-	charge();
-	const out = new Float32Array(a.count * comps);
-	for (let i = 0; i < a.count; i++) {
+	const end = count === 0 ? base : base + (count - 1) * stride + comps * size;
+	if (end > (view.byteOffset ?? 0) + view.byteLength || end > glb.bin.length) throw new Error(`${what} runs past its buffer`);
+	charge(count * comps);
+	const out = new as(count * comps);
+	for (let i = 0; i < count; i++) {
 		for (let c = 0; c < comps; c++) {
 			const at = base + i * stride + c * size;
 			let v: number;
-			switch (a.componentType) {
+			switch (componentType) {
 				case FLOAT: v = glb.bin.readFloatLE(at); break;
-				case 5120: v = glb.bin.readInt8(at); if (a.normalized) v = Math.max(v / 127, -1); break;
-				case 5121: v = glb.bin.readUInt8(at); if (a.normalized) v /= 255; break;
-				case 5122: v = glb.bin.readInt16LE(at); if (a.normalized) v = Math.max(v / 32767, -1); break;
-				case 5123: v = glb.bin.readUInt16LE(at); if (a.normalized) v /= 65535; break;
+				case 5120: v = glb.bin.readInt8(at); if (normalized) v = Math.max(v / 127, -1); break;
+				case 5121: v = glb.bin.readUInt8(at); if (normalized) v /= 255; break;
+				case 5122: v = glb.bin.readInt16LE(at); if (normalized) v = Math.max(v / 32767, -1); break;
+				case 5123: v = glb.bin.readUInt16LE(at); if (normalized) v /= 65535; break;
 				default: v = glb.bin.readUInt32LE(at);
 			}
 			out[i * comps + c] = v;
@@ -180,7 +214,7 @@ const spare = new WeakMap<Glb, Buffer>();
 export function addAccessor(
 	glb: Glb,
 	data: Float32Array | Uint16Array,
-	type: "SCALAR" | "VEC3" | "VEC4" | "MAT4",
+	type: "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT4",
 	withBounds = false,
 ): number {
 	const comps = COMPONENTS[type];

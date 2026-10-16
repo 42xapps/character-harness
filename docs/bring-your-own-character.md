@@ -40,12 +40,15 @@ The result is cached in `.cache/characters/<id>/` and rebuilt only when the mode
 
 Gestures and talking styles are what the director picks between. List the same names in the director's `gestures` and `registers` (`director.yaml`), or it will pick ones your character doesn't have.
 
+## Hair and cloth
+
+Hair, skirts and anything else your model's VRM spring bones describe swing as she moves. The runtime reads them from the model (VRM 1.0 or 0.x) and the player simulates them with its own cloth, mapping each spring's stiffness, gravity, drag and hit radius, and its colliders, onto it. The two simulations differ, so a spring can come out a little stiffer or looser than in other VRM apps; at most 24 chains per model are simulated, and any more are left out. To keep a model's springs still, set `springs: false` under `rig`; worth trying if something about the model looks wrong only once they swing.
+
 ## The face
 
 The player builds the face from the model's own VRM expressions: happy, angry, sad, relaxed, surprised, blinking, and the five vowel mouth shapes for lip sync. The harness's emotions (warm, playful, thoughtful...) are mixed from those.
 
 ## Not yet
 
-- Hair and cloth physics (VRM spring bones). Hair stays still.
-- A VRM 0.x model with sparse accessors (some exporters write morph targets that way) isn't turned, so it faces away from the camera.
+- A VRM 0.x model whose joint or triangle data is stored sparse (rare; sparse morph targets are fine) isn't turned, so it faces away from the camera.
 - Expressions in `.vrma` files are ignored. The face follows the conversation.

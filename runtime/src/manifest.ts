@@ -67,6 +67,7 @@ export type Rig =
 			idle: ClipSource[];
 			talk: Map<string, ClipSource[]>; // talking style -> its loops
 			gestures: Map<string, Gesture>;
+			springs: boolean; // the model's spring bones swing (hair, skirts)
 	  };
 
 export interface Character {
@@ -230,7 +231,7 @@ function readRig(file: string, dir: string, rig: Obj): Rig {
 			gestures.set(name, { source: readSources(file, dir, `${at}.clip`, g("clip").str(), true)[0], hold: g("hold").optBool() ?? false });
 		} else gestures.set(name, { source: readSources(file, dir, at, v, true)[0], hold: false });
 	}
-	return { kind: "model", model: abs, idle, talk, gestures };
+	return { kind: "model", model: abs, idle, talk, gestures, springs: f("springs").optBool() ?? true };
 }
 
 function readHooks(file: string, ext: Obj): Map<HookName, HookOptions> {

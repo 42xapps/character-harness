@@ -93,3 +93,11 @@ test("an id that could leave the cache folder is refused", () => {
 	assert.throws(() => loadCharacter(character(rig, "../../x")), /`id` must be lowercase letters/);
 	assert.equal(loadCharacter(character(rig, "my-char_2")).id, "my-char_2");
 });
+
+test("rig.springs is on unless set to false, and must be true or false", () => {
+	const on = loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm`));
+	assert.equal(on.rig.kind === "model" && on.rig.springs, true);
+	const off = loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  springs: false`));
+	assert.equal(off.rig.kind === "model" && off.rig.springs, false);
+	assert.throws(() => loadCharacter(character(`  engine: ">=0.5.8"\n  model: model.vrm\n  springs: "no"`)), /rig\.springs/);
+});

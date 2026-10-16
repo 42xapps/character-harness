@@ -1,6 +1,8 @@
 // Rewrites the parts of a VRM the player can't load as they are, before the
 // animations are baked on:
 //
+// - sparse accessors of float data (morph targets, mostly): written out in
+//   full, so the model can be turned like any other.
 // - several skins (common in VRMs exported from Unity): the player binds a
 //   model to one skeleton, so the skins are merged into one and each mesh's
 //   joint indices are renumbered into it.
@@ -24,7 +26,7 @@ const MIN_GROWTH = 64 * 1024 * 1024; // or twice the model's own binary data, if
 const MAX_MESH_COPIES = 4096;
 const MAX_COPIED = 8 * 1024 * 1024;
 const grown = new WeakMap<Glb, { added: number; limit: number }>();
-function addAccessor(glb: Glb, data: Float32Array | Uint16Array, type: "SCALAR" | "VEC3" | "VEC4" | "MAT4", withBounds = false): number {
+function addAccessor(glb: Glb, data: Float32Array | Uint16Array, type: "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT4", withBounds = false): number {
 	let g = grown.get(glb);
 	if (!g) grown.set(glb, (g = { added: 0, limit: Math.max(MIN_GROWTH, 2 * glb.bin.length) }));
 	g.added += data.byteLength;
@@ -273,15 +275,49 @@ export function convertV0Materials(glb: Glb): number {
 	return n;
 }
 
+// Writes every sparse accessor of float data (morph targets, mostly) out in
+// full, so a model whose morph targets are sparse can still be turned
+// (turnV0, which needs every accessor whole). Integer data
+// (joint indices, triangle indices) is left as it is: it must stay integer.
+// Returns how many were written out.
+export function densifySparse(glb: Glb): number {
+	// only a model that will be turned needs it; the read budget already bounds
+	// what it writes, so it doesn't spend the growth budget the turn needs
+	if (!glb.json.extensions?.VRM || glb.json.extensions.VRMC_vrm) return 0;
+	const accessors = glb.json.accessors ?? [];
+	let n = 0;
+	accessors.forEach((a, i) => {
+		if (!a.sparse || !(a.componentType === 5126 || a.normalized)) return;
+		const type = a.type as "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT4";
+		if (!["SCALAR", "VEC2", "VEC3", "VEC4", "MAT4"].includes(type)) return;
+		const data = readAccessor(glb, i);
+		// written as a new accessor, whose data and bounds (now in floats) this
+		// one takes over
+		const added = accessors[append(glb, data, type, true)];
+		accessors.pop();
+		a.bufferView = added.bufferView;
+		a.min = added.min;
+		a.max = added.max;
+		a.componentType = 5126;
+		delete a.byteOffset;
+		delete a.normalized;
+		delete a.sparse;
+		n++;
+	});
+	return n;
+}
+
 // Turns a VRM 0.x model to face +Z, as VRM 1.0 does: everything is turned 180
 // degrees about Y (x and z change sign) in place, the nodes, the bind matrices,
 // the vertices and morph targets, and the model's own animations, so the
 // skeleton the player builds from the bind pose turns too. Returns whether it
 // was turned.
 // Positions inside the VRM extension itself (first-person offset, spring bone
-// colliders) are not turned: the player reads only its humanoid and
-// expressions. A model with sparse accessors is left as it is, facing -Z, and
-// its motion is flipped instead.
+// colliders) are left alone here: the player reads only its humanoid and
+// expressions from it, and the springs are read and turned on their own
+// (springs.ts). A model with sparse accessors still (densifySparse writes out
+// the float ones) is left as it is, facing -Z, and its motion is flipped
+// instead.
 export function turnV0(glb: Glb): boolean {
 	const json = glb.json;
 	if (!json.extensions?.VRM || json.extensions.VRMC_vrm) return false;
