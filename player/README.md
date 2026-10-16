@@ -4,6 +4,13 @@ The app that shows the character: it renders it, plays its voice, captures the m
 
 Ready-made builds are on this repo's GitHub Releases; using one needs no Kaigen licence. To change the player, you build it yourself, which needs a Kaigen licence.
 
+For either platform, prepare the harness first: install Node 24 or later,
+download the matching harness source release, run `npm install` from its root,
+and copy `.env.example` to `.env`. Fill in the keys your character uses;
+FoxGlove needs `XAI_API_KEY` and `ELEVENLABS_API_KEY`. See the
+[harness quickstart](../README.md#quickstart). Then follow the installation or
+build steps for your platform below. The player alone does not run the conversation.
+
 ## Install a release (macOS)
 
 1. Download `character-player-<version>-macos-arm64.dmg` and `SHA256SUMS` from the release (Apple Silicon Macs), and check it (`shasum -a 256 -c --ignore-missing SHA256SUMS`).
@@ -17,15 +24,38 @@ Ready-made builds are on this repo's GitHub Releases; using one needs no Kaigen 
 
 3. Put this in the harness's `.env`, so `npm start` opens it:
 
-   ```
+   ```dotenv
    HARNESS_PLAYER="'/Applications/Character Player.app/Contents/MacOS/'*"
    ```
 
-4. On its first start, allow the microphone when macOS asks. When `npm start` opens the player, macOS asks for the app you ran `npm start` in (your terminal or editor); if it doesn't ask, allow it in System Settings > Privacy & Security > Microphone.
+4. Run `npm start` from the harness root. It starts the runtime and the prebuilt player together. Allow the microphone when macOS asks, then speak first. When `npm start` opens the player, macOS asks for the app you ran `npm start` in (your terminal or editor); if it doesn't ask, allow it in System Settings > Privacy & Security > Microphone.
 
 The app keeps what it writes, like the cache of imported models and its logs, in `~/Library/Application Support/com.mutuals.characterplayer`.
 
-## Build
+## Install a release (Windows)
+
+1. Download `character-player-<version>-windows-x64.zip` and
+   `SHA256SUMS-windows-x64` from the release, and compare the ZIP's hash from
+   `Get-FileHash .\character-player-<version>-windows-x64.zip -Algorithm SHA256`
+   with the checksum file.
+2. Extract the ZIP to a permanent folder. Keep the entire extracted folder
+   together: its `.exe`, cooked assets and any DLLs. No Kaigen SDK, licence,
+   compiler or Developer Mode is needed to run the player. The current Windows
+   packages are unsigned.
+3. Put this in the harness's `.env`, so `npm start` opens it. Use the extracted
+   executable's actual path, keeping both quote levels for paths with spaces:
+
+   ```dotenv
+   HARNESS_PLAYER='"C:/Users/you/Apps/character-player-0.1.0-windows-x64/Character Player.exe"'
+   ```
+
+4. Run `npm.cmd start` from the harness root. It starts the runtime and the
+   prebuilt player together. Allow microphone access for desktop apps in Windows
+   Settings, then speak first.
+
+## Build (macOS)
+
+Run these steps from `player/`.
 
 1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt`.
 2. Link this folder to the engine you installed (git ignores the link):
@@ -44,45 +74,40 @@ The app keeps what it writes, like the cache of imported models and its logs, in
 
 To have the runtime's `npm start` open it, put this in the harness's `.env`:
 
-```
+```dotenv
 HARNESS_PLAYER="cd player && hz/hzbuild macos run"
 ```
 
-### Windows
+## Build (Windows)
 
-From `player/`, link the pinned engine with `kaigen restore`, then build with
-`hz\hzbuild.exe windows` (add `run` to launch). The development executable is
-`out/windows/debug/CharacterPlayer.exe`. For distribution, use the publish build
-through `release-windows.ps1` below, rather than copying the debug executable.
+Run these steps from `player/`.
 
-## Install a release (Windows)
-
-1. Download `character-player-<version>-windows-x64.zip` and
-   `SHA256SUMS-windows-x64` from the GitHub release. Compare the ZIP's hash from
-   `Get-FileHash .\character-player-<version>-windows-x64.zip -Algorithm SHA256`
-   with the checksum file, then extract the ZIP to a permanent folder.
-2. Keep the entire extracted folder together: its `.exe`, cooked assets and
-   any DLLs. No Kaigen SDK, licence, compiler or Developer Mode is needed to run
-   the player. The current Windows packages are unsigned.
-3. Install Node 24 or later, download the matching harness source release and
-   run these commands from its root:
+1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt`.
+2. Link this folder to the pinned engine (git ignores the link):
 
    ```powershell
-   npm.cmd install
-   Copy-Item .env.example .env
-   notepad .env
+   kaigen restore
    ```
 
-4. Fill in `XAI_API_KEY` and `ELEVENLABS_API_KEY`. Set `HARNESS_PLAYER` to the
-   extracted executable, keeping the nested quotes for a path with spaces:
+3. Build and run:
 
-   ```dotenv
-   HARNESS_PLAYER='"C:/Users/you/Apps/character-player-0.1.0-windows-x64/Character Player.exe"'
+   ```powershell
+   .\hz\hzbuild.exe windows run
    ```
 
-5. Run `npm.cmd start` from the harness root. It starts the runtime and the
-   prebuilt player together. Allow microphone access for desktop apps in Windows
-   Settings and speak first. The player alone does not run the conversation.
+   The first build cooks the assets. Allow microphone access for desktop apps
+   in Windows Settings.
+
+To have the runtime's `npm start` open it, put this in the harness's `.env`:
+
+```dotenv
+HARNESS_PLAYER="cd player && hz\hzbuild.exe windows run"
+```
+
+To build without launching, use `.\hz\hzbuild.exe windows`. The development
+executable is `out/windows/debug/CharacterPlayer.exe`. For distribution, use
+the publish build through `release-windows.ps1` below, rather than copying the
+debug executable.
 
 ## Settings
 
