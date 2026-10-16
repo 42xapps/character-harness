@@ -1,5 +1,7 @@
 # Mutuals Character Harness
 
+![FoxGlove, the reference character](docs/images/foxglove.jpg)
+
 The harness [Mutuals](https://github.com/mutuals-inc) uses to give life to its characters: a character you can talk to by voice, with a face and body that react to what it says.
 
 > Status: pre-release. The runtime and the player work end to end. Ready-made player builds are on this repo's GitHub Releases, or you can build the player yourself with the Kaigen engine.
