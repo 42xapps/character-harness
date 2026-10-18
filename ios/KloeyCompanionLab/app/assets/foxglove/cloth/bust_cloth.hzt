@@ -1,0 +1,117 @@
+type ClothAuthoringBlobAsset
+version 3
+---
+cloth_type 10
+target_mesh_name ""
+params
+  gravity_dir
+    x 0.000000
+    y -1.000000
+    z 0.000000
+  gravity 5.000000
+  gravity_falloff 0.000000
+  damping 0.390000
+  use_damping_curve false
+  damping_curve
+    s 16 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000 0.390000
+  stabilization_time 0.100000
+  animation_pose_ratio 0.000000
+  distance_stiffness 1.000000
+  use_distance_curve false
+  distance_stiffness_curve
+    s 16 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000
+  distance_iterations 0
+  distance_velocity_attenuation 0.300000
+  tether_compression 0.900000
+  use_angle_restoration true
+  angle_restoration_stiffness 0.747000
+  use_angle_restoration_curve true
+  angle_restoration_curve
+    s 16 0.747000 0.707160 0.667320 0.627480 0.587640 0.547800 0.507960 0.468120 0.428280 0.388440 0.348600 0.308760 0.268920 0.229080 0.189240 0.149400
+  angle_restoration_velocity_attenuation 0.315000
+  angle_restoration_gravity_falloff 0.000000
+  use_angle_limit false
+  angle_limit_deg 60.000000
+  angle_limit_stiffness 1.000000
+  use_angle_limit_curve true
+  angle_limit_curve
+    s 16 0.000000 4.000000 8.000000 12.000000 16.000000 20.000000 24.000000 28.000000 32.000000 36.000000 40.000000 44.000000 48.000000 52.000000 56.000000 60.000000
+  use_max_distance false
+  max_distance 0.300000
+  use_max_distance_curve false
+  max_distance_curve
+    s 16 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000 0.300000
+  motion_stiffness 1.000000
+  use_backstop false
+  backstop_radius 10.000000
+  backstop_distance 0.000000
+  use_backstop_distance_curve false
+  backstop_distance_curve
+    s 16 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000
+  normal_axis 1
+  is_spring true
+  spring_power 0.047100
+  spring_limit_distance 0.020000
+  spring_normal_limit_ratio 1.000000
+  spring_noise 0.000000
+  radius 0.020000
+  use_radius_curve false
+  radius_curve
+    s 16 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000 0.020000
+  use_collision true
+  collision_friction 0.050000
+  use_self_collision false
+  self_collision_thickness 0.005000
+  use_self_thickness_curve false
+  self_thickness_curve
+    s 16 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000 0.005000
+  self_collision_cloth_mass 0.000000
+  world_inertia 0.400000
+  depth_inertia 0.000000
+  movement_inertia_smoothing 0.400000
+  movement_speed_limit 5.000000
+  rotation_speed_limit 720.000000
+  local_inertia 1.000000
+  local_movement_speed_limit 5.000000
+  local_rotation_speed_limit 720.000000
+  particle_speed_limit 4.000000
+  centrifugal_acceleration 0.000000
+  teleport_mode 0
+  teleport_distance 0.500000
+  wind_mode 0
+  wind_dir
+    x 0.000000
+    y 0.000000
+    z 0.000000
+  wind_main 0.000000
+  wind_influence 0.150000
+  wind_turbulence 1.000000
+  wind_depth_weight 0.000000
+  wind_frequency 1.000000
+  wind_blend 0.700000
+  wind_synchronization 0.700000
+  wind_zone_center
+    x 0.000000
+    y 0.000000
+    z 0.000000
+  wind_zone_radius 0.000000
+  use_bending false
+  bending_stiffness 1.000000
+  blend_weight 1.000000
+  rotational_interpolation 0.500000
+  root_rotation 0.500000
+reduction
+  simple_distance 0.000000
+  shape_distance 0.000000
+selection_max_connection_distance 0.000000
+normal_alignment_mode 0
+normal_alignment_pos
+  x 0.000000
+  y 0.000000
+  z 0.000000
+target_vertex_count 0
+selection_positions 0
+selection_attributes 0
+colliders 0
+bone_names 6 "J_Sec_R_Bust1" "J_Sec_R_Bust2" "J_Sec_R_Bust2_end" "J_Sec_L_Bust1" "J_Sec_L_Bust2" "J_Sec_L_Bust2_end"
+bone_attributes 6 1 2 2 1 2 2

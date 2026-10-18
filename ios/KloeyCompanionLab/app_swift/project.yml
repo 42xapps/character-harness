@@ -1,0 +1,64 @@
+name: KloeyCompanionLab
+options:
+  bundleIdPrefix: com.kaigen.kloeycompanionlab
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  KloeyCompanionLab:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: ../app/cooked
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kaigen.kloeycompanionlab
+        "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(SRCROOT)/../app/out/ios-framework/HZEngine.xcframework/ios-arm64"
+        "OTHER_LDFLAGS[sdk=iphoneos*]": "$(inherited) -lc++ -framework HZEngine -framework Foundation -framework UIKit -framework QuartzCore -framework Metal -framework MetalFX -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework Network -framework Security -framework CoreText -framework CoreGraphics -framework GameController -framework VideoToolbox -framework CoreMedia"
+        CODE_SIGN_STYLE: Automatic
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: KloeyCompanionLab
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: Speak with your companion.
+        NSLocalNetworkUsageDescription: Connect to your development conversation server.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+  KloeyCompanionLabUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: KloeyCompanionLab
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kaigen.kloeycompanionlab.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: KloeyCompanionLab
+schemes:
+  KloeyCompanionLab:
+    build:
+      targets:
+        KloeyCompanionLab: all
+        KloeyCompanionLabUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - KloeyCompanionLabUITests

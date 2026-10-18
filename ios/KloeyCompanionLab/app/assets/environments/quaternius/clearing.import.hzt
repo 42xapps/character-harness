@@ -1,0 +1,28 @@
+type ModelImportSettings
+version 23
+---
+rig_mode "none"
+import_scale 1
+shader_override 7
+  material "AutumnLeaves"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+  material "Flowers"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+  material "Grass"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+  material "Leaves.001"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+  material "Leaves_NormalTree.002"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+  material "Leaves_Pine"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+  material "Leaves_TwistedTree.001"
+  shader "/shaders/renderer/nature_wind.glsl"
+
+pass_override 0

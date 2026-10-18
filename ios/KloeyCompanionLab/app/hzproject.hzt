@@ -1,0 +1,21 @@
+type HzProjectConfig
+version 1
+---
+name KloeyCompanionLab
+id 86798813ee5ad098b0e0c72d8d76665a
+template_name kloey-companion-template
+engine hz
+src_roots 1 src
+asset_roots 1 assets
+shader_roots 1 shaders
+macos_bundle_name "Kloey Companion Lab"
+macos_bundle_id com.kaigen.kloeycompanionlab
+ios_public_headers 1 src/app_swift/app_host.h
+engine_version 0.6.2.001-beta
+publish
+  product_name "Kloey Companion Lab"
+  version 0.1.0
+  company "Mutuals"
+  copyright "Copyright (c) 2026 Mutuals"
+
+modules 1 hz/modules/gameplay_blocks

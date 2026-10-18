@@ -1,0 +1,14 @@
+{
+  "source": "Walk in the Woods by Don Carson, CC BY 3.0",
+  "removed_foreground_objects": [
+    "group1597509149"
+  ],
+  "remaining_source_meshes": 118,
+  "exported_objects": 1,
+  "stage_scale": 14,
+  "standing_point_in_source": [
+    0.1,
+    -0.09469,
+    0.55
+  ]
+}

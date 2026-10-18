@@ -1,0 +1,53 @@
+type CharacterFaceRigBlobAsset
+version 17
+---
+lipsync_profile "mutuals/lipsync_profile.hzt"
+blink "Fcl_EYE_Close"
+eye_close "Fcl_EYE_Close"
+eye_wide "Fcl_EYE_Surprised"
+eye_smile "Fcl_EYE_Fun"
+static_morphs 1
+  mesh "Body__BodyMain"
+  shape "Small_hands"
+  value 2.000000
+visemes 5
+  key "A"
+  target "Fcl_MTH_A"
+  max_weight 0.850000
+  key "I"
+  target "Fcl_MTH_I"
+  max_weight 1.000000
+  key "U"
+  target "Fcl_MTH_U"
+  max_weight 1.000000
+  key "E"
+  target "Fcl_MTH_E"
+  max_weight 1.000000
+  key "O"
+  target "Fcl_MTH_O"
+  max_weight 0.850000
+rules 8
+  pattern "Fcl_MTH_"
+  match CHARACTER_FACE_MATCH_PREFIX
+  region CHARACTER_FACE_REGION_MOUTH
+  pattern "Fcl_EYE_Close"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE
+  pattern "Fcl_EYE_Close_L"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE
+  pattern "Fcl_EYE_Close_R"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE
+  pattern "Fcl_EYE_Joy"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE
+  pattern "Fcl_EYE_Joy_L"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE
+  pattern "Fcl_EYE_Joy_R"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE
+  pattern "Fcl_ALL_Joy"
+  match CHARACTER_FACE_MATCH_EXACT
+  region CHARACTER_FACE_REGION_EYECLOSE

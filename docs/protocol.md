@@ -16,6 +16,7 @@ So one turn is: speech in (`stt_*`), one `llm` request, then a `tts` request per
 | `{t:"stt_start", utterance?}` | the user started speaking. With an `utterance` (a positive integer), each utterance gets its own transcription session, and `stt_eos` must carry the same number |
 | `{t:"stt_eos", utterance?}` | the user stopped speaking: commit the transcript |
 | `{t:"stt_reset"}` | throw away what was heard |
+| `{t:"context", snapshot}` | optional scene telemetry, sent on activity transitions and at least once per second while visible. See below. It triggers no model or speech request |
 | `{t:"llm", id, history, source?}` | write a reply. `history` is the conversation so far, `[{role, content}]` with `role` `user` or `assistant` (others are dropped; the system prompt is the character's), ending with the user's turn. `source` is `voice` (default), `chat` or `screen`; the player sends voice only |
 | `{t:"tts", id, text}` | voice one sentence of the reply. A `tts` with empty text, or the `…` of a silent reply, gets no answer at all |
 | `{t:"cancel", id}` | stop the reply or sentence with that `id`, for example when the user interrupts. Nothing more is sent for it: no `llm_done`, `tts_done` or `error`. The `id` may then be used again at once |
@@ -53,3 +54,44 @@ The first sentence of a reply always gets an empty `beat` before any of its audi
 ### Silent replies
 
 When an extension cancels a turn, the reply is a single `{t:"llm_delta", id, text:"…"}` followed by `llm_done`. The app voices `…` as silence: its `tts` gets no answer.
+
+## Optional world context (schema 1)
+
+The Lab sends this additive message on the same authenticated WebSocket, before
+its voice tick. Older runtimes ignore it and older players can omit it; the
+existing v1 voice/audio messages and beat vocabulary are unchanged.
+
+```json
+{"t":"context","snapshot":{"schema":1,"scene_id":"quaternius_clearing","avatar_id":"foxglove","platform":"ios","position":[0,0,-1.2],"activity":"attend","previous_activity":"walk","previous_age_s":1,"destination":1,"activity_enabled":true,"cards_expanded":false,"framing":"full_body","capabilities":["voice_chat","expressions","gestures","idle_stroll","orbit_camera","cards"]}}
+```
+
+`position` is world-space meters, not the phone's location. Activities are
+`rest`, `turn`, `walk`, `observe`, `attend`, `unavailable`. `previous_age_s`
+is seconds since the last activity transition, capped at 3600; it is not a
+persistent memory. `destination` is the local controller's route counter
+(next route after arrival), not proof of arrival or an LLM command target.
+`activity_enabled` reflects scene visibility and Reduce Motion. Framing is
+`full_body` or `close_up`; `cards_expanded` says nothing about card contents.
+Capabilities are descriptive ids, not executable tools.
+
+`runtime/src/context.ts` reconstructs only allowed fields: bounded finite
+coordinates, enum values, safe ids, booleans and at most 16 capabilities.
+Unknown keys never enter instructions. Each connection owns its latest valid
+snapshot; invalid messages do not refresh it. On receipt of `llm`, the runtime
+captures an independent `state.context` for that turn, even if startup or hooks
+wait. A server-measured age above five seconds becomes `stale` without live
+scene fields. Missing telemetry becomes `missing`. Context messages cause no
+STT, LLM or TTS request and do not modify conversation history.
+
+The world-context extension maps recognized scene/avatar ids and capability
+ids to server-authored facts. A client cannot supply new instructions or grant
+an action tool by adding a field. This development token identifies a session
+connection, not a production user account; production still needs authenticated
+per-user sessions. Current scene state is supplied by the app, not inferred
+from pixels or independently measured by the model.
+
+The world-context extension deliberately excludes `position`/`position_m` and
+`destination` from the prompt sent to the LLM. Keeping them in the optional
+app-to-server schema does not send them to the model. Transcript tracing defaults
+to off; if explicitly enabled for debugging, the local trace can include the
+original validated telemetry snapshot.

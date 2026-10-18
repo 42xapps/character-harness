@@ -1,6 +1,8 @@
 // The one JSON object every hook receives. docs/architecture.md, "State", is the
 // contract; renaming a key here is a breaking change for every extension.
 
+import type { TurnContext } from "./context.ts";
+
 export const STATE_SCHEMA = 1;
 
 export interface Message {
@@ -31,6 +33,7 @@ export interface State {
 	character: Record<string, unknown>;
 	session: { id: string; channel: string; end_reason?: string };
 	input?: { text: string; channel: string };
+	context?: TurnContext;
 	messages?: Message[];
 	prompt?: string;
 	reply?: string;

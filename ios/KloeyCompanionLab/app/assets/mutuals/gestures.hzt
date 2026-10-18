@@ -1,0 +1,31 @@
+type GestureSetBlobAsset
+version 16
+---
+gestures 7
+  name "wave"
+  emote "foxglove/emotes/wave.hza"
+  hold false
+
+  name "nod"
+  emote "foxglove/emotes/nod.hza"
+  hold false
+
+  name "cheer"
+  emote "foxglove/emotes/cheer.hza"
+  hold false
+
+  name "hand-on-waist"
+  emote "foxglove/emotes/hand-on-waist.hza"
+  hold false
+
+  name "hands-on-hips"
+  emote "foxglove/emotes/hands-on-hips.hza"
+  hold false
+
+  name "surprise"
+  emote "foxglove/emotes/surprise.hza"
+  hold false
+
+  name "sheepish"
+  emote "foxglove/emotes/sheepish.hza"
+  hold false

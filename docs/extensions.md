@@ -41,7 +41,7 @@ extensions:
 
 The runtime passes `config` to the extension untouched. For a long config, `config_file` names a YAML file in the character's folder instead.
 
-Four extensions ship with the harness: `emotion-tags` changes the face from the tag that opens each sentence, `director` stages each sentence with beats (see "Beats" in `architecture.md`), `memory` remembers what the user tells the character about their life, and `reactions` starts each reply with how the character took what the user said.
+Five extensions ship with the harness: `emotion-tags` changes the face from delivery tags, `director` stages each line, `memory` remembers what the user says about their life, `reactions` starts replies with a reaction, and `world-context` grounds replies in optional app telemetry.
 
 ## Handlers
 
@@ -112,3 +112,62 @@ An extension is a folder with an `extension.yaml`; its `handler` is a file in th
 ## What the runtime does not do
 
 Namespacing, retries and storage are up to each extension. Convention: keep your data under `state.ext.<name>`.
+
+## World context and local development traces
+
+`extensions/world-context` uses `before_llm` to append descriptive context to
+the character prompt. Configure it with `characters/foxglove/world.yaml`:
+scene/avatar ids, authored environment and appearance, capability descriptions,
+unsupported actions, and `trace: { enabled: false, max_bytes: 2097152 }`.
+Config is checked at startup. There is no extra model call. Missing/stale or
+unrecognized telemetry must not be filled in from old assistant claims.
+
+The active display name is **Kloey**. The folder, manifest id and rig profile
+remain `foxglove` for saved-session and cooked-asset compatibility. The director's
+vocabulary, delivery tags, voice and models retain their existing contracts.
+
+Non-blocking `after_llm`, `on_sentence`, `after_turn` and `on_session_end` hooks
+write private local JSONL files to `.cache/conversations/<session-id>.jsonl`.
+They record generated replies and TTS-requested sentences separately. These
+are **not confirmed audible transcripts**: device interruption/playback is not
+acknowledged by this protocol. Raw microphone audio is not stored. Trace entries
+carry `playback_verified: false`; error/end fields are included when available.
+Input/reply text is bounded to 8,000/16,000 characters. Known credential values,
+API-key patterns and WebSocket URLs are redacted. No full history, environment
+file, provider header or keys are logged. File mode is 0600, the directory is
+0700 when created, files are ignored by Git, each file stops growing at the
+configured cap, and pending writes are bounded. Existing traces are retained
+locally; review and remove them deliberately when finished. Trace collection is
+for this development setup, not a production analytics policy.
+
+The reference config defaults to `trace.enabled: false`. For a deliberate local debugging session, set it to `true` and restart the runtime; set it back to `false` and restart to stop future writes. Changing the file does not alter an already running runtime or delete existing traces.
+OpenAI Responses storage remains `false`; this extension does not enable remote
+analytics, persistent memory or new action tools. It writes only its own
+`state.ext["world-context"]` key and the shared `prompt` field.
+
+Prompt references: [OpenAI GPT-6 guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices)
+and [prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering).
+The prompt uses explicit identity/scope, separate descriptive context, short spoken
+output rules and grounded examples. Coding-agent instructions from the model guide
+are not copied into the companion persona. GPT-6 Luna, reasoning effort `none`,
+the Responses request adapter and `store: false` remain as configured.
+
+## Authored character lore and language
+
+Kloey's prompt retains nine authored origin-story memories and ten expressive
+flaws. Those fixed character facts are separate from current scene telemetry,
+actual conversations with the user and cross-session personal memory. Story
+streams, Josh, Comet Jr and historical audience counts do not describe the current
+app channel, provide a live database or place an animal in the rendered scene.
+
+The model projection excludes raw position coordinates and the route counter;
+they remain validated app-to-server telemetry and may appear in an explicitly
+enabled local debug trace. Narrative context still includes actual activity,
+recent activity, authored scene facts and descriptive capabilities.
+
+`stt.language` is omitted so Scribe v2 Realtime detects the spoken language.
+`SttRelay` already omits `language_code` when no hint is configured; no STT relay
+code change is needed. The original seven STT keyterms have been restored at the
+user's request. This config change needs a runtime restart and does not establish
+Arabic recognition or voice pronunciation quality. Source:
+[ElevenLabs Realtime language parameter](https://elevenlabs.io/docs/api-reference/speech-to-text/v-1-speech-to-text-realtime).

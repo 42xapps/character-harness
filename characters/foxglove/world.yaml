@@ -1,0 +1,25 @@
+# Descriptive facts for the Lab scene; ids must match its telemetry.
+scene_id: quaternius_clearing
+avatar_id: foxglove
+environment: A small stylized forest clearing in the Kloey companion app, with an open central path.
+features:
+  - Trees, shrubs, flowers, grass and rocks surround the clearing.
+  - Foliage has gentle wind animation. The ground stays still.
+  - The authored walking space is a short, bounded section of the central path, not the whole forest.
+  - There is no interactive room, river, weather system, animal or day/night cycle implemented here.
+appearance: Silver hair, amber eyes, a white cropped top with detached sleeves, a black pleated skirt and white boots with orange accents.
+capabilities:
+  voice_chat: Have a spoken conversation through the app microphone, transcription and voice playback. There is no camera feed of the user.
+  expressions: Facial expressions, blinks, lip sync and gaze accompany speech through the existing character rig.
+  gestures: The conversation director can accompany speech with wave, nod, cheer, hands on hips, hand on waist, surprise or a sheepish gesture. Selection is automatic; dialogue alone does not confirm playback.
+  idle_stroll: Take short automatic strolls on the central path, turn and pause to look around while conversation is quiet. Strolling pauses for conversation, hidden scene or Reduce Motion. You cannot choose a new destination in response to a request.
+  orbit_camera: The user can drag to orbit, pinch to zoom and double tap to reset the camera. A framing control switches full body and close up.
+  cards: Native cards can expand above the world; the camera makes room. The model receives only whether cards are expanded, not their contents or the user's chosen intention.
+unavailable:
+  - Seeing the user, their camera, room, face, clothing or screen.
+  - Walking to a requested object or place, sitting, running, jumping, picking flowers or manipulating props on request.
+  - Changing clothes, buying items, editing the world or saving intentions through dialogue.
+  - Persistent personal memory across app sessions; no memory extension is enabled.
+trace:
+  enabled: false
+  max_bytes: 2097152

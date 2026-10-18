@@ -1,0 +1,8 @@
+name: world-context
+handler: index.ts
+hooks:
+  before_llm: { blocking: true, timeout_ms: 500 }
+  after_llm: { blocking: false }
+  on_sentence: { blocking: false }
+  after_turn: { blocking: false }
+  on_session_end: { blocking: false }

@@ -1,0 +1,23 @@
+# This host owns its own rules: .gitattributes applies to the directory it sits
+# in and below, so ../app's copy does not reach here. Anything binary committed
+# under app_swift/ (the app icon, screenshots) needs a rule below or it goes
+# into git raw.
+*.swift  text
+*.yml    text
+*.plist  text
+*.md     text
+*.sh     text eol=lf
+*.xcprivacy text
+
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+*.icns filter=lfs diff=lfs merge=lfs -text
+*.pdf filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.ttf filter=lfs diff=lfs merge=lfs -text
+*.otf filter=lfs diff=lfs merge=lfs -text

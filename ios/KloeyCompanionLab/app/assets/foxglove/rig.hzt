@@ -1,0 +1,15 @@
+type CharacterRigBlobAsset
+version 17
+---
+hidden 19 "Veia_jnt" "ExtraMouth_Angry_jnt" "ExtraMouth_Happy_jnt" "J_Adj_L_Heart_Eye2" "J_Adj_R_Heart_Eye2" "Floating_Hearts_jnt1" "Floating_Hearts_jnt2" "Floating_Hearts_jnt3" "Floating_Hearts_jnt4" "Floating_Hearts_jnt5" "Floating_Hearts_jnt6" "Floating_Hearts_jnt7" "Floating_BoredSmokes_jnt_01" "Floating_BoredSmokes_jnt_02" "Floating_BoredSmokes_jnt_03" "Floating_BoredSmokeSingle_jnt" "Floating_Star_jnt3" "Floating_Star_jnt4" "Floating_Star_jnt6"
+roles 5
+  role "eye_l"
+  joint "J_Adj_L_FaceEye"
+  role "eye_r"
+  joint "J_Adj_R_FaceEye"
+  role "head"
+  joint "J_Bip_C_Head"
+  role "neck"
+  joint "J_Bip_C_Neck"
+  role "chest"
+  joint "J_Bip_C_UpperChest"

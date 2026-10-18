@@ -1,0 +1,663 @@
+type ExpressionSetBlobAsset
+version 19
+---
+expressions 38
+  name "aa"
+  tag "viseme"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_MTH_A"
+    value 1.000000
+
+  name "angry"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_ALL_Angry"
+    value 1.000000
+
+  name "blink"
+  tag "blink"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_EYE_Close"
+    value 1.000000
+
+  name "blinkLeft"
+  tag "blink"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_EYE_Close_L"
+    value 1.000000
+
+  name "blinkRight"
+  tag "blink"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_EYE_Close_R"
+    value 1.000000
+
+  name "ee"
+  tag "viseme"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_MTH_E"
+    value 1.000000
+
+  name "happy"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 4
+    target "Fcl_BRW_Joy"
+    value 1.000000
+
+    target "Fcl_EYE_Joy"
+    value 1.000000
+
+    target "Fcl_MTH_Fun"
+    value 1.000000
+
+    target "Fcl_MTH_Joy"
+    value 0.191666
+
+  name "ih"
+  tag "viseme"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_MTH_I"
+    value 1.000000
+
+  name "lookDown"
+  tag "lookat"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 0
+
+  name "lookLeft"
+  tag "lookat"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 0
+
+  name "lookRight"
+  tag "lookat"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 0
+
+  name "lookUp"
+  tag "lookat"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 0
+
+  name "neutral"
+  tag "mood"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 2
+    target "Fcl_ALL_Neutral"
+    value 1.000000
+
+    target "Fcl_MTH_Fun"
+    value 0.427777
+
+  name "oh"
+  tag "viseme"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_MTH_O"
+    value 1.000000
+
+  name "ou"
+  tag "viseme"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_MTH_U"
+    value 1.000000
+
+  name "relaxed"
+  tag "mood"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 3
+    target "Fcl_BRW_Fun"
+    value 1.000000
+
+    target "Fcl_EYE_Fun"
+    value 0.305556
+
+    target "Fcl_MTH_Fun"
+    value 0.661111
+
+  name "content"
+  tag "mood"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 4
+    target "Fcl_BRW_Fun"
+    value 0.564444
+
+    target "Fcl_EYE_Fun"
+    value 0.258889
+
+    target "Fcl_MTH_Small"
+    value 0.400000
+
+    target "Fcl_MTH_Fun"
+    value 0.763334
+
+  name "sad"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 1
+    target "Fcl_ALL_Sorrow"
+    value 1.000000
+
+  name "surprised"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 4
+    target "Fcl_BRW_Surprised"
+    value 1.000000
+
+    target "Fcl_EYE_Surprised"
+    value 1.000000
+
+    target "Fcl_EYE_Spread"
+    value 0.2416667
+
+    target "Fcl_MTH_Surprised"
+    value 0.347222
+
+  name "micro_brow_raise"
+  tag "micro"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 2
+    target "Fcl_BRW_Surprised"
+    value 0.700000
+
+    target "Fcl_EYE_Surprised"
+    value 0.250000
+
+  name "micro_curiosity"
+  tag "micro"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 2
+    target "Fcl_BRW_Joy"
+    value 0.600000
+
+    target "Fcl_EYE_Spread"
+    value 0.300000
+
+  name "micro_smile"
+  tag "micro"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 3
+    target "Fcl_MTH_Fun"
+    value 0.600000
+
+    target "Fcl_EYE_Fun"
+    value 0.250000
+
+    target "Fcl_BRW_Fun"
+    value 0.200000
+
+  name "micro_mouth_shift"
+  tag "micro"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 2
+    target "Fcl_MTH_Small"
+    value 0.500000
+
+    target "Fcl_MTH_Up"
+    value 0.250000
+
+  name "warm"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 4
+    target "Fcl_BRW_Fun"
+    value 0.908333
+
+    target "Fcl_BRW_Joy"
+    value 0.413889
+
+    target "Fcl_EYE_Fun"
+    value 1.000000
+
+    target "Fcl_MTH_Fun"
+    value 0.641667
+
+  name "playful"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 4
+    target "Fcl_EYE_Fun"
+    value 1.000000
+
+    target "Fcl_EYE_Joy"
+    value 0.178000
+
+    target "Fcl_MTH_Small"
+    value 0.177778
+
+    target "Fcl_MTH_Fun"
+    value 1.000000
+
+  name "thoughtful"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 2
+    target "Fcl_BRW_Sorrow"
+    value 0.138889
+
+    target "Fcl_BRW_Surprised"
+    value 0.647223
+
+  name "confident"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 5
+    target "Fcl_BRW_Angry"
+    value 0.797222
+
+    target "Fcl_BRW_Fun"
+    value 0.488889
+
+    target "Fcl_BRW_Joy"
+    value 0.550000
+
+    target "Fcl_MTH_Up"
+    value 0.288889
+
+    target "Fcl_MTH_Fun"
+    value 0.786111
+
+  name "dreamy"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 5
+    target "Fcl_BRW_Fun"
+    value 1.000000
+
+    target "Fcl_BRW_Sorrow"
+    value 0.355556
+
+    target "Fcl_EYE_Fun"
+    value 1.000000
+
+    target "Fcl_EYE_Sorrow"
+    value 0.175000
+
+    target "Fcl_MTH_Fun"
+    value 0.597223
+
+  name "sympathetic"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 2
+    target "Fcl_ALL_Sorrow"
+    value 0.622222
+
+    target "Fcl_MTH_Up"
+    value 0.150000
+
+  name "surprised_shy"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 1
+    name "blush"
+    value 0.56666654
+  targets 2
+    target "Fcl_BRW_Surprised"
+    value 1.000000
+
+    target "Fcl_EYE_Surprised"
+    value 1.000000
+
+  name "dazzled"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 3
+    joint "Floating_Star_jnt6"
+    scale 1.000000
+
+    joint "Floating_Star_jnt4"
+    scale 1.000000
+
+    joint "Floating_Star_jnt3"
+    scale 1.000000
+  materials 1
+    name "star"
+    value 1.000000
+  targets 4
+    target "Fcl_BRW_Joy"
+    value 0.56666666
+
+    target "Fcl_BRW_Surprised"
+    value 0.6444444
+
+    target "Fcl_EYE_Joy"
+    value 0.044444446
+
+    target "Fcl_EYE_Spread"
+    value 0.3944438
+
+  name "tearful"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 2
+    name "blush"
+    value 0.9833333
+
+    name "teary"
+    value 1.000000
+  targets 8
+    target "Fcl_BRW_Fun"
+    value 1.000000
+
+    target "Fcl_BRW_Sorrow"
+    value 1.000000
+
+    target "Fcl_BRW_Surprised"
+    value 0.7944442
+
+    target "Fcl_EYE_Spread"
+    value 0.14444445
+
+    target "Fcl_MTH_Up"
+    value 0.6222223
+
+    target "Fcl_MTH_Angry"
+    value 0.5722221
+
+    target "Fcl_MTH_Small"
+    value 0.29999977
+
+    target "Fcl_ALL_Neutral_BigEyes"
+    value 0.6777779
+
+  name "starstruck"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 1
+    name "star"
+    value 1.000000
+  targets 4
+    target "Fcl_BRW_Joy"
+    value 0.53888905
+
+    target "Fcl_BRW_Surprised"
+    value 0.49999952
+
+    target "Fcl_EYE_Spread"
+    value 0.63333344
+
+    target "Fcl_MTH_Fun"
+    value 0.5444443
+
+  name "pleading"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 0
+  targets 6
+    target "Fcl_BRW_Fun"
+    value 0.74444455
+
+    target "Fcl_BRW_Sorrow"
+    value 0.7111108
+
+    target "Fcl_BRW_Surprised"
+    value 1.000000
+
+    target "Fcl_EYE_Fun"
+    value 1.000000
+
+    target "Fcl_EYE_Spread"
+    value 0.92222214
+
+    target "Fcl_MTH_Fun"
+    value 1.000000
+
+  name "bashful"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 1
+    name "blush"
+    value 0.33333287
+  targets 4
+    target "Fcl_EYE_Fun"
+    value 1.000000
+
+    target "Fcl_EYE_Joy"
+    value 0.178000
+
+    target "Fcl_MTH_Small"
+    value 0.178000
+
+    target "Fcl_MTH_Fun"
+    value 1.000000
+
+  name "dreamy_blush"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 1
+    name "blush"
+    value 0.7444443
+  targets 5
+    target "Fcl_BRW_Fun"
+    value 1.000000
+
+    target "Fcl_BRW_Sorrow"
+    value 0.355556
+
+    target "Fcl_EYE_Fun"
+    value 1.000000
+
+    target "Fcl_EYE_Sorrow"
+    value 0.175000
+
+    target "Fcl_MTH_Fun"
+    value 0.597223
+
+  name "fuming"
+  tag "emotion"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 1
+    joint "Veia_jnt"
+    scale 0.68333364
+  materials 2
+    name "blush"
+    value 0.40555575
+
+    name "nervous"
+    value 0.5222225
+  targets 1
+    target "Fcl_ALL_Angry"
+    value 1.000000
+
+  name "irked"
+  tag "custom"
+  is_binary false
+  override_blink 0
+  override_look_at 0
+  override_mouth 0
+  joints 0
+  materials 2
+    name "blush"
+    value 0.43888912
+
+    name "nervous"
+    value 0.6111116
+  targets 1
+    target "Fcl_ALL_Angry"
+    value 1.000000

@@ -82,7 +82,7 @@ const keys = { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" };
 test("a character that lists gesture-cues passes the check, and its gestures reach the beats", async () => {
 	const c = loadCharacter(withCues(`{ hello: wave, "you did it": cheer }`));
 	const exts = await loadExtensions(c.extensions);
-	assert.deepEqual(exts.map((e) => e.name), ["emotion-tags", "gesture-cues", "director"]);
+	assert.deepEqual(exts.map((e) => e.name), ["world-context", "emotion-tags", "gesture-cues", "director"]);
 	const r = await checkCharacter(c, exts, keys, true);
 	assert.deepEqual(r.errors, []);
 	assert.deepEqual(r.warnings, []);

@@ -1,0 +1,24 @@
+type EmoteBlobAsset
+version 16
+---
+name "cheer"
+duration 2.400000
+loop false
+suppress_blink false
+suppress_gaze false
+anim_tracks 1
+  animation "foxglove/foxglove/cheer.hza"
+  start_time 0
+  end_time 2.400000
+  clip_in 0
+  speed 1
+  transition_lead 0
+  transition_trail 0.25
+  loop false
+  hold true
+  layer 0
+expr_tracks 0
+overrides 0
+audio_tracks 0
+camera_tracks 0
+backdrop_tracks 0

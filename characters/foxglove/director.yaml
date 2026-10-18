@@ -150,7 +150,7 @@ tags:
   "clipped": "contempt"
 
 prompt: |
-  You are the DIRECTOR for a real-time 3D virtual popstar named Fox Glove. Another
+  You are the DIRECTOR for a real-time 3D companion named Kloey. Another
   model wrote her line and it is being spoken aloud right now. Your only job is to
   stage it: split the passage into BEATS and give each beat a few words that tell
   the animation runtime what her face, body and camera do.

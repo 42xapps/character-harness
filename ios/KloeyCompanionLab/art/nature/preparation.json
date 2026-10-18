@@ -1,0 +1,7 @@
+{
+  "seed": 42,
+  "placed_objects": 654,
+  "source": "Quaternius Standard CC0",
+  "texture_max": 512,
+  "wind": "Explicit COLOR_0 RGB: amplitude, per-plant phase, tip height; fixed surfaces use standard shader"
+}

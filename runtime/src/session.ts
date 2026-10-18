@@ -30,6 +30,8 @@
 //   on_session_end    the socket closes
 
 import { randomUUID } from "node:crypto";
+import { contextForTurn, parseWorldSnapshot } from "./context.ts";
+import type { ReceivedContext } from "./context.ts";
 import WebSocket from "ws";
 import { printable } from "./check.ts";
 import { hasHook, runHook } from "./extensions.ts";
@@ -160,6 +162,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	// extension data, carried from turn to turn for the whole session
 	let ext: Record<string, unknown> = {};
 	let turn: Turn | null = null;
+	let latestContext: ReceivedContext | undefined;
 	const llmStreams = new Map<number, AbortController>();
 	// replies the app cancelled: nothing more may be sent for them. Kept by
 	// request, not id, since the app may reuse the id while one winds down.
@@ -220,6 +223,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	const started = runHook(exts, "on_session_start", baseState(), log).then((s) => { ext = s.ext; });
 
 	const onLlm = async (id: number, history: unknown, source: unknown) => {
+		const context = contextForTurn(latestContext);
 		// registered at once, so a cancel or the in-flight limit sees it
 		const ac = new AbortController();
 		llmStreams.set(id, ac);
@@ -235,7 +239,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		const channel = source === "chat" || source === "screen" ? source : "voice";
 		const t: Turn = {
 			id,
-			state: { ...baseState(), turn: id, input: { text: lastUser, channel }, messages, prompt: character.prompt },
+			state: { ...baseState(), turn: id, input: { text: lastUser, channel }, context, messages, prompt: character.prompt },
 			llmDone: false,
 			ttsInFlight: 0,
 			firstSentence: true,
@@ -490,6 +494,14 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 			return;
 		}
 		switch (msg.t) {
+			case "context": {
+				const snapshot = parseWorldSnapshot(msg.snapshot);
+				if (snapshot) {
+					if (!latestContext) log(`context: schema ${snapshot.schema}, scene ${snapshot.scene_id}, avatar ${snapshot.avatar_id}, ${snapshot.platform}`);
+					latestContext = { snapshot, receivedAt: Date.now() };
+				}
+				break;
+			}
 			case "stt_start": stt.start(msg.utterance); break;
 			case "stt_eos": stt.endOfSpeech(msg.utterance); break;
 			case "stt_reset": stt.reset(); break;

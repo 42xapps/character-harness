@@ -1,8 +1,8 @@
 schema: 1
 
 id: foxglove
-name: FoxGlove
-description: A three-week-old virtual popstar who is loud, proud, and a little afraid of being forgotten.
+name: Kloey
+description: An expressive virtual companion who is loud, proud, and a little afraid of being forgotten.
 author: Mutuals
 license: Apache-2.0
 
@@ -24,12 +24,12 @@ models:
 stt:
   provider: elevenlabs
   model: scribe_v2_realtime
-  language: en
+  # Omit language to let Scribe detect it automatically.
   keyterms: [Fox Glove, Fox, Glove, Comet Jr, Josh, little comets, strawberry mochi]
 
 voice:
   provider: elevenlabs
-  voice_id: kPzsL2i3teMYv0FxEYQ6
+  voice_id: MgqVq3OCTPeVHCEDr4HU
   model: eleven_v4_turbo
   params:
     stability: 0.5
@@ -44,6 +44,8 @@ rig:
 emotions: foxglove
 
 extensions:
+  - path: ../../extensions/world-context
+    config_file: world.yaml
   - path: ../../extensions/emotion-tags
     config_file: director.yaml
   - path: ../../extensions/director

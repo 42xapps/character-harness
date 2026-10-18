@@ -39,6 +39,29 @@ The `memory` and `reactions` extensions, if a character uses them, need `TYPESAF
 
 `npm test` runs the tests; they need no keys or network.
 
+## iPhone companion lab
+
+The repository also includes the Kloey SwiftUI companion and Kaigen scene at
+[`ios/KloeyCompanionLab`](ios/KloeyCompanionLab/README.md). From the repository
+root, this command prepares the local voice server, builds the Kaigen iOS
+framework and SwiftUI app, installs it on a connected iPhone, and opens it:
+
+```bash
+./ios/KloeyCompanionLab/run-iphone.sh --restart-server
+```
+
+On the first run, provider keys are requested with hidden input and stored only
+in the ignored, owner-readable `.env`; the stable local session token is
+generated automatically. Node dependencies are installed from
+`package-lock.json` if needed. Do not commit `.env`, build output, or the
+machine-local `app/hz` Kaigen link.
+
+Each Mac needs Xcode signed into the Apple ID used for device development and
+the pinned Kaigen `0.6.2.001-beta` engine with its iOS component. The scene is
+built from the engine pin in `ios/KloeyCompanionLab/app/hzproject.hzt`; the
+launcher does not silently upgrade it. See the iOS lab README for signing,
+device and development details.
+
 ## Docs
 
 - `docs/architecture.md`: the turn loop and the event system

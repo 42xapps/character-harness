@@ -224,6 +224,7 @@ test("a key left empty in YAML is the same as left out", () => {
 
 test("a profile this checkout doesn't have is a warning, and its words aren't judged", async () => {
 	const dir = tempDir();
+	writeFileSync(path.join(dir, "world.yaml"), readFileSync(path.join(FOXGLOVE, "world.yaml")));
 	writeFileSync(path.join(dir, "character.yaml"), readFileSync(path.join(FOXGLOVE, "character.yaml"), "utf8").replace("profile: foxglove", "profile: elsewhere").replace(/path: \.\.\/\.\.\/extensions/g, `path: ${path.resolve(FOXGLOVE, "../../extensions")}`).replace("config_file: director.yaml", `config_file: ${path.join(FOXGLOVE, "director.yaml")}`).replace("config_file: director.yaml", `config_file: ${path.join(FOXGLOVE, "director.yaml")}`));
 	writeFileSync(path.join(dir, "system.md"), "You are a test.");
 	const c = loadCharacter(dir);

@@ -260,3 +260,31 @@ test("closing the session aborts every reply and sentence still running, and a r
 	assert.deepEqual(s.calls.map((c) => c.aborted), [true, true, true, true]);
 	assert.equal(s.calls.length, 4);
 });
+
+test("world context is isolated per connection and captured before a turn waits for session startup", async (t) => {
+	const ready = gate();
+	const seen: unknown[] = [];
+	const exts = [hook("on_session_start", () => ready.shut), hook("before_llm", ({ state }) => { seen.push(state.context); })];
+	const lines: string[] = [];
+	t.mock.method(console, "log", (line: string) => { lines.push(line); });
+	t.mock.method(globalThis, "fetch", async () => reply("hello"));
+	const a = fakeSocket(), b = fakeSocket();
+	runSession(a.ws as unknown as WebSocket, character, exts);
+	runSession(b.ws as unknown as WebSocket, character, exts);
+	const snapshot = {
+		schema: 1, scene_id: "clearing", avatar_id: "avatar", platform: "ios", position: [0, 0, 0],
+		activity: "walk", previous_activity: "rest", previous_age_s: 2, destination: 0,
+		activity_enabled: true, cards_expanded: false, framing: "full_body", capabilities: ["idle_stroll"],
+	};
+	a.app({ t: "context", snapshot });
+	a.app({ t: "llm", id: 5, history });
+	a.app({ t: "context", snapshot: { ...snapshot, activity: "attend" } });
+	b.app({ t: "llm", id: 5, history });
+	ready.open();
+	await until(() => seen.length === 2 && [a, b].every((s) => s.ws.sent.some((m) => m.t === "llm_done")), "both grounded replies");
+	assert.equal((seen[0] as { snapshot: { activity: string } }).snapshot.activity, "walk");
+	assert.deepEqual(seen[1], { status: "missing" });
+	a.ws.emit("close");
+	b.ws.emit("close");
+	await until(() => lines.filter((s) => s.includes("closed:")).length === 2, "both sessions to close");
+});

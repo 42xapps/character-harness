@@ -1,0 +1,8 @@
+type SceneBlobAsset
+version 19
+---
+scene_dir "mutuals/main_scene"
+chunks 1
+  chunk "mutuals/main_scene/chunk_0.hzt" EntityChunkBlobAsset
+  bounds_min 0.000000 0.000000 0.000000
+  bounds_max 0.000000 1.716294 2.596321
