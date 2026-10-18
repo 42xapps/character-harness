@@ -10,12 +10,15 @@ prompt: system.md
 
 models:
   chat:
-    api: chat_completions
-    base_url: https://api.x.ai/v1
-    api_key_env: XAI_API_KEY
-    model: grok-4-1-fast-non-reasoning
+    api: responses
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-6-luna
     params:
-      temperature: 0.8
+      # voice latency: the first sentence waits on this call. measured TTFT on
+      # gpt-6-luna: none ~840ms, low ~1.7s, medium ~2.1s (default). low is
+      # richer staging if you'd rather trade the speed.
+      reasoning_effort: none
       max_tokens: 1200
 
 stt:

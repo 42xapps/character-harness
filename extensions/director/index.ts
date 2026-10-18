@@ -13,7 +13,7 @@
 // turn is dropped. A failed or late call means no beats, never a wrong one.
 //
 // config (usually a character's director.yaml):
-//   model:     { base_url, api_key_env, model }   an OpenAI-compatible chat model
+//   model:     { base_url, api_key_env, model, reasoning_effort? }   an OpenAI-compatible chat model
 //   emotions:  { name: hint }                     the emotion words, with what each means
 //   intense:   [ ... ]                            peak-only emotions
 //   registers, gestures, cameras: [ ... ]         the other words
@@ -30,7 +30,7 @@ interface Beat {
 }
 
 interface Config {
-	model: { base_url: string; api_key_env: string; model: string };
+	model: { base_url: string; api_key_env: string; model: string; reasoning_effort?: string };
 	emotions: Record<string, string>;
 	intense?: string[];
 	registers?: string[];
@@ -205,7 +205,9 @@ async function stage(lines: string[], s: Session, c: Config): Promise<Beat[][]> 
 		},
 		body: JSON.stringify({
 			model: c.model.model,
-			temperature: 0.4,
+			// only when the model wants it: a reasoning model rejects any
+			// temperature but its own default, so none is sent
+			...(c.model.reasoning_effort ? { reasoning_effort: c.model.reasoning_effort } : {}),
 			max_completion_tokens: 900,
 			response_format: { type: "json_object" },
 			messages: [
@@ -318,6 +320,8 @@ export function check({ config, body }: { config: Partial<Config>; body: Body })
 	const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
 	for (const k of ["base_url", "api_key_env", "model"] as const)
 		if (typeof config.model?.[k] !== "string" || !config.model[k]) errors.push(`\`model.${k}\` is required`);
+	if (config.model?.reasoning_effort !== undefined && typeof config.model.reasoning_effort !== "string")
+		errors.push("`model.reasoning_effort` must be a string");
 	if (typeof config.prompt !== "string" || !config.prompt.trim()) errors.push("`prompt` is required");
 	const emotions = config.emotions && typeof config.emotions === "object" && !Array.isArray(config.emotions) ? Object.keys(config.emotions) : [];
 	if (!emotions.length) errors.push("`emotions` must map at least one emotion to what it means");

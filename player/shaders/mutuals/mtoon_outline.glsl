@@ -3,16 +3,18 @@
 // The outline of a VRM toon material: back faces of a copy of the body, pushed
 // out along the normal by a width measured on screen, and colored by MToon's
 // outline rule, outline color blended toward the shaded body color by the
-// lighting mix. It shades the surface like mtoon.hz.glsl to get that color.
+// lighting mix. It shades the surface like mtoon.glsl to get that color.
 // The outline width and lighting follow MToon 1.0 as published in UniVRM (MIT
 // licence: Copyright (c) 2020 VRM Consortium, Copyright (c) 2018 Masataka SUMI
 // for MToon).
 
 @vs
+#define HZ_RENDERER_VERTEX_SHADER
 #define HZ_RENDERER_BLENDSHAPED
 #define HZ_RENDERER_SKINNED
 #define HZ_RENDERER_LIGHTING_CLUSTERS
 #define HZ_RENDERER_VS_MATERIAL
+#include "renderer_shaders.glsl"
 out vec3 v_world_pos;
 out vec3 v_normal;
 out vec2 v_uv;
@@ -38,7 +40,7 @@ void main() {
 #endif
 
     apply_blendshapes(v.pos, v.vertex_index, v.bs_offsets_base, v.bs_weights_offset);
-    // the head-sphere normal for face shading, as in mtoon.hz.glsl (material
+    // the head-sphere normal for face shading, as in mtoon.glsl (material
     // words 32..34 hold the sphere's center)
     vec3 face_center = vec3(
         uintBitsToFloat(hz_materials.data[v.material_offset + 32u]),
@@ -94,10 +96,13 @@ void main() {
 @end
 
 @fs
+#undef HZ_RENDERER_VERTEX_SHADER
+#define HZ_RENDERER_FRAGMENT_SHADER
 #define HZ_RENDERER_SHADOWS
 #define HZ_RENDERER_IBL
 #define HZ_RENDERER_LIGHTING_CLUSTERS
 #define HZ_RENDERER_FOG
+#include "renderer_shaders.glsl"
 layout(location = 0) out vec4 frag_color;
 in vec3 v_world_pos;
 in vec3 v_normal;
@@ -111,7 +116,7 @@ flat in vec3 v_model_c0;
 flat in vec3 v_model_c1;
 flat in vec3 v_model_c2;
 in float v_vcolor_r;
-// the renderer's extra targets when it asks for them, as in mtoon.hz.glsl
+// the renderer's extra targets when it asks for them, as in mtoon.glsl
 #ifdef HZ_RENDERER_GBUFFER
 in vec4 v_clip_cur;
 in vec4 v_clip_prev;
@@ -126,7 +131,7 @@ layout(location = 2) out vec4 frag_normal;
 #endif
 #endif
 
-// The start of mtoon.hz.glsl's material, field for field, as plain vec4s: the
+// The start of mtoon.glsl's material, field for field, as plain vec4s: the
 // outline reads the body material's slice, so the order must match exactly.
 @material
 struct MaterialFS {
@@ -162,7 +167,7 @@ struct MaterialFS {
     uint face_mask_map;
 };
 
-// the toon ramp helpers, as in mtoon.hz.glsl
+// the toon ramp helpers, as in mtoon.glsl
 float toon_step(float a, float b, float x) {
     return clamp((x - a) / max(b - a, 1e-4), 0.0, 1.0);
 }
@@ -217,9 +222,9 @@ void main() {
 
     float shift = toon_shift(mat, v_uv);
     float toony = mat.toon.y;
-    float cast_shadow = mix(1.0, calculate_shadow(v_world_pos), mat.shadow_strength);
+    float cast_shadow = mix(1.0, hz_shadow(v_world_pos), mat.shadow_strength);
 
-    // the body's shaded color, as mtoon.hz.glsl computes it
+    // the body's shaded color, as mtoon.glsl computes it
     vec3 color = vec3(0.0);
     vec3 received = vec3(0.0);
     uint sun_count = min(hz_scene.lights.directional_count, 4u);
@@ -267,10 +272,10 @@ void main() {
         rim *= v_vcolor_r;
     color += rim * mix(vec3(1.0), received, mat.rim_color.a);
 
-    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, v_uv).rgb;
+    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, v_uv).rgb * hz_scene.pre_exposure;
 
     // the outline color, blended toward the body color by the lighting mix
-    vec3 outline = hz_apply_fog(mat.outline_color.rgb * mix(vec3(1.0), color, mat.outline_params.y),
+    vec3 outline = hz_fog_apply(mat.outline_color.rgb * mix(vec3(1.0), color, mat.outline_params.y),
                                 v_view_depth);
     frag_color = vec4(outline, base.a);
 

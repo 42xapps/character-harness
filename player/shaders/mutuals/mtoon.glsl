@@ -12,10 +12,12 @@
 // pass (MTOON_OVER_HAIR) that draws brows and lashes through the bangs.
 
 @vs
+#define HZ_RENDERER_VERTEX_SHADER
 #define HZ_RENDERER_BLENDSHAPED
 #define HZ_RENDERER_SKINNED
 #define HZ_RENDERER_LIGHTING_CLUSTERS
 #define HZ_RENDERER_VS_MATERIAL
+#include "renderer_shaders.glsl"
 out vec3 v_world_pos;
 out vec3 v_normal;
 out vec2 v_uv;
@@ -91,10 +93,13 @@ void main() {
 @end
 
 @fs
+#undef HZ_RENDERER_VERTEX_SHADER
+#define HZ_RENDERER_FRAGMENT_SHADER
 #define HZ_RENDERER_SHADOWS
 #define HZ_RENDERER_IBL
 #define HZ_RENDERER_LIGHTING_CLUSTERS
 #define HZ_RENDERER_FOG
+#include "renderer_shaders.glsl"
 layout(location = 0) out vec4 frag_color;
 in vec3 v_world_pos;
 in vec3 v_normal;
@@ -129,7 +134,7 @@ layout(location = 2) out vec4 frag_normal;
 // leaves the result unchanged when the material has none (white multiplies by
 // one, black adds nothing, the flat normal bends nothing). The field order is
 // fixed: the vertex stage reads face_params and over_hair_params by position,
-// and mtoon_outline.hz.glsl reads the same slice up to face_mask_map.
+// and mtoon_outline.glsl reads the same slice up to face_mask_map.
 @material
 struct MaterialFS {
     @color vec4 lit_color;     // base color; .a opacity
@@ -296,7 +301,7 @@ void main() {
 
     float shift = toon_shift(mat, uv);
     float toony = mat.toon.y;
-    float cast_shadow = mix(1.0, calculate_shadow(v_world_pos), mat.shadow_strength);
+    float cast_shadow = mix(1.0, hz_shadow(v_world_pos), mat.shadow_strength);
 
     // direct light; `received` sums the light falling here, which the rim
     // follows by rim_color.a
@@ -355,9 +360,9 @@ void main() {
         rim *= v_vcolor_r;
     color += rim * mix(vec3(1.0), received, mat.rim_color.a);
 
-    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, uv).rgb;
+    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, uv).rgb * hz_scene.pre_exposure;
 
-    color = hz_apply_fog(color, v_view_depth);
+    color = hz_fog_apply(color, v_view_depth);
     float alpha = base.a;
 #ifdef MTOON_OVER_HAIR
     // drawn over the hair at its opacity, fading out as the face turns away

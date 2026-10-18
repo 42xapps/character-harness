@@ -175,15 +175,15 @@ ecs_system(player_face_material_resolve_system, EcsIn(EcsModelInstance),
       CString mp = subs.items[s].material.path.len
                        ? string_blob_get(&subs.items[s].material.path)
                        : NULL;
-      const RendererSubMeshInstance *si =
-          renderer_submesh_instance(r, rmi->children.items[s]);
-      if (!si || !handle_is_valid(HANDLE_CAST(HzHandle, si->material)))
+      HzHandleT(RendererMaterial) material =
+          renderer_submesh_instance_material(r, rmi->children.items[s]);
+      if (!handle_is_valid(HANDLE_CAST(HzHandle, material)))
         continue;
       String nm = sn ? cstr_to_str(sn) : (mp ? cstr_to_str(mp) : (String){0});
       if (skin_name.len && str_contains_nocase(nm, skin_name))
-        face_mat = si->material;
+        face_mat = material;
       else if (eye_name.len && str_contains_nocase(nm, eye_name))
-        eye_mat = si->material;
+        eye_mat = material;
     }
     f32 teary_amp = 0.0f;
     if (handle_is_valid(HANDLE_CAST(HzHandle, face_mat)))
@@ -321,6 +321,8 @@ hz_internal void player_mic_start_worker(void *arg) {
 }
 
 hz_internal void player_mic_tick(AppState *s) {
+  if (s->preview[0] || s->screenshot[0])
+    return;
   b32 running = atomic_u32_read_acquire(&s->mic_running) != 0;
   b32 busy = atomic_u32_read_acquire(&s->mic_busy) != 0;
   f64 since_start = s->mic_started_at
@@ -478,10 +480,10 @@ hz_internal void player_body_beat(AppState *s, EcsWorld *w, const char *reg,
       EcsEntity e = it.entities[i];
       if (reg && reg[0])
         character_actor_set_register(w, e, reg);
-      EcsEmotePlayer *ep = ecs_component_get(w, e, EcsEmotePlayer);
+      EcsEmotePlayer *ep = ecs_component_get_mut(w, e, EcsEmotePlayer);
       if (g) {
         character_emote_play(w, e, emote);
-        ep = ecs_component_get(w, e, EcsEmotePlayer);
+        ep = ecs_component_get_mut(w, e, EcsEmotePlayer);
         if (ep && g->hold)
           ep->hold_indef = true;
       } else if (ep && ep->hold_indef) {
@@ -659,6 +661,11 @@ HZ_APP_API void app_init(AppMemory *memory) {
   player_env(PLAYER_MIC_DEBUG_ENV, "0", flag);
   state->mic_debug = flag[0] == '1';
   player_env(PLAYER_PREVIEW_ENV, "", state->preview);
+  if (!state->character_path[0]) {
+    player_env(PLAYER_CHARACTER_ENV, PLAYER_PREVIEW_PROFILE, state->character_path);
+    player_env(PLAYER_PREVIEW_ENV, "idle", state->preview);
+    log_info("player: standalone preview; start the harness runtime for conversation");
+  }
   state->preview_t = PLAYER_PREVIEW_START;
   // the engine keeps the path until the frame is captured
   player_env(PLAYER_SCREENSHOT_ENV, "", state->screenshot);
@@ -713,7 +720,8 @@ HZ_APP_API void app_init(AppMemory *memory) {
 
   state->mic_buf = ALLOC_ARRAY(&assets->allocator, f32, PLAYER_MIC_SCRATCH);
   mic_init(&state->mic);
-  if (mic_permission() != OS_MIC_PERMISSION_GRANTED)
+  if (!state->preview[0] && !state->screenshot[0] &&
+      mic_permission() != OS_MIC_PERMISSION_GRANTED)
     mic_request_permission();
 
   PlatformFileData vad = os_read_file(PLAYER_VAD_MODEL, &assets->allocator);
@@ -802,7 +810,8 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
     app_character_update(&state->character, w);
     app_character_over_hair_update(&state->character, w);
     player_mic_tick(state);
-    character_voice_tick(&state->vs, memory->dt);
+    if (!state->preview[0] && !state->screenshot[0])
+      character_voice_tick(&state->vs, memory->dt);
     player_talk_tick(state, memory->dt);
     player_mic_debug_tick(state, memory->dt);
   }
@@ -811,7 +820,7 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
   ecs_assets_schedule(w);
   ecs_audio_schedule(w);
   ecs_transform_schedule(w);
-  ecs_camera_schedule(w);
+  ecs_camera_schedule(w, NULL);
   ecs_cloth_resolve_schedule(w);
   ecs_flush(w, memory->dt);
 
@@ -823,7 +832,8 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
   }
   ecs_schedule_single(w, player_submesh_shadow_optout_system);
   ecs_schedule_single(w, player_face_material_resolve_system);
-  CharacterScheduleDesc csd = {0};
+  // This player drives full-body emotes; its additive overlay mask is empty.
+  CharacterScheduleDesc csd = {.no_overlays = true};
   character_schedule_pose(w, &csd);
   ecs_schedule_single(w, light_aim_init_system);
   ecs_schedule_single(w, light_aim_apply_system);

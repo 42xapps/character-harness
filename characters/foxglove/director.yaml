@@ -3,9 +3,11 @@
 # camera moves); a word it has nothing for does nothing.
 
 model:
-  base_url: https://api.x.ai/v1
-  api_key_env: XAI_API_KEY
-  model: grok-4-1-fast-non-reasoning
+  base_url: https://api.openai.com/v1
+  api_key_env: OPENAI_API_KEY
+  model: gpt-6-luna
+  # staging runs on the sentence path with a 7s budget, so think as little as possible
+  reasoning_effort: none
 
 # emotion -> what it means, shown to the director
 emotions:

@@ -65,7 +65,7 @@ test("FoxGlove's body is read from her profile in the player", () => {
 
 test("FoxGlove passes every check", async () => {
 	const c = loadCharacter(FOXGLOVE);
-	const r = await checkCharacter(c, await loadExtensions(c.extensions), { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+	const r = await checkCharacter(c, await loadExtensions(c.extensions), { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 	assert.deepEqual(r.errors, []);
 	assert.deepEqual(r.warnings, []);
 });
@@ -73,10 +73,10 @@ test("FoxGlove passes every check", async () => {
 test("a missing key is a warning for a check and an error to start", async () => {
 	const c = loadCharacter(FOXGLOVE);
 	const exts = await loadExtensions(c.extensions);
-	const check = await checkCharacter(c, exts, { XAI_API_KEY: "x" }, false);
+	const check = await checkCharacter(c, exts, { OPENAI_API_KEY: "x" }, false);
 	assert.deepEqual(check.errors, []);
 	assert.match(check.warnings.join("\n"), /ELEVENLABS_API_KEY/);
-	const start = await checkCharacter(c, exts, { XAI_API_KEY: "x" }, true);
+	const start = await checkCharacter(c, exts, { OPENAI_API_KEY: "x" }, true);
 	assert.match(start.errors.join("\n"), /ELEVENLABS_API_KEY/);
 });
 
@@ -132,7 +132,7 @@ test("emotion-tags warns about a tag mapped to an emotion the player doesn't hav
 test("an extension's check picks how serious each problem is; the runtime only shows it", async () => {
 	const c = loadCharacter(FOXGLOVE);
 	const ext = (name: string, found: object) => ({ ...c.extensions[0], name, call: () => undefined, check: () => found });
-	const r = await checkCharacter(c, [ext("a", { warnings: ["just so you know"] }), ext("b", { errors: ["can't work"] })], { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+	const r = await checkCharacter(c, [ext("a", { warnings: ["just so you know"] }), ext("b", { errors: ["can't work"] })], { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 	assert.deepEqual(r.warnings, ["a: just so you know"]);
 	assert.deepEqual(r.errors, ["b: can't work"]);
 });
@@ -140,7 +140,7 @@ test("an extension's check picks how serious each problem is; the runtime only s
 test("an extension's check that returns something else is its error, not a crash", async () => {
 	const c = loadCharacter(FOXGLOVE);
 	const odd = { ...c.extensions[0], name: "odd", call: () => undefined, check: () => ({ errors: "oops" }) as never };
-	const r = await checkCharacter(c, [odd], { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+	const r = await checkCharacter(c, [odd], { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 	assert.match(r.errors.join(), /odd: its check returned/);
 });
 
@@ -203,7 +203,7 @@ test("a check that returns a list, a string or a number is its error", async () 
 	const c = loadCharacter(FOXGLOVE);
 	for (const out of [["x"], "oops", 42]) {
 		const odd = { ...c.extensions[0], name: "odd", call: () => undefined, check: () => out as never };
-		const r = await checkCharacter(c, [odd], { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+		const r = await checkCharacter(c, [odd], { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 		assert.match(r.errors.join(), /odd: its check returned/, JSON.stringify(out));
 	}
 });
@@ -211,9 +211,9 @@ test("a check that returns a list, a string or a number is its error", async () 
 test("a check that throws something unprintable, or floods messages, is reported, not a crash", async () => {
 	const c = loadCharacter(FOXGLOVE);
 	const ext = (check: () => unknown) => ({ ...c.extensions[0], name: "odd", call: () => undefined, check: check as never });
-	const thrown = await checkCharacter(c, [ext(() => { throw Object.create(null); })], { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+	const thrown = await checkCharacter(c, [ext(() => { throw Object.create(null); })], { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 	assert.match(thrown.errors.join(), /odd: its check failed/);
-	const flood = await checkCharacter(c, [ext(() => ({ warnings: Array(500_000).fill("w") }))], { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+	const flood = await checkCharacter(c, [ext(() => ({ warnings: Array(500_000).fill("w") }))], { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 	assert.ok(flood.warnings.length <= 201);
 });
 
@@ -227,7 +227,7 @@ test("a profile this checkout doesn't have is a warning, and its words aren't ju
 	writeFileSync(path.join(dir, "character.yaml"), readFileSync(path.join(FOXGLOVE, "character.yaml"), "utf8").replace("profile: foxglove", "profile: elsewhere").replace(/path: \.\.\/\.\.\/extensions/g, `path: ${path.resolve(FOXGLOVE, "../../extensions")}`).replace("config_file: director.yaml", `config_file: ${path.join(FOXGLOVE, "director.yaml")}`).replace("config_file: director.yaml", `config_file: ${path.join(FOXGLOVE, "director.yaml")}`));
 	writeFileSync(path.join(dir, "system.md"), "You are a test.");
 	const c = loadCharacter(dir);
-	const r = await checkCharacter(c, await loadExtensions(c.extensions), { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
+	const r = await checkCharacter(c, await loadExtensions(c.extensions), { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" }, true);
 	assert.deepEqual(r.errors, []);
 	assert.deepEqual(r.warnings.length, 1);
 	assert.match(r.warnings[0], /rig\.profile/);

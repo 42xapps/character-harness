@@ -77,7 +77,7 @@ function withCues(cuesYaml: string): string {
 	writeFileSync(path.join(dir, "character.yaml"), manifest);
 	return dir;
 }
-const keys = { XAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" };
+const keys = { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" };
 
 test("a character that lists gesture-cues passes the check, and its gestures reach the beats", async () => {
 	const c = loadCharacter(withCues(`{ hello: wave, "you did it": cheer }`));

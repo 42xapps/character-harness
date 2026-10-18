@@ -14,8 +14,10 @@
 #define PLAYER_URL_DEFAULT "ws://127.0.0.1:8788/session"
 // a path to a .vrm / .glb, imported on first load (player_vrm.c), or the name
 // or path of a profile cooked into the build (characters/<name>.hzt, like
-// foxglove). The harness runtime always sets it; there is no default.
+// foxglove). Without a runtime-selected character, Studio opens the bundled
+// reference profile in offline preview mode.
 #define PLAYER_CHARACTER_ENV "HARNESS_CHARACTER"
+#define PLAYER_PREVIEW_PROFILE "foxglove"
 #define PLAYER_ENV_MAX 512
 
 // the cooked VAD plan; character_voice_init copies the bytes

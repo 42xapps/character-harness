@@ -58,10 +58,10 @@ The app keeps what it writes, like the cache of imported models and its logs, in
 Run these steps from `player/`.
 
 1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt`.
-2. Link this folder to the engine you installed (git ignores the link):
+2. Restore this project's pinned engine (git ignores the local link):
 
    ```bash
-   ln -s "$HOME/Library/Application Support/hz/engines/<engine-version>" hz
+   kaigen restore
    ```
 
 3. Build and run:
@@ -70,13 +70,35 @@ Run these steps from `player/`.
    hz/hzbuild macos run
    ```
 
-   The first build cooks the assets, which takes about half a minute. On macOS, allow microphone access for the app you start it from (System Settings > Privacy & Security > Microphone).
+   The first build cooks the assets. A standalone launch opens FoxGlove in offline preview mode. A live conversation started by the harness requests microphone access for the app you start it from (System Settings > Privacy & Security > Microphone).
 
 To have the runtime's `npm start` open it, put this in the harness's `.env`:
 
 ```dotenv
 HARNESS_PLAYER="cd player && hz/hzbuild macos run"
 ```
+
+## Kaigen Studio and iOS
+
+In Studio, choose **Projects > Add Existing** and select this `player/` folder,
+which contains `hzproject.hzt`. This branch targets Kaigen `0.6.2.001-beta`.
+After the engine link is restored, run the Desktop target to preview FoxGlove.
+The preview does not connect to a conversation server or capture the microphone.
+Run `npm start` from the repository root with `HARNESS_PLAYER` configured above
+to start a live conversation; the runtime supplies the selected character and
+authenticated session URL.
+
+The iOS engine component is separate. To build the framework for an existing
+SwiftUI/Xcode host, run these commands from this folder:
+
+```bash
+kaigen engine add ios
+hz/hzbuild ios --framework
+```
+
+The output is `out/ios-framework/HZEngine.xcframework`, for physical iOS devices.
+This does not create or integrate a SwiftUI host or verify an iPhone deployment.
+See [the migration notes](MIGRATION.md) for the engine changes and validation.
 
 ## Build (Windows)
 
@@ -116,9 +138,9 @@ The runtime sets the first two when it starts the player.
 | Variable | Default | What |
 |---|---|---|
 | `HARNESS_URL` | `ws://127.0.0.1:8788/session` | the runtime's session socket. The runtime only accepts it with its token (`/session/<token>`), which it passes when it starts the player and prints otherwise |
-| `HARNESS_CHARACTER` | | the character: a path to a `.vrm` / `.glb` (the runtime passes a prepared one), or the name of a profile cooked into the build (`foxglove`) |
+| `HARNESS_CHARACTER` | `foxglove` in offline preview | the character: a path to a `.vrm` / `.glb` (the runtime passes a prepared one), or the name of a profile cooked into the build (`foxglove`) |
 | `HARNESS_MIC_DEBUG` | `0` | `1` logs what the mic hears twice a second |
-| `HARNESS_PREVIEW` | | for checking a character without a conversation: `talk`, `talk:<style>`, `gesture:<name>` or `emotion:<name>`, repeated every few seconds |
+| `HARNESS_PREVIEW` | `idle` when no character was supplied | offline preview: `idle`, `talk`, `talk:<style>`, `gesture:<name>` or `emotion:<name>`, repeated every few seconds; microphone and session processing are disabled |
 | `HARNESS_SCREENSHOT` | | saves frame `HARNESS_SCREENSHOT_FRAME` (default 240) to this `.png` and quits |
 
 ## What it does

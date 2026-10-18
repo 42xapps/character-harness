@@ -10,8 +10,10 @@
 // HOST defaults to 127.0.0.1; set HOST=0.0.0.0 to reach it from another device on the network.
 //
 // The socket spends the keys in .env, so only the player may use it: the
-// token is new on every start and only the player is given it, and a
-// connection from a web page (any request with an Origin) is refused.
+// token is new on every start unless HARNESS_TOKEN fixes it (which is what lets
+// an app that remembers its session survive a restart), and only the player is
+// given it, and a connection from a web page (any request with an Origin) is
+// refused.
 
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -83,7 +85,7 @@ const server = createServer((_req, res) => {
 	res.writeHead(200, { "content-type": "text/plain" });
 	res.end(`mutuals character harness: ${character.name}. The player connects to the session socket the runtime printed.\n`);
 });
-const token = randomBytes(16).toString("hex");
+const token = process.env.HARNESS_TOKEN || randomBytes(16).toString("hex");
 const sessionPath = `/session/${token}`;
 const wss = new WebSocketServer({
 	server,
