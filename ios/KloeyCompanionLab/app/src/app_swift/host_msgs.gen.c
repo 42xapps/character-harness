@@ -24,6 +24,15 @@ void hz_msg_dispatch(void *ctx, const u8 *buf, u32 len) {
   const u8 *p = buf + 4;
   u32 plen = len - 4;
   switch (tag) {
+  case HZ_SET_COMPANION_PROFILE: {
+    if (plen != sizeof(HZSetCompanionProfile)) return;
+    HZSetCompanionProfile m;
+    mem_cpy(&m, p, sizeof m);
+    m.timezone[64] = 0;
+    m.user_name[160] = 0;
+    app_msg_set_companion_profile(ctx, m);
+    break;
+  }
   case HZ_SET_FRAMING: {
     if (plen < sizeof(HZSetFraming)) return;
     HZSetFraming m;

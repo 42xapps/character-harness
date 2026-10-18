@@ -11,7 +11,7 @@ scheme, select your physical iPhone, and choose your development team under
 Signing & Capabilities. Then Run. This Mac already has the user's signing team
 configured in the Xcode project, and signed device builds have been installed.
 
-Without a saved conversation session, the starter is offline. It shows FoxGlove,
+Without a saved conversation session, the starter is offline. It shows Kloey,
 a full-body camera and an animated Quaternius clearing. SwiftUI supplies the camera-framing sheet and native UI; the intention card and selection sheet remain available in source. There are no manual gesture
 buttons. The intention lives in local view state for now.
 
@@ -37,7 +37,7 @@ for the 3D viewport. The Kaigen library is device-only and is linked only for
 
 The body was already in the model. The full-body view moves the camera back
 and changes what it aims at; it does not require a new avatar. **Your view**
-(the viewfinder button) switches full body / close up through a typed command
+(open the top-left menu) switches full body / close up through a typed command
 sent from SwiftUI to C. The engine acknowledges the framing change back to Swift.
 
 `ContentView` layers `HomeView(isExpanded: $cardsExpanded)` above `EngineView`
@@ -54,6 +54,10 @@ remains a separate rigged character. Its environment does not need a new backend
 or animation system. SwiftUI continues to handle native controls.
 
 See [IDLE-LIFE.md](IDLE-LIFE.md) for automatic strolling, conversation priority, tuning and verification.
+See [conversation context](../../docs/conversation-context.md) for local time,
+the optional name, daily thoughts and old/new prompt comparisons. The top-left
+menu accepts a name; blank removes it. This is a local lab preference, ready
+to replace with the authenticated Kloey user profile during app integration.
 See [NATURE.md](NATURE.md) for the active animated clearing, touch controls and build notes.
 [FOREST.md](FOREST.md) preserves the previous forest integration notes.
 The original primitive ground/tree materials remain under `app/assets/lab/`

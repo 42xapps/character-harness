@@ -16,6 +16,7 @@
 #include "lib/hzmath.h"
 #include "lib/memory.h"
 #include "lib/string.h"
+#include "lib/json_serializer.h"
 #include "lib/microphone.h"
 #include "os/os.h"
 #include "app/app.h"
@@ -100,6 +101,7 @@ typedef struct AppState {
   f32 context_timer, context_previous_age;
   i32 context_activity, context_previous;
   b32 context_seen;
+  HZSetCompanionProfile companion_profile;
   char url[PLAYER_ENV_MAX];
   char character_path[PLAYER_ENV_MAX];
   // an imported character with no clips: it holds its bind pose and beats
@@ -153,12 +155,17 @@ hz_internal void player_context_tick(AppState *s, f32 dt) {
 #endif
   b32 known_avatar = cstr_equal(s->character.active_path, "characters/foxglove.hzt");
   tctx_temp_allocator_scope(ta, NULL) {
+    JsonSerializer zone = json_serializer_init(&ta.allocator, 512);
+    serialize_string_value(&zone, s->companion_profile.timezone);
+    JsonSerializer name = json_serializer_init(&ta.allocator, 1024);
+    if (s->companion_profile.user_name[0]) serialize_string_value(&name, s->companion_profile.user_name);
+    else serialize_null_value(&name);
     String msg = str_format(&ta.allocator,
       "{\"t\":\"context\",\"snapshot\":{\"schema\":1,\"scene_id\":\"quaternius_clearing\","
       "\"avatar_id\":\"%\",\"platform\":\"%\",\"position\":[%,%,%],"
       "\"activity\":\"%\",\"previous_activity\":\"%\",\"previous_age_s\":%,\"destination\":%,"
       "\"activity_enabled\":%,\"cards_expanded\":%,\"framing\":\"%\","
-      "\"capabilities\":[\"voice_chat\",\"orbit_camera\",\"cards\"%]}}",
+      "\"capabilities\":[\"voice_chat\",\"orbit_camera\",\"cards\"%],\"timezone\":%,\"user_name\":%}}",
       fmt_cstr(known_avatar ? "foxglove" : "unknown"), fmt_cstr(platform),
       fmt_f32_p(pos.x, 3), fmt_f32_p(pos.y, 3), fmt_f32_p(pos.z, 3),
       fmt_cstr(player_activity_name(activity)), fmt_cstr(player_activity_name(s->context_previous)),
@@ -166,9 +173,17 @@ hz_internal void player_context_tick(AppState *s, f32 dt) {
       fmt_cstr(life && s->activity_flags == 1 ? "true" : "false"),
       fmt_cstr(s->cards_reserved > .01f ? "true" : "false"),
       fmt_cstr(s->framing == 1 ? "close_up" : "full_body"),
-      fmt_cstr(life && known_avatar ? ",\"idle_stroll\",\"expressions\",\"gestures\"" : ""));
+      fmt_cstr(life && known_avatar ? ",\"idle_stroll\",\"expressions\",\"gestures\"" : ""),
+      fmt_cstr(json_serializer_finalize(&zone)), fmt_cstr(json_serializer_finalize(&name)));
     if (os_ws_send_text(s->vs.ws, msg.value, msg.len)) s->context_timer = 0;
   }
+}
+
+void player_set_profile(void *ctx, const char *timezone, const char *user_name) {
+  AppState *s = ctx;
+  cstr_copy(s->companion_profile.timezone, timezone, sizeof s->companion_profile.timezone);
+  cstr_copy(s->companion_profile.user_name, user_name, sizeof s->companion_profile.user_name);
+  s->context_timer = 1;
 }
 
 void player_set_activity(void *ctx, u32 flags) {

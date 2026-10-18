@@ -119,6 +119,19 @@ Namespacing, retries and storage are up to each extension. Convention: keep your
 the character prompt. Configure it with `characters/foxglove/world.yaml`:
 scene/avatar ids, authored environment and appearance, capability descriptions,
 unsupported actions, and `trace: { enabled: false, max_bytes: 2097152 }`.
+Optional `threads` contains up to 24 authored, unresolved taste opinions, and
+optional `anchor` is a trusted, character-authored reminder appended after the
+context block. Neither is supplied by the player. The daily thread is selected
+deterministically from the local ISO date and pinned in this extension's session
+state; midnight never changes a conversation's chosen topic. The user's replies
+are followed through the ordinary conversation history, with no persistent memory.
+
+Time and user name use `state.context.profile`, independently of scene freshness.
+`time` is rebuilt each turn from the server clock and the phone's validated zone;
+`user.name` preserves the supplied spelling. Missing values are omitted. Static
+recognized-scene facts precede activity, age, time, name and thread to preserve
+a stable prompt prefix. The prompt distinguishes origin-story lore from these
+live facts and forbids inventing offscreen experiences for a thread.
 Config is checked at startup. There is no extra model call. Missing/stale or
 unrecognized telemetry must not be filled in from old assistant claims.
 

@@ -21,3 +21,7 @@ void app_msg_set_cards_layout(void *ctx, HZSetCardsLayout msg) {
 void app_msg_set_activity(void *ctx, HZSetActivity msg) {
   player_set_activity(ctx, msg.flags);
 }
+
+void app_msg_set_companion_profile(void *ctx, HZSetCompanionProfile msg) {
+  player_set_profile(ctx, msg.timezone, msg.user_name);
+}

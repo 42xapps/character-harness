@@ -30,8 +30,8 @@
 //   on_session_end    the socket closes
 
 import { randomUUID } from "node:crypto";
-import { contextForTurn, parseWorldSnapshot } from "./context.ts";
-import type { ReceivedContext } from "./context.ts";
+import { contextForTurn, parseWorldSnapshot, updateSessionProfile } from "./context.ts";
+import type { ReceivedContext, SessionProfile } from "./context.ts";
 import WebSocket from "ws";
 import { printable } from "./check.ts";
 import { hasHook, runHook } from "./extensions.ts";
@@ -163,6 +163,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	let ext: Record<string, unknown> = {};
 	let turn: Turn | null = null;
 	let latestContext: ReceivedContext | undefined;
+	let profile: SessionProfile = {};
 	const llmStreams = new Map<number, AbortController>();
 	// replies the app cancelled: nothing more may be sent for them. Kept by
 	// request, not id, since the app may reuse the id while one winds down.
@@ -223,7 +224,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 	const started = runHook(exts, "on_session_start", baseState(), log).then((s) => { ext = s.ext; });
 
 	const onLlm = async (id: number, history: unknown, source: unknown) => {
-		const context = contextForTurn(latestContext);
+		const context = contextForTurn(latestContext, Date.now(), profile);
 		// registered at once, so a cancel or the in-flight limit sees it
 		const ac = new AbortController();
 		llmStreams.set(id, ac);
@@ -499,6 +500,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 				if (snapshot) {
 					if (!latestContext) log(`context: schema ${snapshot.schema}, scene ${snapshot.scene_id}, avatar ${snapshot.avatar_id}, ${snapshot.platform}`);
 					latestContext = { snapshot, receivedAt: Date.now() };
+					profile = updateSessionProfile(profile, snapshot);
 				}
 				break;
 			}

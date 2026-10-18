@@ -16,6 +16,7 @@ typedef enum {
   HZ_ORBIT_CAMERA = 3,
   HZ_SET_CARDS_LAYOUT = 4,
   HZ_SET_ACTIVITY = 5,
+  HZ_SET_COMPANION_PROFILE = 6,
 } HZMsgTag;
 
 // --- commands (host -> engine): typed payloads + the handlers the app must
@@ -48,3 +49,8 @@ void app_msg_set_cards_layout(void *ctx, HZSetCardsLayout msg);
 typedef struct { u32 flags; } HZSetActivity;
 _Static_assert(sizeof(HZSetActivity) == 4, "HZSetActivity wire size");
 void app_msg_set_activity(void *ctx, HZSetActivity msg);
+
+// NUL-terminated UTF-8: IANA zone (64 bytes), optional name (40 Unicode scalars).
+typedef struct { char timezone[65]; char user_name[161]; } HZSetCompanionProfile;
+_Static_assert(sizeof(HZSetCompanionProfile) == 226, "HZSetCompanionProfile wire size");
+void app_msg_set_companion_profile(void *ctx, HZSetCompanionProfile msg);

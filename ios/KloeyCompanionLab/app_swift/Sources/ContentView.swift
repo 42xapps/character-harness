@@ -34,6 +34,8 @@ struct ContentView: View {
     @State private var showingSceneOptions = false
     @State private var cardsExpanded = false
     @State private var cardsHeight: CGFloat = 0
+    @AppStorage(CompanionProfile.nameKey) private var userName = ""
+    @State private var nameDraft = ""
     private let intentions = ["Make room for a small win.", "Take a moment to recharge.",
                               "Be present for someone you love."]
 
@@ -44,7 +46,7 @@ struct ContentView: View {
                     .ignoresSafeArea()
                 HomeView(isExpanded: $cardsExpanded, onDetailVisibilityChange: { visible in
                     detailPresented = visible
-                })
+                }, onMenu: { nameDraft = userName; showingSceneOptions = true })
                     .padding(.top, 8)
                     .onGeometryChange(for: CGFloat.self) { proxy in
                         proxy.size.height
@@ -56,8 +58,15 @@ struct ContentView: View {
             .onChange(of: cardsHeight) { updateCardsLayout(geometry) }
             .onChange(of: geometry.size) { updateCardsLayout(geometry) }
         }
-        .onAppear { model.selectFraming(model.framing); updateActivity() }
-        .onChange(of: scenePhase) { updateActivity() }
+        .onAppear { model.selectFraming(model.framing); updateActivity(); updateProfile() }
+        .onChange(of: scenePhase) {
+            updateActivity()
+            if scenePhase == .active { updateProfile() }
+        }
+        .onChange(of: userName) { updateProfile() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)
+            .receive(on: RunLoop.main)) { _ in updateProfile() }
+        .onChange(of: showingSceneOptions) { updateActivity() }
         .onChange(of: reduceMotion) { updateActivity() }
         .onChange(of: detailPresented) { updateActivity() }
         .sheet(isPresented: $showingIntentions) {
@@ -84,6 +93,17 @@ struct ContentView: View {
         .sheet(isPresented: $showingSceneOptions) {
             NavigationStack {
                 Form {
+                    Section {
+                        TextField("Your name (optional)", text: $nameDraft)
+                            .textContentType(.givenName)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("CompanionUserName")
+                        if !CompanionProfile.validName(nameDraft) {
+                            Text("Use up to 40 letters, spaces, apostrophes or hyphens.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } header: { Text("What should Kloey call you?") }
+                    footer: { Text("Saved on this iPhone and shared with the conversation server. Leave blank to keep your name private. Your local time comes from this iPhone's time zone.") }
                     Picker("Framing", selection: Binding(get: { model.framing },
                         set: { model.selectFraming($0) })) {
                         ForEach(CameraFraming.allCases) { framing in
@@ -103,15 +123,22 @@ struct ContentView: View {
                     .font(.caption)
                 }
                 .navigationTitle("Your view")
-                .toolbar { Button("Done") { showingSceneOptions = false } }
+                .toolbar {
+                    Button("Done") { userName = nameDraft; showingSceneOptions = false }
+                        .disabled(!CompanionProfile.validName(nameDraft))
+                }
             }
             .presentationDetents([.medium])
         }
     }
 
     private func updateActivity() {
-        let active = scenePhase == .active && !detailPresented
+        let active = scenePhase == .active && !detailPresented && !showingSceneOptions
         model.engine.send(.setActivity(flags: (active ? 1 : 0) | (reduceMotion ? 2 : 0)))
+    }
+
+    private func updateProfile() {
+        model.engine.send(CompanionProfile.command(name: userName))
     }
 
     private func updateCardsLayout(_ geometry: GeometryProxy) {

@@ -83,6 +83,24 @@ wait. A server-measured age above five seconds becomes `stale` without live
 scene fields. Missing telemetry becomes `missing`. Context messages cause no
 STT, LLM or TTS request and do not modify conversation history.
 
+Two optional schema-1 snapshot fields carry a separate session profile:
+`timezone` is a validated IANA zone (for example `Africa/Casablanca`); `user_name`
+is an explicitly supplied name of up to 40 Unicode code points, with letters,
+combining marks, spaces, apostrophes and hyphens. Invalid optional values are
+ignored without discarding otherwise valid scene telemetry. Omitted/invalid
+profile fields retain their last valid values on that WebSocket connection;
+`user_name: null` explicitly removes the saved name. A new connection starts
+without a profile. No name is inferred from an Apple ID, device name or hostname.
+
+The runtime captures an immutable `state.context.profile` before the turn waits
+for hooks. Profile values survive the five-second scene freshness limit and
+unknown scene/avatar ids; scene fields still expire normally. The extension
+computes `time` from the server's current clock in the supplied phone zone on
+each turn (no client clock or server-zone guessing). It appends `user` and one
+authored `thread` independently of scene recognition. Missing timezone means
+no time/date and no newly selected daily thread. A previously chosen thread
+stays for that conversation, including across midnight or a missing timezone.
+
 The world-context extension maps recognized scene/avatar ids and capability
 ids to server-authored facts. A client cannot supply new instructions or grant
 an action tool by adding a field. This development token identifies a session

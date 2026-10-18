@@ -6,6 +6,7 @@ struct HZSetFraming { var value: UInt32 = 0 }
 struct HZOrbitCamera { var yaw: Float; var pitch: Float; var zoom: Float }
 
 enum HZCommand {
+    case setCompanionProfile(timezone: String, name: String)
     case setActivity(flags: UInt32)
     case setFraming(UInt32)
     case setCardsLayout(reservedFraction: Float)
@@ -18,6 +19,16 @@ enum HZCommand {
             withUnsafeBytes(of: &copy) { data.append(contentsOf: $0) }
         }
         switch self {
+        case .setCompanionProfile(let timezone, let name):
+            append(UInt32(6).littleEndian)
+            // Match HZSetCompanionProfile's two NUL-terminated UTF-8 fields.
+            for (value, capacity) in [(timezone, 65), (name, 161)] {
+                let bytes = Array(value.utf8)
+                guard bytes.count < capacity else { return Data() }
+                data.append(contentsOf: bytes)
+                data.append(Data(repeating: 0, count: capacity - bytes.count))
+            }
+            assert(data.count == 4 + 226)
         case .setActivity(let flags):
             assert(MemoryLayout<HZSetActivity>.size == 4)
             append(UInt32(5).littleEndian)

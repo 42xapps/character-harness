@@ -56,3 +56,5 @@ void player_set_cards_layout(void *ctx, f32 reserved_fraction);
 
 // bit 0: visible/active; bit 1: Reduce Motion.
 void player_set_activity(void *ctx, u32 flags);
+
+void player_set_profile(void *ctx, const char *timezone, const char *user_name);

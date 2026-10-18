@@ -276,13 +276,14 @@ test("world context is isolated per connection and captured before a turn waits 
 		activity: "walk", previous_activity: "rest", previous_age_s: 2, destination: 0,
 		activity_enabled: true, cards_expanded: false, framing: "full_body", capabilities: ["idle_stroll"],
 	};
-	a.app({ t: "context", snapshot });
+	a.app({ t: "context", snapshot: { ...snapshot, timezone: "UTC", user_name: "Élodie" } });
 	a.app({ t: "llm", id: 5, history });
 	a.app({ t: "context", snapshot: { ...snapshot, activity: "attend" } });
 	b.app({ t: "llm", id: 5, history });
 	ready.open();
 	await until(() => seen.length === 2 && [a, b].every((s) => s.ws.sent.some((m) => m.t === "llm_done")), "both grounded replies");
 	assert.equal((seen[0] as { snapshot: { activity: string } }).snapshot.activity, "walk");
+	assert.deepEqual((seen[0] as { profile: unknown }).profile, { timezone: "UTC", user_name: "Élodie" });
 	assert.deepEqual(seen[1], { status: "missing" });
 	a.ws.emit("close");
 	b.ws.emit("close");

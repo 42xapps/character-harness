@@ -267,6 +267,7 @@ struct HomeView: View {
     @State private var selection: CardKind? = .intentions
     @Binding var isExpanded: Bool
     var onDetailVisibilityChange: (Bool) -> Void = { _ in }
+    var onMenu: () -> Void = {}
     @State private var presented: CardKind?
     @Namespace private var zoom
 
@@ -295,7 +296,7 @@ struct HomeView: View {
 
     private var topBar: some View {
         HStack {
-            barButton("Menu", alignment: .leading) {
+            barButton("Menu", alignment: .leading, action: onMenu) {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach([23, 17, 13] as [CGFloat], id: \.self) { Capsule().frame(width: $0, height: 2.5) }
                 }
@@ -314,8 +315,9 @@ struct HomeView: View {
     }
 
     private func barButton<Glyph: View>(_ label: LocalizedStringKey, alignment: Alignment,
+                                        action: @escaping () -> Void = {},
                                         @ViewBuilder glyph: () -> Glyph) -> some View {
-        Button {} label: {
+        Button(action: action) {
             glyph().frame(width: 44, height: 44, alignment: alignment).contentShape(.rect)
         }
         .accessibilityLabel(label)

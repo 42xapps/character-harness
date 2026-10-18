@@ -1,5 +1,7 @@
 import Foundation
 
+// Command tag 6 carries the 226-byte companion profile; it has no reply event.
+
 struct HZFramingChanged { var value: UInt32 = 0 }
 
 protocol HZEventHandler: AnyObject {
