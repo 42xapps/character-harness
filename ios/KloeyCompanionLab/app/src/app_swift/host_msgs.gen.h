@@ -17,6 +17,9 @@ typedef enum {
   HZ_SET_CARDS_LAYOUT = 4,
   HZ_SET_ACTIVITY = 5,
   HZ_SET_COMPANION_PROFILE = 6,
+  HZ_SUBMIT_TEXT = 7,
+  HZ_TEXT_SUBMITTED = 8,
+  HZ_SET_DEVICE_BUDGET = 9,
 } HZMsgTag;
 
 // --- commands (host -> engine): typed payloads + the handlers the app must
@@ -54,3 +57,16 @@ void app_msg_set_activity(void *ctx, HZSetActivity msg);
 typedef struct { char timezone[65]; char user_name[161]; } HZSetCompanionProfile;
 _Static_assert(sizeof(HZSetCompanionProfile) == 226, "HZSetCompanionProfile wire size");
 void app_msg_set_companion_profile(void *ctx, HZSetCompanionProfile msg);
+
+typedef struct { u32 request_id, length; char text[1024]; } HZSubmitText;
+_Static_assert(sizeof(HZSubmitText) == 1032, "HZSubmitText wire size");
+void app_msg_submit_text(void *ctx, HZSubmitText msg);
+
+// status: 0 handed to the existing voice pipeline, 1 disconnected, 2 invalid.
+typedef struct { u32 request_id, status; } HZTextSubmitted;
+_Static_assert(sizeof(HZTextSubmitted) == 8, "HZTextSubmitted wire size");
+void hz_send_text_submitted(HZTextSubmitted msg);
+
+typedef struct { u32 thermal, low_power; } HZSetDeviceBudget;
+_Static_assert(sizeof(HZSetDeviceBudget) == 8, "HZSetDeviceBudget wire size");
+void app_msg_set_device_budget(void *ctx, HZSetDeviceBudget msg);

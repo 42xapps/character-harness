@@ -37,6 +37,7 @@ interface Config {
 	gestures?: string[];
 	cameras?: string[];
 	limits?: { cameras?: number; intense?: number };
+	first_batch_idle_ms?: number;
 	tags?: Record<string, string>;
 	prompt: string;
 }
@@ -48,6 +49,7 @@ interface Input {
 		turn?: number;
 		sentence?: string;
 		beats?: unknown[];
+		staged_beats?: readonly unknown[];
 	};
 	config: Config;
 }
@@ -65,10 +67,12 @@ interface Budget {
 // one sentence waiting in a batch, and how to hand back its beats
 interface Waiting {
 	line: string;
+	existing: unknown[];
 	done: (beats: Beat[]) => void;
 }
 
 interface Session {
+	ended: boolean;
 	turn: number | undefined;
 	budget: Budget;
 	spoken: string; // this reply's sentences already staged, for context
@@ -240,6 +244,21 @@ async function stage(lines: string[], s: Session, c: Config): Promise<Beat[][]> 
 	return perLine;
 }
 
+// Earlier extensions own opening emotions and any gesture they already selected.
+export function arbitrate(beats: Beat[], existing: unknown[], line: string): Beat[] {
+	const owned = existing.filter((b): b is Record<string, unknown> => !!b && typeof b === "object");
+	const gesture = owned.some(b => typeof b.gesture === "string" && b.gesture && b.gesture !== "none");
+	const opening = owned.some(b => (b.span === "" || b.span === undefined) && typeof b.emotion === "string" && b.emotion);
+	const words = [...line.matchAll(/\S+/gu)];
+	const last = words[Math.min(3, words.length - 1)];
+	const heldUntil = last ? last.index + last[0].length : line.length;
+	return beats.map(b => ({ ...b,
+		...(gesture ? { gesture: "none" } : {}),
+		...(gesture && b.register === "none" ? { register: "" } : {}),
+		...(opening && line.indexOf(b.span) < heldUntil ? { emotion: "" } : {}),
+	})).filter(b => b.emotion || (b.register && b.register !== "none") || b.gesture !== "none" || b.camera !== "none");
+}
+
 // stages the waiting batch after the ones before it
 function fire(s: Session, c: Config): void {
 	clearTimeout(s.idle);
@@ -250,11 +269,18 @@ function fire(s: Session, c: Config): void {
 	const turn = s.turn;
 	s.chain = s.chain.then(async () => {
 		// a new turn began while this batch waited; its sentences are gone
-		if (turn !== s.turn) return batch.forEach((w) => w.done([]));
+		if (s.ended || turn !== s.turn) return batch.forEach((w) => w.done([]));
 		try {
 			const lines = batch.map((w) => w.line);
+			// Count channels already selected by earlier extensions in continuity.
+			const existing = batch.flatMap(w => w.existing).filter((b): b is Record<string, unknown> => !!b && typeof b === "object");
+			spend(s.budget, existing.map(b => ({ span: "", emotion: typeof b.emotion === "string" ? b.emotion : "",
+				register: typeof b.register === "string" ? b.register : "",
+				gesture: typeof b.gesture === "string" && b.gesture ? b.gesture : "none",
+				camera: typeof b.camera === "string" && b.camera ? b.camera : "none" })), c);
 			const perLine = await stage(lines, s, c);
-			if (turn !== s.turn) return batch.forEach((w) => w.done([]));
+			for (let i = 0; i < perLine.length; i++) perLine[i] = arbitrate(perLine[i], batch[i].existing, lines[i]);
+			if (s.ended || turn !== s.turn) return batch.forEach((w) => w.done([]));
 			spend(s.budget, perLine.flat(), c);
 			s.spoken = `${s.spoken} ${lines.join(" ")}`.trim();
 			batch.forEach((w, i) => w.done(perLine[i]));
@@ -268,6 +294,7 @@ export default async function ({ event, state, config }: Input) {
 	if (event === "on_session_end") {
 		const s = sessions.get(state.session.id);
 		if (s) {
+			s.ended = true;
 			clearTimeout(s.idle);
 			s.batch.forEach((w) => w.done([]));
 		}
@@ -278,7 +305,7 @@ export default async function ({ event, state, config }: Input) {
 	if (event !== "on_sentence" || !line) return;
 	let s = sessions.get(state.session.id);
 	if (!s) {
-		s = { turn: state.turn, budget: newBudget(), spoken: "", chain: Promise.resolve(), batch: [], idle: undefined };
+		s = { ended: false, turn: state.turn, budget: newBudget(), spoken: "", chain: Promise.resolve(), batch: [], idle: undefined };
 		sessions.set(state.session.id, s);
 	}
 	// a new reply starts a new budget; the talking style carries over
@@ -292,11 +319,13 @@ export default async function ({ event, state, config }: Input) {
 	}
 	const session = s;
 	const beats = await new Promise<Beat[]>((done) => {
-		session.batch.push({ line, done });
+		session.batch.push({ line, existing: [...(state.staged_beats ?? []), ...(state.beats ?? [])], done });
 		if (session.batch.length >= BATCH_SIZE) fire(session, config);
 		else {
 			clearTimeout(session.idle);
-			session.idle = setTimeout(() => fire(session, config), BATCH_IDLE_MS);
+			const firstDelay = typeof config.first_batch_idle_ms === "number" && Number.isFinite(config.first_batch_idle_ms)
+				? Math.max(0, Math.min(BATCH_IDLE_MS, config.first_batch_idle_ms)) : BATCH_IDLE_MS;
+			session.idle = setTimeout(() => fire(session, config), session.spoken ? BATCH_IDLE_MS : firstDelay);
 		}
 	});
 	if (!beats.length) return;
@@ -322,6 +351,9 @@ export function check({ config, body }: { config: Partial<Config>; body: Body })
 		if (typeof config.model?.[k] !== "string" || !config.model[k]) errors.push(`\`model.${k}\` is required`);
 	if (config.model?.reasoning_effort !== undefined && typeof config.model.reasoning_effort !== "string")
 		errors.push("`model.reasoning_effort` must be a string");
+	if (config.first_batch_idle_ms !== undefined && (!Number.isFinite(config.first_batch_idle_ms) ||
+		config.first_batch_idle_ms < 0 || config.first_batch_idle_ms > BATCH_IDLE_MS))
+		errors.push("`first_batch_idle_ms` must be a number between 0 and 400");
 	if (typeof config.prompt !== "string" || !config.prompt.trim()) errors.push("`prompt` is required");
 	const emotions = config.emotions && typeof config.emotions === "object" && !Array.isArray(config.emotions) ? Object.keys(config.emotions) : [];
 	if (!emotions.length) errors.push("`emotions` must map at least one emotion to what it means");

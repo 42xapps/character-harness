@@ -24,6 +24,20 @@ void hz_msg_dispatch(void *ctx, const u8 *buf, u32 len) {
   const u8 *p = buf + 4;
   u32 plen = len - 4;
   switch (tag) {
+  case HZ_SET_DEVICE_BUDGET: {
+    if (plen != sizeof(HZSetDeviceBudget)) return;
+    HZSetDeviceBudget m;
+    mem_cpy(&m, p, sizeof m);
+    app_msg_set_device_budget(ctx, m);
+    break;
+  }
+  case HZ_SUBMIT_TEXT: {
+    if (plen != sizeof(HZSubmitText)) return;
+    HZSubmitText m;
+    mem_cpy(&m, p, sizeof m);
+    app_msg_submit_text(ctx, m);
+    break;
+  }
   case HZ_SET_COMPANION_PROFILE: {
     if (plen != sizeof(HZSetCompanionProfile)) return;
     HZSetCompanionProfile m;
@@ -34,7 +48,7 @@ void hz_msg_dispatch(void *ctx, const u8 *buf, u32 len) {
     break;
   }
   case HZ_SET_FRAMING: {
-    if (plen < sizeof(HZSetFraming)) return;
+    if (plen != sizeof(HZSetFraming)) return;
     HZSetFraming m;
     mem_cpy(&m, p, sizeof m);
     app_msg_set_framing(ctx, m);
@@ -67,3 +81,4 @@ void hz_msg_dispatch(void *ctx, const u8 *buf, u32 len) {
 }
 
 void hz_send_framing_changed(HZFramingChanged msg) { hz__emit(HZ_FRAMING_CHANGED, &msg, sizeof msg); }
+void hz_send_text_submitted(HZTextSubmitted msg) { hz__emit(HZ_TEXT_SUBMITTED, &msg, sizeof msg); }

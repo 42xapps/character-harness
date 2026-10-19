@@ -23,5 +23,9 @@ void app_msg_set_activity(void *ctx, HZSetActivity msg) {
 }
 
 void app_msg_set_companion_profile(void *ctx, HZSetCompanionProfile msg) {
-  player_set_profile(ctx, msg.timezone, msg.user_name);
+  player_set_profile(ctx, msg);
 }
+
+void app_msg_submit_text(void *ctx, HZSubmitText msg) { player_submit_text(ctx, msg); }
+
+void app_msg_set_device_budget(void *ctx, HZSetDeviceBudget msg) { player_set_device_budget(ctx, msg); }

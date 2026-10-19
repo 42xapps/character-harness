@@ -3,6 +3,7 @@
 #include "lib/reflect.h"
 #include "lib/typedefs.h"
 #include "lib/hzmath.h"
+#include "app_swift/host_msgs.gen.h"
 
 // The stage scene carries these three components. The player only drives
 // LightAim; the other two are declared so the scene still deserializes.
@@ -57,4 +58,7 @@ void player_set_cards_layout(void *ctx, f32 reserved_fraction);
 // bit 0: visible/active; bit 1: Reduce Motion.
 void player_set_activity(void *ctx, u32 flags);
 
-void player_set_profile(void *ctx, const char *timezone, const char *user_name);
+void player_set_profile(void *ctx, HZSetCompanionProfile profile);
+void player_submit_text(void *ctx, HZSubmitText text);
+
+void player_set_device_budget(void *ctx, HZSetDeviceBudget budget);

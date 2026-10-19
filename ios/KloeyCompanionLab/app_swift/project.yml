@@ -16,9 +16,15 @@ targets:
     platform: iOS
     sources:
       - path: Sources
-      - path: ../app/cooked
-        type: folder
-        buildPhase: resources
+    postBuildScripts:
+      - name: Stage native iOS asset closure
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$PLATFORM_NAME" = iphoneos ]; then
+            python3 "$SRCROOT/../tools/stage-ios-assets.py" --destination "$DERIVED_FILE_DIR/ios-resources/cooked"
+            mkdir -p "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/cooked"
+            rsync -a --delete "$DERIVED_FILE_DIR/ios-resources/cooked/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/cooked/"
+          fi
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kaigen.kloeycompanionlab
@@ -30,6 +36,8 @@ targets:
       properties:
         CFBundleDisplayName: KloeyCompanionLab
         UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
         NSMicrophoneUsageDescription: Speak with your companion.
         NSLocalNetworkUsageDescription: Connect to your development conversation server.
         UISupportedInterfaceOrientations:
@@ -38,6 +46,7 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
   KloeyCompanionLabUITests:
     type: bundle.ui-testing
     platform: iOS

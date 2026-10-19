@@ -28,12 +28,12 @@ A character is a folder with a manifest, a personality prompt and a body: any VR
 Needs Node 23.6 or later and the keys the character uses. FoxGlove needs two:
 
 - `ELEVENLABS_API_KEY` ([ElevenLabs](https://elevenlabs.io)): speech to text and the character's voice.
-- `XAI_API_KEY` ([xAI](https://x.ai)): the character's chat model and the director that stages its lines.
+- `OPENAI_API_KEY` ([OpenAI](https://platform.openai.com)): the chat model, director and bounded face-reaction judge named in the manifest.
 
-The `memory` and `reactions` extensions, if a character uses them, need `TYPESAFE_API_KEY` ([Typesafe](https://typesafe.ai)).
+Other characters can choose Typesafe for reactions or memory. The iOS companion uses OpenAI reactions and does not enable persistent memory.
 
 1. Copy `.env.example` to `.env` and fill in the keys.
-2. Run `npm install`, then `npm start` for FoxGlove, or `npm start -- characters/<id>` for your own character (`docs/bring-your-own-character.md`). `npm run check -- characters/<id>` checks a character without starting it.
+2. Run `npm ci`, then `npm start` for FoxGlove, or `npm start -- characters/<id>` for your own character (`docs/bring-your-own-character.md`). `npm run check -- characters/<id>` checks a character without starting it.
 3. Start the player: a release build, or your own build (`player/README.md`). Set `HARNESS_PLAYER` in `.env` to the command that opens it, and `npm start` opens it too; otherwise the runtime prints what the player needs.
 4. Open Claude Code or Codex in this folder and ask it to change something. `AGENTS.md` tells it where everything lives.
 

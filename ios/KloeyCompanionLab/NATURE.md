@@ -63,8 +63,10 @@ original Downloads folder.
 The first cook can seed new material/texture sidecars without cooking every
 new dependency in that same pass. If a preview reports a missing new `.hza`,
 refresh the **new project's** material/texture `.hzt` timestamps and run the
-native build again. Keep shader choices in `clearing.import.hzt`, not generated
-materials. No shared SDK edits are needed.
+native build again. Keep shader choices in the GLB's `extras.hz_material`,
+authored by `tools/prepare-nature-materials.py`, rather than editing generated
+materials. The import sidecar leaves shader/pass overrides unset so the importer
+preserves the custom cutout and depth passes. No shared SDK edits are needed.
 
 The previous forest and its Blender source remain in the repository. Its last
 complete working checkpoint is `f2f1e2d`; its preparation notes are in FOREST.md.
@@ -135,10 +137,15 @@ the mean frame time was 21.01 ms with spikes in that sample. This is not a claim
 of sustained 60 fps. Conversation/session code and ongoing SwiftUI edits were
 not changed by the wind correction.
 
-The wind bends visible foliage; it does not simulate branch physics. The
-standard shadow path does not reproduce every leaf's wind deformation, so the
-small leaf motion and shadow motion are not an exact match. This forward
-renderer does not use temporal motion-vector upscaling.
+The wind bends visible foliage; it does not simulate branch physics. The audit
+revision shares deformation between visible, shadow and depth shaders through
+`nature_wind_common.glsl`. A typed renderer uniform supplies current and previous
+render times, including when frame pacing changes. Alpha-cutout materials retain
+their cutout shadow path. MToon and foliage now provide previous-frame motion;
+`HARNESS_TEMPORAL=1` enables the opt-in MetalFX/temporal path for A/B checks.
+The default remains 2x MSAA until physical-device image and performance evidence
+supports changing it. The measurements and screenshots above are historical;
+`IOS-WORK.md` records acceptance evidence for this revision.
 
 ## References consulted
 

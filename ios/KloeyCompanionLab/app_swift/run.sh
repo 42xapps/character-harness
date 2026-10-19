@@ -29,7 +29,7 @@ Build and run Kloey Companion Lab on your iPhone:
   ./run.sh --build-only            Build and sign; leave the phone app alone
   ./run.sh --console               Stay attached to the app's console
   ./run.sh --restart-server        Reload voice/prompt config before launch
-  ./run.sh --configuration Release Use the Release SwiftUI configuration
+  ./run.sh --configuration Release Build both engine and SwiftUI in Release
 
 Automatic selection prefers the single connected iPhone. If the choice is
 ambiguous, select one with --device. Connect/unlock/trust your iPhone and
@@ -92,10 +92,10 @@ fi
 for tool in xcrun xcodebuild python3; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool is missing. Install full Xcode and its command-line tools."
 done
-if [ ! -d "$PROJECT" ]; then
+if [ ! -d "$PROJECT" ] || [ "$SCRIPT_DIR/project.yml" -nt "$PROJECT/project.pbxproj" ]; then
   command -v xcodegen >/dev/null 2>&1 || fail "The Xcode project is missing and XcodeGen is not installed. Install XcodeGen or generate the project from app_swift/project.yml."
   step "Generating the Xcode project from project.yml"
-  (cd "$SCRIPT_DIR" && xcodegen generate)
+  python3 "$LAB_ROOT/tools/generate-ios-project.py"
 fi
 if [ -n "${HARNESS_URL:-}" ] || [ -n "${HARNESS_CHARACTER:-}" ]; then
   [ -n "${HARNESS_URL:-}" ] && [ -n "${HARNESS_CHARACTER:-}" ] || fail "Supply both HARNESS_URL and HARNESS_CHARACTER, or neither to use the saved session."
@@ -153,10 +153,10 @@ fi
 
 if [ "$SKIP_ENGINE" -eq 0 ]; then
   step "Building Kaigen framework and checking world assets"
-  "$LAB_ROOT/build-engine.sh" 2>&1 | tee "$BUILD_ROOT/engine.log"
+  "$LAB_ROOT/build-engine.sh" --configuration "$CONFIG" 2>&1 | tee "$BUILD_ROOT/engine.log"
 else
   step "Reusing existing Kaigen framework and cooked assets"
-  [ -d "$LAB_ROOT/app/out/ios-framework/HZEngine.xcframework/ios-arm64" ] && [ -d "$LAB_ROOT/app/cooked" ] || fail "No existing engine package. Run again without --skip-engine."
+  python3 "$LAB_ROOT/tools/ios-artifacts.py" check --configuration "$CONFIG"
 fi
 
 step "Building and signing SwiftUI app ($CONFIG)"

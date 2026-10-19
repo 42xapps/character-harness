@@ -14,7 +14,7 @@ capabilities:
   gestures: The conversation director can accompany speech with wave, nod, cheer, hands on hips, hand on waist, surprise or a sheepish gesture. Selection is automatic; dialogue alone does not confirm playback.
   idle_stroll: Take short automatic strolls on the central path, turn and pause to look around while conversation is quiet. Strolling pauses for conversation, hidden scene or Reduce Motion. You cannot choose a new destination in response to a request.
   orbit_camera: The user can drag to orbit, pinch to zoom and double tap to reset the camera. A framing control switches full body and close up.
-  cards: Native cards can expand above the world; the camera makes room. The model receives only whether cards are expanded, not their contents or the user's chosen intention.
+  cards: Native cards can expand above the world; the camera makes room. A chosen intention or chat starter is sent as an explicit user message through the shared conversation pipeline; no intention is saved through dialogue.
 unavailable:
   - Seeing the user, their camera, room, face, clothing or screen.
   - Walking to a requested object or place, sitting, running, jumping, picking flowers or manipulating props on request.

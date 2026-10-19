@@ -6,14 +6,13 @@ This project uses iOS 26, matching Kloey's current deployment target.
 
 ## Start in Xcode
 
-Open `app_swift/KloeyCompanionLab.xcodeproj`, select the **KloeyCompanionLab**
+Generate with `python3 tools/generate-ios-project.py` when needed, then open `app_swift/KloeyCompanionLab.xcodeproj`, select the **KloeyCompanionLab**
 scheme, select your physical iPhone, and choose your development team under
 Signing & Capabilities. Then Run. This Mac already has the user's signing team
 configured in the Xcode project, and signed device builds have been installed.
 
 Without a saved conversation session, the starter is offline. It shows Kloey,
-a full-body camera and an animated Quaternius clearing. SwiftUI supplies the camera-framing sheet and native UI; the intention card and selection sheet remain available in source. There are no manual gesture
-buttons. The intention lives in local view state for now.
+a full-body camera and an animated Quaternius clearing. SwiftUI supplies native cards and settings. Explicit intention and chat actions use the same harness conversation pipeline as voice; they are not persistent tasks. There are no manual gesture buttons.
 
 Simulator and SwiftUI previews show the native UI with an explicit placeholder
 for the 3D viewport. The Kaigen library is device-only and is linked only for
@@ -40,7 +39,7 @@ and changes what it aims at; it does not require a new avatar. **Your view**
 (open the top-left menu) switches full body / close up through a typed command
 sent from SwiftUI to C. The engine acknowledges the framing change back to Swift.
 
-`ContentView` layers `HomeView(isExpanded: $cardsExpanded)` above `EngineView`
+`ContentView` layers `HomeView` above `EngineView`
 in a top-aligned ZStack. Cards start collapsed. HomeView has no scene background
 and no trailing Spacer, so only its visible controls/cards sit above the world.
 ContentView measures the expanded overlay and sends a reserved-top fraction to
@@ -128,20 +127,10 @@ cd ios/KloeyCompanionLab
 ```
 
 Then Run from Xcode again. This updates the static engine framework and cooks
-assets; Xcode links the framework and copies `app/cooked` into the app bundle.
-The script regenerates the Xcode project from `app_swift/project.yml` only if
-the project file is missing; XcodeGen is needed only for that recovery path.
-
-For a fast desktop preview of the 3D scene alone:
-
-```bash
-cd ios/KloeyCompanionLab
-cd app
-hz/hzbuild macos run
-```
-
-Add `app/` as an existing project in Kaigen Studio if you want a launcher for
-that desktop preview. Xcode remains the native iOS host, signing and app build tool.
+assets; Xcode links the framework and stages only the native iOS asset closure.
+The launcher regenerates the Xcode project when it is missing or `project.yml`
+changes. The generator preserves the saved signing teams across repeated runs.
+XcodeGen is required for regeneration.
 
 ## Connecting conversation
 
@@ -174,7 +163,7 @@ The starter's device link flags also include GameController, VideoToolbox and
 CoreMedia, which the installed SDK needs in addition to its older host template's list.
 `project.yml` is the complete working example of the device/Simulator linkage.
 
-## Validation on this Mac
+## Historical validation before the audit fixes
 
 - The native macOS forest scene rendered successfully with the complete
   character: `app/out/forest-preview.png`. The earlier primitive stage capture
@@ -210,7 +199,7 @@ licensed SDK. The active clearing uses Quaternius models/textures under CC0. The
 
 ## Cards overlay validation
 
-The card integration was built and tested on the physical iPhone. The device test
+Before the audit fixes, the card integration was tested on the physical iPhone. The device test
 asserted no carousel at launch, expanded it, paged to another card, collapsed it,
 and exercised orbit gestures in the world. Captures under `app_swift/build/`
 show the forest around the cards, the smaller/lower character when expanded,
@@ -231,7 +220,9 @@ each reply. Its world-context extension combines recognized ids with authored
 facts in `../../characters/foxglove/world.yaml`; `system.md` defines Kloey's
 grounded spoken persona. She has no user-camera feed and no movement-on-request
 action tool.
-Card contents and chosen intentions are not sent. Automatic strolling remains
+Card contents are not sent merely by opening a card. Explicit chat actions and
+chosen intentions submit user text through the existing conversation pipeline.
+Automatic strolling remains
 local and takes no additional model calls. Context adds a small amount of prompt
 input on conversational turns only.
 
@@ -247,3 +238,42 @@ After updating the runtime, restart it with the same development token/address
 and launch the updated app for a fresh in-memory conversation. Existing Keychain
 connection settings are retained. Test where she is, what she was doing, whether
 she can see you, and unsupported requests such as sitting or picking flowers.
+
+## Review and implementation evidence
+
+[IOS-WORK.md](IOS-WORK.md) and [ios-progress.json](ios-progress.json) track each
+fix, the guidance reviewed, validation and outstanding device checks. The
+[historical audit](docs/review-2026-10-19.md) describes the pre-fix state.
+
+`build-engine.sh --configuration Release` builds an optimized iOS framework.
+`--skip-engine` validates source, engine, configuration and artifact hashes.
+Xcode packages the closure in `ios-assets.json`, with ASTC textures, Metal iOS
+shaders and a 112 MiB resource budget. `app/cooked` remains a development cache.
+The staging report is under `app/out/ios-resources/`; bundle bytes do not
+establish App Store download size.
+
+`python3 tools/check-ios-contracts.py` runs host transport, native message,
+profile, quality-policy and source-drift contracts without provider calls.
+`tools/check-ios.sh` also builds both native iOS configurations. The native CI
+job requires a `KAIGEN_LICENSE` repository secret. After reviewing and accepting
+the current terms shown by `kaigen activate` without `--accept-terms`, set the
+repository variable `KAIGEN_TERMS_ACCEPTED=true`. The job fails clearly until
+both are configured; it never infers acceptance from a missing setting.
+It does not publish, archive to the store or upload a license.
+
+`python3 tools/sync-player-helpers.py --check` detects shared player-source drift.
+`--write` deliberately refreshes the seven listed helpers from `player/src/app`;
+it retains their original contents/license and leaves native composition code
+alone. Retarget preparation imports the canonical runtime helpers directly.
+
+The process owns one engine and one native scene. Thermal/Low Power changes
+apply through the engine thread. `HARNESS_PERF=1` records frame/GPU samples.
+`HARNESS_TEMPORAL=1` enables the integrated MetalFX/TAAU path for A/B checks;
+MSAA remains the default until its visual checks pass. `HARNESS_EXTENDED_WALKS=1`
+adds two lateral POIs for validating the larger navmesh; default walks keep
+the verified corridor. Neither flag enables foot planting.
+
+`DEVICE_UDID=<id> app_swift/shot.sh "wait 3; shot scene"` drives the real phone.
+`SIMULATOR_UDID=<id>` runs native UI checks with a deliberate 3D placeholder.
+Screenshots remain diagnostic when tests fail; the script returns the test's
+exit status and requires all requested captures.

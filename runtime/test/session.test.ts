@@ -122,6 +122,7 @@ function session(t: TestContext, answer: (n: number, signal: AbortSignal) => Res
 		logged,
 		// what the app got for one id, without the staging beats
 		sentFor: (id: number) => ws.sent.filter((m) => m.id === id && m.t !== "beat"),
+		allSentFor: (id: number) => ws.sent.filter((m) => m.id === id),
 		close: async () => {
 			ws.emit("close");
 			await until(() => logged("closed:"), "the session to close");
@@ -134,6 +135,32 @@ const answered = (text: string) => [
 	{ t: "llm_delta", id: 5, text },
 	{ t: "llm_done", id: 5 },
 ];
+
+test("sentence extensions see earlier performances without resending them or leaking between sentences", async (t) => {
+	const seen: unknown[] = [];
+	const s = session(t, (n, signal) => n === 0 ? reply("Hello friend.") : hanging(signal), [
+		hook("on_sentence", ({ state }) => {
+			seen.push(state.staged_beats);
+			return { state: { ...state, beats: [{ span: "", emotion: "warm" }] } };
+		}),
+		hook("on_sentence", ({ state }) => {
+			seen.push(state.staged_beats);
+			return { state: { ...state, staged_beats: [{ span: "", emotion: "forged" }], beats: [{ span: "", gesture: "wave" }] } };
+		}),
+		hook("on_sentence", ({ state }) => { seen.push(state.staged_beats); }),
+	]);
+	s.app({ t: "llm", id: 5, history });
+	await until(() => s.logged("turn 5: replied"), "the reply");
+	for (const id of [7, 8]) {
+		s.app({ t: "tts", id, text: "Hello friend." });
+		await until(() => seen.length === (id === 7 ? 3 : 6), "all sentence extensions");
+		assert.deepEqual(s.allSentFor(id).filter(m => m.t === "emotion"), [{ t: "emotion", id, emotion: "warm" }]);
+		assert.equal(s.allSentFor(id).filter(m => m.t === "beat" && m.gesture === "wave").length, 1);
+	}
+	const expected = [[], [{ span: "", emotion: "warm" }], [{ span: "", emotion: "warm" }, { span: "", gesture: "wave" }]];
+	assert.deepEqual(seen, [...expected, ...expected]);
+	await s.close();
+});
 
 test("an llm that reuses a cancelled reply's id is answered, and the cancelled reply sends nothing more", async (t) => {
 	const s = session(t, (n, signal) => (n === 0 ? hanging(signal) : reply("hello again")));

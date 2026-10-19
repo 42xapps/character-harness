@@ -2,17 +2,17 @@
 
 How the character reacts to what the user just said: delight at good news, a softer face at bad, a flash of irritation at a jab, a laugh at a good joke, a wave at hello. It shows as the character starts to answer, as one emotion on its face and maybe a gesture, on the reply's first sentence.
 
-When the user's message arrives, one request to [Typesafe](https://typesafe.ai)'s judge model, Jev, asks a few questions about it. The extension picks an emotion and a gesture from the answers and adds them as a beat at the start of the reply's first sentence (see "Beats" in `docs/architecture.md`). The player already knows what to do with it.
+When the user's message arrives, one request to the configured decision provider asks a few questions about it. Typesafe/Jev remains the default for existing configurations. `model.api: openai_decisions` uses the [OpenAI Decisions API](https://developers.openai.com/api/docs/guides/decisions) and the existing OpenAI key. The extension picks an emotion and an optional gesture from the answers and adds them at the start of the reply's first sentence (see "Beats" in `docs/architecture.md`).
 
 ## What it is and isn't
 
 - **It shows when the reply starts, not while the character listens.** Beats ride on the reply's audio, so the face changes when the reply's first sentence starts playing.
 - **One emotion and a gesture, nothing finer.** The emotion plays the way the player's emotion set says (its own timing and strength); there is no separate rise, hold or fall.
-- **Then the reply takes over.** The director's beats replace it as they come.
+- **Then the reply takes over.** The director preserves the opening emotion through the first four words and preserves an earlier gesture for that sentence. Later emotion/register/camera beats continue normally.
 
 ## Using it
 
-Put the key in `.env` (`TYPESAFE_API_KEY=...`), write a config for the character (`example.yaml`, next to this README, is a complete one, written for FoxGlove's emotions and gestures), and add the extension to the character's `extensions:`, after `emotion-tags` and before `director`:
+Put the provider key in `.env`, write a config for the character (`example.yaml` uses Typesafe; `characters/foxglove/reactions.yaml` uses OpenAI), and add the extension after `emotion-tags` and before `director`:
 
 ```yaml
 extensions:
@@ -73,12 +73,14 @@ One emotion, the first that applies:
 
 | Key | Required | What |
 |---|---|---|
+| `model.api` | no | `typesafe` (default) or `openai_decisions`; the latter maps choices, ordinal scores and predicates to Decisions questions |
 | `model.api_key_env` | yes | the key's name in `.env`, usually `TYPESAFE_API_KEY` |
-| `model.base_url` | no | default `https://api.typesafe.ai/v1` |
-| `model.model` | no | default `jev-latest` |
+| `model.base_url` | no | default `https://api.typesafe.ai/v1`, or `https://api.openai.com/v1` with Decisions |
+| `model.model` | no | default `jev-latest`, or `gpt-6-luna` with Decisions |
 | `model.timeout_ms` | no | how long it waits for the answer, default 1200, at most 1400 (the hook gives up at 1500; the check warns about more) |
 | `about` | no | a few lines on who the character is, for the judge: what the character cares about, what annoys it, names the judge should know |
 | `context` | no | how many earlier messages the judge sees, default 6, at most 50 |
+| `signals` | no | subset of `guarded`, `amused`, `personal`; defaults to all three. `[]` omits these questions and their modifiers |
 | `beat` | yes | `{ option: emotion }`: at least two. `""` is no emotion. The options below have rubrics built in; any other needs `{ emotion, rubric }` |
 | `settle` | no | `{ option: emotion }`, the same way. Without it a mild reaction shows nothing |
 | `gestures` | no | `{ gesture: when it fits }`. Without it there's no gesture |
@@ -90,6 +92,14 @@ Built-in `beat` options: `nothing`, `brow_flick`, `lean_in`, `held_smile`, `deli
 Built-in `settle` options: `neutral`, `relaxed`, `content`, `warm`, `thoughtful`, `playful`, `confident`, `dreamy`, `low`.
 
 A built-in option takes a `rubric` of its own to change what it means. The check makes an unusable config an error, and an emotion or gesture the character doesn't have a warning.
+
+FoxGlove's iOS configuration asks only `beat` and `intensity`, with two context
+messages, no settling/gesture questions and `signals: []`. Cue phrases handle
+simple gestures without a second model decision. Three synthetic Decisions
+requests with this configuration took 306–480 ms locally; this is a small
+development sample, not a first-audio latency or provider availability guarantee.
+The full conversation and physical iPhone acceptance checks are tracked in
+`ios/KloeyCompanionLab/IOS-WORK.md`.
 
 ## How the defaults were tuned
 

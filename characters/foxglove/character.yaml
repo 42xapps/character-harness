@@ -48,6 +48,15 @@ extensions:
     config_file: world.yaml
   - path: ../../extensions/emotion-tags
     config_file: director.yaml
+  - path: ../../extensions/reactions
+    config_file: reactions.yaml
+  - path: ../../extensions/gesture-cues
+    config:
+      cues:
+        hello: wave
+        goodbye: wave
+        "you did it": cheer
+        "well done": nod
   - path: ../../extensions/director
     config_file: director.yaml
 

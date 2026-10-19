@@ -9,7 +9,7 @@
 //   becomes visible to Swift. The APP owns the message schema, not the
 //   engine, so a new message needs no engine release.
 //
-//   host  --engine_recv(bytes)-->  SPSC ring  --app_host_drain-->  app_msg_*
+//   host  --engine_recv(bytes)-->  SPSC snapshot  --app_host_drain-->  app_msg_*
 //   host  <--HostRecvFn(bytes)--  engine_host_emit  <--hz_send_*
 //
 //   Wire format is [u32 tag][POD struct bytes]; both ends move whole structs
@@ -36,6 +36,6 @@
 #include "app_swift/app_host.h"
 #include "app_swift/host_msgs.gen.h"
 
-// drains everything the host enqueued since the last frame, dispatching each
+// consumes the latest host settings and accumulated orbit since the last frame, dispatching each
 // message to its app_msg_* handler with `ctx`. main lane only.
 void app_swift_update(void *ctx);

@@ -12,12 +12,14 @@
 #include <stdint.h>
 
 // host -> engine: deliver one serialized message. The engine copies the bytes
-// and processes them on its next frame.
-void engine_recv(const uint8_t *buf, uint32_t len);
+// and processes them on its next frame. Returns 1 when accepted, 0 if invalid.
+// Settings coalesce to latest values; orbit deltas accumulate; suspension edges survive.
+uint32_t engine_recv(const uint8_t *buf, uint32_t len);
 
 // engine -> host: the host registers a callback to receive serialized events.
 // the buffer is valid only for the duration of the call (copy it to keep it).
 typedef void (*HostRecvFn)(const uint8_t *buf, uint32_t len, void *ctx);
+// Register once before the first engine view/frame; the context lives for the process.
 void engine_set_host_recv(HostRecvFn fn, void *ctx);
 
 void app_host_drain(void *ctx);

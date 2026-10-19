@@ -72,7 +72,7 @@ void main() {
     // view_proj's first and second rows (the view part is a pure rotation)
     float scale_x = length(vec3(hz_scene.view_proj[0][0], hz_scene.view_proj[1][0], hz_scene.view_proj[2][0]));
     float scale_y = length(vec3(hz_scene.view_proj[0][1], hz_scene.view_proj[1][1], hz_scene.view_proj[2][1]));
-    vec4 clip = hz_scene.view_proj * position_ws;
+    vec4 clip = hz_instance_clip(v, position_ws);
     vec2 normal_cs = (hz_scene.view_proj * vec4(v_normal, 0.0)).xy;
     vec2 push_dir = dot(normal_cs, normal_cs) > 1e-12 ? normalize(normal_cs) : vec2(0.0);
     float facing_z = normalize((hz_scene.view * vec4(v_normal, 0.0)).xyz).z;
@@ -86,11 +86,12 @@ void main() {
 #ifdef HZ_RENDERER_GBUFFER
     // motion vectors from the surface point before the push: the push barely
     // changes between frames, so it drops out of the difference
-    v_clip_cur = hz_scene.view_proj_unjittered * position_ws;
     vec3 last_pos = rest_pos;
     apply_blendshapes_prev(last_pos, v.vertex_index, v.bs_offsets_base, v.bs_weights_offset);
     last_pos = apply_skinning_prev_pos(last_pos, v.bone_offset, v.vertex_base, v.vertex_layout_flags);
-    v_clip_prev = hz_scene.prev_view_proj * (unpack_prev_model() * vec4(last_pos, 1.0));
+    HzVelocity velocity = hz_instance_velocity(v, position_ws, unpack_prev_model() * vec4(last_pos, 1.0));
+    v_clip_cur = velocity.clip_cur;
+    v_clip_prev = velocity.clip_prev;
 #endif
 }
 @end
@@ -284,7 +285,7 @@ void main() {
 #ifdef HZ_RENDERER_TAAU
     frag_normal = oct_encode_normal(N);
     frag_depth = gl_FragCoord.z;
-    frag_reactive = 0.0;
+    frag_reactive = 1.0; // screen-space extrusion changes the edge independently of the surface velocity
     frag_opaque = vec4(outline, 1.0);
 #else
     frag_normal = vec4(oct_encode_normal(N), 0.0, 0.0);

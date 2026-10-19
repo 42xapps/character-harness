@@ -20,3 +20,57 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Require the native build license
+        env:
+          KAIGEN_LICENSE: ${{ secrets.KAIGEN_LICENSE }}
+          KAIGEN_TERMS_ACCEPTED: ${{ vars.KAIGEN_TERMS_ACCEPTED }}
+        run: |
+          if [ -z "$KAIGEN_LICENSE" ]; then
+            echo 'Set repository secret KAIGEN_LICENSE to run the required native iOS build.' >&2
+            exit 1
+          fi
+          if [ "$KAIGEN_TERMS_ACCEPTED" != true ]; then
+            echo 'Review and accept the current Kaigen terms, then set repository variable KAIGEN_TERMS_ACCEPTED=true.' >&2
+            exit 1
+          fi
+      - name: Restore the pinned Kaigen iOS component
+        env:
+          KAIGEN_LICENSE: ${{ secrets.KAIGEN_LICENSE }}
+        working-directory: ios/KloeyCompanionLab/app
+        run: |
+          curl -fsSL https://api.kaigen3d.com/install.sh | sh
+          "$HOME/.kaigen/bin/kaigen" activate "$KAIGEN_LICENSE" --accept-terms
+          unset KAIGEN_LICENSE
+          "$HOME/.kaigen/bin/kaigen" restore
+          "$HOME/.kaigen/bin/kaigen" engine add ios
+          hz/hzbuild install --accept-license
+          xcodebuild -downloadComponent MetalToolchain
+      - name: Install XcodeGen
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Native contracts, assets and Debug/Release iOS builds
+        run: ios/KloeyCompanionLab/tools/check-ios.sh
+      - name: Retain build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ios-evidence
+          path: |
+            ios/KloeyCompanionLab/app_swift/build/ios-checks/*.log
+            ios/KloeyCompanionLab/app/out/ios-resources/ios-assets-report.json
+      - name: Return the CI license activation
+        if: always()
+        run: |
+          if [ -x "$HOME/.kaigen/bin/kaigen" ]; then
+            "$HOME/.kaigen/bin/kaigen" deactivate
+          fi

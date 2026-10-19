@@ -3,7 +3,7 @@
 // of the reply's first sentence.
 //
 // When the user's message arrives (before_reply, alongside the chat model),
-// one request to Typesafe's Jev asks a few questions about it: what crosses
+// one request to the configured decision provider asks a few questions about it: what crosses
 // the character's face, what mood it puts the character in, how much it moves
 // the character, whether the character would hide it, whether it's funny,
 // whether it's about the character, and which gesture fits.
@@ -68,6 +68,8 @@ interface Thresholds {
 }
 
 export interface Resolved {
+	api: "typesafe" | "openai_decisions";
+	signals: Set<string>;
 	baseUrl: string;
 	keyEnv: string;
 	model: string;
@@ -211,6 +213,7 @@ function questions(c: Resolved, name: string): Record<string, Question> {
 			},
 		},
 	};
+	for (const name of ["guarded", "amused", "personal"]) if (!c.signals.has(name)) delete out[name];
 	if (c.settle.size)
 		out.settle = {
 			type: "choice",
@@ -254,7 +257,40 @@ export interface Answer {
 	probabilities?: unknown;
 }
 
-async function ask(c: Resolved, key: string, body: unknown): Promise<Record<string, Answer>> {
+interface JudgeRequest { model: string; state: unknown; questions: Record<string, Question> }
+
+export function decisionRequest(body: JudgeRequest) {
+	return {
+		model: body.model,
+		input: JSON.stringify(body.state),
+		questions: Object.entries(body.questions).map(([name, question]) => {
+			if (question.type === "noul") return { type: "predicate", name,
+				instructions: `${question.instructions}\nTrue: ${question.criteria.true}\nFalse: ${question.criteria.false}` };
+			if (question.type === "choice") return { type: "choice", name, instructions: question.instructions,
+				choices: Object.entries(question.criteria).map(([value, description]) => ({ value, description })) };
+			return { type: "score", name, instructions: question.instructions,
+				levels: question.criteria.map((description, index) => ({ label: String(index), description })) };
+		}),
+	};
+}
+
+export function decisionAnswers(raw: unknown, names: Set<string>): Record<string, Answer> {
+	if (!isMap(raw) || !Array.isArray(raw.answers)) throw new Error("the judge's answer has no answers");
+	const out: Record<string, Answer> = {};
+	for (const item of raw.answers) {
+		if (!isMap(item) || typeof item.name !== "string" || !names.has(item.name) || item.type === "refusal") continue;
+		if (Object.hasOwn(out, item.name)) throw new Error("the judge repeated a question");
+		const probabilities = Array.isArray(item.probabilities)
+			? Object.fromEntries(item.probabilities.filter(isMap).map(p => [String(p.value), p.probability])) : {};
+		if (item.type === "predicate") out[item.name] = { noul: item.probability };
+		else if (item.type === "choice" || item.type === "score") out[item.name] = {
+			choice: item.choice, score: item.score, confidence: item.confidence, probabilities,
+		};
+	}
+	return out;
+}
+
+async function ask(c: Resolved, key: string, body: JudgeRequest): Promise<Record<string, Answer>> {
 	const ac = new AbortController();
 	const timer = setTimeout(() => ac.abort(), c.timeoutMs);
 	// the runtime logs what this throws, so each failure gets a message of its
@@ -263,11 +299,11 @@ async function ask(c: Resolved, key: string, body: unknown): Promise<Record<stri
 	try {
 		let resp: Response;
 		try {
-			resp = await fetch(`${c.baseUrl}/systemone`, {
+			resp = await fetch(`${c.baseUrl}/${c.api === "openai_decisions" ? "decisions" : "systemone"}`, {
 				method: "POST",
 				signal: ac.signal,
 				headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-				body: JSON.stringify(body),
+				body: JSON.stringify(c.api === "openai_decisions" ? decisionRequest(body) : body),
 			});
 		} catch {
 			throw failed("the judge couldn't be reached");
@@ -294,6 +330,7 @@ async function ask(c: Resolved, key: string, body: unknown): Promise<Record<stri
 		} catch {
 			throw new Error("the judge's answer isn't JSON");
 		}
+		if (c.api === "openai_decisions") return decisionAnswers(j, new Set(Object.keys(body.questions)));
 		if (!j || !isMap(j.answers)) throw new Error("the judge's answer has no answers");
 		return j.answers as Record<string, Answer>;
 	} finally {
@@ -508,10 +545,17 @@ function read(config: unknown): { c: Resolved } | { errors: string[] } {
 			}
 	}
 
+	const api = model.api ?? "typesafe";
+	if (api !== "typesafe" && api !== "openai_decisions") errors.push("`model.api` must be typesafe or openai_decisions");
+	const signals = cfg.signals ?? ["guarded", "amused", "personal"];
+	if (!Array.isArray(signals) || signals.some(v => typeof v !== "string" || !["guarded", "amused", "personal"].includes(v)))
+		errors.push("`signals` must list guarded, amused or personal (or be empty)");
 	const c: Resolved = {
-		baseUrl: trimSlashes(text("model.base_url", model.base_url, DEFAULTS.baseUrl)),
+		signals: new Set(Array.isArray(signals) ? signals : []),
+		api: api === "openai_decisions" ? api : "typesafe",
+		baseUrl: trimSlashes(text("model.base_url", model.base_url, api === "openai_decisions" ? "https://api.openai.com/v1" : DEFAULTS.baseUrl)),
 		keyEnv: text("model.api_key_env", model.api_key_env, DEFAULTS.keyEnv),
-		model: text("model.model", model.model, DEFAULTS.model),
+		model: text("model.model", model.model, api === "openai_decisions" ? "gpt-6-luna" : DEFAULTS.model),
 		timeoutMs: Math.min(MAX_TIMEOUT_MS, positive("model.timeout_ms", model.timeout_ms, DEFAULTS.timeoutMs)),
 		context: cfg.context === 0 ? 0 : Math.min(MAX_CONTEXT, Math.floor(positive("context", cfg.context, DEFAULTS.context))),
 		about: cut(text("about", cfg.about, ""), MAX_ABOUT),

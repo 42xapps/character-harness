@@ -21,10 +21,14 @@
 #include "os/os.h"
 #include "app/app.h"
 #include "app/app_config.h"
+#include "shaders/nature_wind.h"
 #include "app_swift/app_swift.h"
 #include "app/app_character.h"
 #include "app/player.h"
 #include "app/calm_life.h"
+#include "app/calm_world.h"
+#include "app/ios_quality.h"
+#include "gameplay/camera_rig/camera_rig.h"
 #include "gameplay/character/character.h"
 #include "app/player_vrm.h"
 #include "rendering/renderer.h"
@@ -48,7 +52,8 @@ ECS_COMPONENT_TYPEDEF(AppMemory);
 // portrait, the aspect the stage camera is framed for
 const HzAppConfig hz_app_config = {.window_title = "Character Player",
                                    .window_width = 414,
-                                   .window_height = 900};
+                                   .window_height = 900, .frame_pacing = HZ_FRAME_PACING_STEADY,
+                                   .max_pixels = 1350000, .max_frames_in_flight = 2};
 
 // a framing on top of the player's own: fov, and offsets right/up/toward the character
 typedef struct {
@@ -93,15 +98,21 @@ typedef struct AppState {
   f32 orbit_yaw_cur, orbit_pitch_cur, orbit_zoom_cur;
   u32 cam_curve;
   FixedTimestep life_clock;
-  HzHandleT(AnimationBlobAsset) life_walk;
-  u32 activity_flags;
+  u32 activity_flags, activity_resets;
   b32 life_driving_body;
   f32 life_preview_time;
-  v3 life_focus, last_camera;
+  v3 last_camera, camera_base;
+  EcsEntity rig_camera;
   f32 context_timer, context_previous_age;
   i32 context_activity, context_previous;
   b32 context_seen;
   HZSetCompanionProfile companion_profile;
+  RendererFeature nature_wind_feature;
+  RendererQuality hardware_quality;
+  HZSetDeviceBudget device_budget;
+  b32 device_policy_ready, temporal_enabled, performance_log, extended_walks;
+  f32 performance_timer;
+  f32 previous_render_time;
   char url[PLAYER_ENV_MAX];
   char character_path[PLAYER_ENV_MAX];
   // an imported character with no clips: it holds its bind pose and beats
@@ -179,16 +190,55 @@ hz_internal void player_context_tick(AppState *s, f32 dt) {
   }
 }
 
-void player_set_profile(void *ctx, const char *timezone, const char *user_name) {
+void player_set_profile(void *ctx, HZSetCompanionProfile profile) {
   AppState *s = ctx;
-  cstr_copy(s->companion_profile.timezone, timezone, sizeof s->companion_profile.timezone);
-  cstr_copy(s->companion_profile.user_name, user_name, sizeof s->companion_profile.user_name);
+  s->companion_profile = profile;
+  s->companion_profile.timezone[64] = 0;
+  s->companion_profile.user_name[160] = 0;
   s->context_timer = 1;
+}
+
+hz_internal void player_apply_device_budget(AppState *s) {
+  RendererState *renderer = ecs_resource_get_mut(s->world, RendererState);
+  CompanionQuality policy = companion_quality(s->device_budget.thermal, s->device_budget.low_power,
+    (s->activity_flags & 1) != 0, s->hardware_quality);
+  hz_set_max_pixels(policy.max_pixels);
+  renderer_set_quality_mode(renderer, policy.dynamic ? RENDERER_QUALITY_DYNAMIC : RENDERER_QUALITY_FIXED);
+  renderer_set_quality(renderer, policy.level);
+  s->device_policy_ready = true;
+  log_info("iOS budget: thermal % low power % visible % quality % pixels % temporal %",
+    fmt_u32(s->device_budget.thermal), fmt_u32(s->device_budget.low_power), fmt_u32(s->activity_flags & 1),
+    fmt_u32(policy.level), fmt_u32(policy.max_pixels), fmt_b32(s->temporal_enabled));
+}
+
+void player_set_device_budget(void *ctx, HZSetDeviceBudget budget) {
+  AppState *s = ctx;
+  if (budget.thermal > 3) budget.thermal = 3;
+  budget.low_power = budget.low_power != 0;
+  if (s->device_policy_ready && budget.thermal == s->device_budget.thermal && budget.low_power == s->device_budget.low_power) return;
+  s->device_budget = budget;
+  player_apply_device_budget(s);
 }
 
 void player_set_activity(void *ctx, u32 flags) {
   AppState *s = ctx;
+  u32 previous = s->activity_flags;
   s->activity_flags = flags & 3;
+  if ((previous & 1) != (s->activity_flags & 1)) player_apply_device_budget(s);
+  if (s->activity_flags != 1) s->activity_resets++;
+}
+
+void player_submit_text(void *ctx, HZSubmitText text) {
+  AppState *s = ctx;
+  u32 status = 2;
+  if (text.length > 0 && text.length < sizeof text.text) {
+    text.text[text.length] = 0;
+    if (cstr_len(text.text) == text.length) {
+      status = character_voice_connected(&s->vs) ? 0 : 1;
+      if (!status) character_voice_inject_user_text(&s->vs, text.text, text.length);
+    }
+  }
+  hz_send_text_submitted((HZTextSubmitted){.request_id = text.request_id, .status = status});
 }
 
 void player_set_framing(void *ctx, u32 mode) {
@@ -206,9 +256,9 @@ void player_set_cards_layout(void *ctx, f32 reserved_fraction) {
 void player_orbit(void *ctx, f32 yaw, f32 pitch, f32 zoom) {
   AppState *s = ctx;
   if (yaw != yaw || pitch != pitch || zoom != zoom) return;
-  s->orbit_yaw += m_clampf(yaw, -0.5f, 0.5f);
-  s->orbit_pitch = m_clampf(s->orbit_pitch + m_clampf(pitch, -0.3f, 0.3f), 0.0f, 0.65f);
-  s->orbit_zoom = m_clampf(s->orbit_zoom + m_clampf(zoom, -0.5f, 0.5f), -0.55f, 0.95f);
+  s->orbit_yaw = m_wrap_pi(s->orbit_yaw + yaw);
+  s->orbit_pitch = m_clampf(s->orbit_pitch + pitch, 0.0f, 0.65f);
+  s->orbit_zoom = m_clampf(s->orbit_zoom + zoom, -0.55f, 0.95f);
 }
 
 
@@ -821,7 +871,23 @@ HZ_APP_API void app_init(AppMemory *memory) {
   render_desc.shadow.cascade_count = 2;
   render_desc.shadow.cascade_size = 1024;
 #endif
+  tctx_temp_allocator_scope(ta, NULL) {
+    char *value = ALLOC_ARRAY(&ta.allocator, char, 16);
+    state->extended_walks = os_env_get("HARNESS_EXTENDED_WALKS", value, 16) && cstr_equal(value, "1");
+    state->temporal_enabled = os_env_get("HARNESS_TEMPORAL", value, 16) && cstr_equal(value, "1");
+    state->performance_log = os_env_get("HARNESS_PERF", value, 16) && cstr_equal(value, "1");
+  }
+  if (state->temporal_enabled) {
+    render_desc.gbuffer_enabled = true;
+    render_desc.upscale = (RendererUpscaleDesc){.enabled = true, .quality = RENDERER_UPSCALE_QUALITY, .prefer_hardware = true};
+  }
   ecs_renderer_init(w, &render_desc);
+  RendererHardware hardware = renderer_hardware(ecs_resource_get(w, RendererState));
+  state->hardware_quality = renderer_quality_for_hardware(&hardware);
+  state->activity_flags = 1;
+  player_apply_device_budget(state);
+  state->nature_wind_feature = renderer_add_feature(ecs_resource_get_mut(w, RendererState),
+    &(RendererFeatureDesc){.name = "nature_wind_clock"});
   ecs_transform_init(w, NULL);
   ecs_assets_init(w, NULL);
   ecs_cloth_init(w, NULL);
@@ -829,25 +895,23 @@ HZ_APP_API void app_init(AppMemory *memory) {
   ecs_physics_init(w, physics.collision_layer_settings);
   character_controller_init(w);
   calm_life_init(w);
+  camera_rig_init(w);
+  calm_world_init(w);
   state->life_clock = fixed_timestep_make(60, 4);
-  state->activity_flags = 1;
   state->last_camera = (v3){0, 1.6f, 4};
-  // The rendered clearing is exactly flat at -0.025 m throughout this bounded corridor.
-  EcsEntity floor = ecs_entity_create(w);
-  ecs_component_set(w, floor, ColliderBody, {.collider = collider_box(V3_ZERO, (v3){.65f,.2f,2.0f}),
-    .pos = {0,-.225f,0}, .rot = quat_identity(), .scale = 1});
-  ecs_component_add(w, floor, StaticBody);
+  f32 bound_x = state->extended_walks ? 2.4f : .62f;
+  f32 bound_z = state->extended_walks ? 2.4f : 1.9f;
   for (u32 side = 0; side < 4; side++) {
     EcsEntity wall = ecs_entity_create(w);
-    v3 pos = side < 2 ? (v3){side ? .62f : -.62f, .8f, 0} : (v3){0,.8f,side == 2 ? -1.9f : 1.9f};
-    v3 half = side < 2 ? (v3){.04f,1,2} : (v3){.65f,1,.04f};
-    ecs_component_set(w, wall, ColliderBody, {.collider = collider_box(V3_ZERO, half), .pos = pos, .rot = quat_identity(), .scale = 1});
+    v3 pos = side < 2 ? (v3){side ? bound_x : -bound_x, .8f, 0} : (v3){0,.8f,side == 2 ? -bound_z : bound_z};
+    v3 half = side < 2 ? (v3){.04f,1,bound_z + .1f} : (v3){bound_x + .1f,1,.04f};
+    ecs_component_set(w, wall, ColliderBody, {.collider = collider_box(V3_ZERO, half), .pos = pos, .rot = quat_identity(), .scale = 1,
+      .filter = {.category = 4, .mask = ~0u}});
     ecs_component_add(w, wall, StaticBody);
   }
   character_init(w, ecs_resource_get_mut(w, AssetSystem));
   AssetSystem *assets = ecs_resource_get_mut(w, AssetSystem);
   app_emote_clips_register(assets);
-  state->life_walk = asset_load(AnimationBlobAsset, assets, .path = "foxglove/locomotion/stroll.hza");
   app_character_register_loader(assets);
   asset_register_loader(assets, ASSET_TYPE(CharacterStatesBlobAsset),
                         character_states_loader, NULL);
@@ -944,8 +1008,48 @@ HZ_APP_API void app_init(AppMemory *memory) {
   state->scene_settings_query = ecs_query_cached(w, EcsIn(EcsSceneSettings));
   state->model_query = ecs_query_cached(w, EcsIn(EcsModelRef), EcsWith(EcsCharacterRigRef));
   state->last_talk_want = -1;
-  log_info("player: % on %", fmt_cstr(state->character_path),
-           fmt_cstr(state->url));
+  log_info("player: %", fmt_cstr(state->character_path));
+}
+
+hz_internal void player_camera_prepare(AppState *s, f32 dt) {
+  EcsWorld *w = s->world;
+  EcsEntity entity = ecs_query_get_singleton_entity(s->camera_query);
+  if (!entity) return;
+  if (!s->rig_camera) {
+    s->camera_base = ecs_component_get(w, entity, Camera)->pos;
+    ecs_component_set(w, entity, CameraFollow, {.min_pitch = -.35f, .max_pitch = 1.3f,
+      .min_distance = 1, .max_distance = 8, .focus_lambda = 1.8f,
+      .boom_in_lambda = 0, .boom_out_lambda = 5, .boom_radius = .16f, .boom_mask = 3,
+      .ground_clearance = .35f, .ground_mask = 1, .floor_enabled = true, .floor_y = -.025f,
+      .near_plane = .05f, .far_plane = 100});
+    s->rig_camera = entity;
+  }
+  CameraFollow *follow = ecs_component_get_mut(w, s->rig_camera, CameraFollow);
+  if (follow->target != s->character.entity) {
+    follow->snap = true;
+    renderer_camera_cut(ecs_resource_get_mut(w, RendererState));
+  }
+  follow->target = s->character.entity;
+  if (!follow->target) return;
+  PlayerCamMove move = player_camera_tick(s, dt);
+  s->cards_reserved_cur = m_damp(s->cards_reserved_cur, s->cards_reserved, 8, dt);
+  s->orbit_yaw_cur = m_damp_angle(s->orbit_yaw_cur, s->orbit_yaw, 12, dt);
+  s->orbit_pitch_cur = m_damp(s->orbit_pitch_cur, s->orbit_pitch, 12, dt);
+  s->orbit_zoom_cur = m_damp(s->orbit_zoom_cur, s->orbit_zoom, 12, dt);
+  f32 reserved = s->cards_reserved_cur;
+  f32 horizontal = (s->framing ? 2.6f : s->camera_base.z) + move.distance;
+  horizontal = m_clampf(horizontal * m_expf(s->orbit_zoom_cur) * (1 + reserved * 1.1f), 1.8f, 7.5f);
+  f32 aim = (s->framing ? 1.30f : PLAYER_CAM_AIM_Y) + s->character.cam_offset_y + reserved * 1.5f;
+  f32 height = s->camera_base.y + s->character.cam_offset_y + move.y +
+    m_sinf(s->orbit_pitch_cur) * horizontal + m_maxf(0, horizontal - 4) * .18f;
+  f32 flat = m_cosf(s->orbit_pitch_cur) * horizontal;
+  follow->focus_height = aim;
+  follow->shoulder = move.x;
+  follow->yaw = s->orbit_yaw_cur;
+  follow->pitch = m_atan2f(height - aim, flat);
+  follow->distance = m_sqrtf(flat * flat + (height - aim) * (height - aim));
+  follow->fov = s->framing ? 26 : move.fov;
+  ecs_resource_set(w, CameraRigInput, {0});
 }
 
 HZ_APP_API void app_update_and_render(AppMemory *memory) {
@@ -954,6 +1058,7 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
   perf_stats_begin_frame();
 
   if (is_main_thread()) {
+    calm_world_update(w);
     app_character_update(&state->character, w);
     app_character_over_hair_update(&state->character, w);
     player_context_tick(state, memory->dt);
@@ -962,8 +1067,9 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
       character_voice_tick(&state->vs, memory->dt);
     player_talk_tick(state, memory->dt);
     player_mic_debug_tick(state, memory->dt);
-    if (cstr_equal(state->character.active_path, "characters/foxglove.hzt"))
-      calm_life_attach(w, state->character.entity, state->life_walk);
+    if (ecs_resource_get(w, CalmWorldState)->ready &&
+        cstr_equal(state->character.active_path, "characters/foxglove.hzt"))
+      calm_life_attach(w, state->character.entity);
     b32 busy = state->vs.phase != CHARACTER_VOICE_IDLE || state->vs.ep.in_speech ||
       state->vs.ep.speech_run > 0 || state->vs.llm_active || state->vs.tts_final_pending ||
       state->vs.active_tts_n > 0 || state->vs.stage_hold || state->talk_hold > 0;
@@ -976,7 +1082,7 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
     const EcsActorState *actor = state->character.entity ? ecs_component_get(w, state->character.entity, EcsActorState) : NULL;
     b32 gesture = ep && (!actor || !handle_equals(ep->emote, actor->cur_emote));
     const CalmLife *life = state->character.entity ? ecs_component_get(w, state->character.entity, CalmLife) : NULL;
-    state->life_driving_body = life && !busy && (life->state == CALM_WALK || life->state == CALM_TURN);
+    state->life_driving_body = life && !busy && (life->state == CALM_WALK || life->state == CALM_TURN || life->state == CALM_OBSERVE);
     // A final conversational pose may hold indefinitely; return it to idle only after a quiet interval.
     if (gesture && ep->hold_indef && !busy && state->activity_flags == 1 && life &&
         life->quiet >= (life_preview ? 3.0f : life->wait)) {
@@ -990,9 +1096,10 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
       ep = NULL;
       actor = NULL;
     }
+    player_camera_prepare(state, memory->dt);
     ecs_resource_set(w, CalmLifeInput, {.busy = busy || (gesture && !ep->hold_indef),
       .suspended = state->activity_flags != 1 || (state->preview[0] && !life_preview),
-      .preview = life_preview, .body_occupied = (actor && actor->in_break) || (gesture && ep->hold_indef), .camera = state->last_camera});
+      .reset_generation = state->activity_resets, .extended = state->extended_walks, .preview = life_preview, .body_occupied = (actor && actor->in_break) || (gesture && ep->hold_indef), .camera = state->last_camera});
   }
 
   lane_sync();
@@ -1005,6 +1112,7 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
     ecs_audio_schedule(w);
     calm_life_schedule_intent(w);
     ecs_physics_schedule(w);
+    ecs_navigation_schedule(w);
     ecs_flush(w, memory->dt);
     for (i32 step = 0; step < life_steps; step++) {
       character_schedule_fixed(w);
@@ -1012,7 +1120,8 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
     }
     character_schedule_frame(w);
     ecs_transform_schedule(w);
-    ecs_camera_schedule(w, NULL);
+    camera_rig_schedule(w);
+    ecs_camera_schedule(w, &(EcsCameraScheduleDesc){.transform_sync_off = state->rig_camera != 0});
     ecs_cloth_resolve_schedule(w);
     ecs_flush(w, memory->dt);
 
@@ -1042,43 +1151,13 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
   Camera *cam = ecs_query_get_singleton(Camera, state->camera_query);
   if (cam) {
     if (is_main_thread()) {
-      const WorldTransform *character_at = state->character.entity ? ecs_component_get(w, state->character.entity, WorldTransform) : NULL;
-      v3 focus = character_at ? character_at->position : V3_ZERO;
-      state->life_focus = v3_damp(state->life_focus, focus, 1.8f, memory->dt);
-      cam->pos.y += state->character.cam_offset_y; // this character's height
-      camera_look_at(cam, (vec3){0.0f,
-                                 PLAYER_CAM_AIM_Y + state->character.cam_offset_y,
-                                 0.0f});
-      PlayerCamMove move = player_camera_tick(state, memory->dt);
-      cam->fov = state->framing ? 26.0f : move.fov;
-      if (state->framing) {
-        cam->pos.z = 2.6f;
-        camera_look_at(cam, (vec3){0.0f, 1.30f + state->character.cam_offset_y, 0.0f});
-      }
-      cam->pos = v3_add(cam->pos, v3_scale(quat_rotate(cam->rot, V3_RIGHT), move.x));
-      cam->pos = v3_add(cam->pos, v3_scale(quat_rotate(cam->rot, V3_UP), move.y));
-      cam->pos = v3_add(cam->pos,
-                        v3_scale(quat_rotate(cam->rot, V3_BACK), move.distance));
-      f32 blend = 1.0f - m_expf(-12.0f * memory->dt);
-      state->orbit_yaw_cur = m_lerpf(state->orbit_yaw_cur, state->orbit_yaw, blend);
-      state->orbit_pitch_cur = m_lerpf(state->orbit_pitch_cur, state->orbit_pitch, blend);
-      state->orbit_zoom_cur = m_lerpf(state->orbit_zoom_cur, state->orbit_zoom, blend);
-      f32 radius = m_clampf(cam->pos.z * m_expf(state->orbit_zoom_cur), 2.0f, 10.0f);
-      f32 layout_blend = 1.0f - m_expf(-8.0f * memory->dt);
-      state->cards_reserved_cur = m_lerpf(state->cards_reserved_cur, state->cards_reserved, layout_blend);
-      f32 reserved = state->cards_reserved_cur;
-      radius = m_clampf(radius * (1.0f + reserved * 1.1f), 2.0f, 10.0f);
-      f32 pitch = state->orbit_pitch_cur, yaw = state->orbit_yaw_cur;
-      f32 aim = (state->framing ? 1.30f : PLAYER_CAM_AIM_Y) + state->character.cam_offset_y;
-      aim += reserved * 1.5f;
-      cam->pos.x += m_sinf(yaw) * m_cosf(pitch) * radius;
-      cam->pos.z = m_cosf(yaw) * m_cosf(pitch) * radius;
-      cam->pos.y += m_sinf(pitch) * radius + m_maxf(0, radius - 4.0f) * 0.18f;
-      cam->pos = v3_add(cam->pos, state->life_focus);
-      camera_look_at(cam, v3_add(state->life_focus, (vec3){0, aim, 0}));
+      ShaderNatureWindFrame wind = {.times = {memory->total_time, state->previous_render_time, 0, 0}};
+      renderer_set_uniforms(ecs_resource_get_mut(w, RendererState), state->nature_wind_feature,
+        "_NatureWindFrame", &wind, sizeof wind);
+      state->previous_render_time = memory->total_time;
       state->last_camera = cam->pos;
-      camera_update(cam, memory->canvas_width, memory->canvas_height);
     }
+    lane_sync();
     EcsSceneSettings *settings =
         ecs_query_get_singleton(EcsSceneSettings, state->scene_settings_query);
     renderer_update(ecs_resource_get_mut(w, RendererState),
@@ -1093,6 +1172,15 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
   lane_sync();
   if (is_main_thread()) {
     app_swift_update(state);
+    state->performance_timer += memory->dt;
+    if (state->performance_log && state->performance_timer >= 15) {
+      PerfStatsSnapshot sample = perf_stats_snapshot(0);
+      RendererQualityStatus quality = renderer_quality_status(ecs_resource_get(w, RendererState));
+      log_info("iOS perf: frames % frame avg % p99 % cpu % gpu % quality % reason %",
+        fmt_u64(sample.recorded), fmt_f32(sample.frame_ms_avg), fmt_f32(sample.frame_ms_p99),
+        fmt_f32(sample.cpu_ms_avg), fmt_f32(sample.gpu_ms_avg), fmt_u32(quality.level), fmt_cstr(quality.reason ? quality.reason : "warming up"));
+      state->performance_timer = 0;
+    }
     // a profile with no clips holds its bind pose, whether imported or cooked
     // in. Decided here, after every lane has scheduled this frame, so all of
     // them read the same value the next one.

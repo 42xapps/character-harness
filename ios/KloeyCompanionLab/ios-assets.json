@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "budget_bytes": 117440512,
+  "roots": [
+    "catalog.hza",
+    "characters/foxglove.hza",
+    "mutuals/main_scene.hza",
+    "mutuals/gestures.hza",
+    "mutuals/camera_moves.hza",
+    "vad/silero_vad_16k.hza",
+    "environments/quaternius/collision.hza"
+  ],
+  "dynamic_groups": [
+    "foxglove/foxglove/*.hza",
+    "foxglove/locomotion/*.hza",
+    "mutuals/*.hza"
+  ],
+  "shader_groups": [
+    "shaders/*_metal_ios.hza",
+    "shaders/*_material.hza"
+  ]
+}

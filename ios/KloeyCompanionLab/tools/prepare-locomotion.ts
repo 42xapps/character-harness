@@ -2,10 +2,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { readGlb, writeGlb, addAccessor, type Glb } from './vendor/harness/glb.ts';
-import { readHumanoid, type HumanBone } from './vendor/harness/humanoid.ts';
-import { retarget } from './vendor/harness/retarget.ts';
-import { compose, mmul, mpoint, type Mat4, type Quat, type Vec3 } from './vendor/harness/math.ts';
+import { readGlb, writeGlb, addAccessor, type Glb } from '../../../runtime/src/rig/glb.ts';
+import { readHumanoid, type HumanBone } from '../../../runtime/src/rig/humanoid.ts';
+import { retarget } from '../../../runtime/src/rig/retarget.ts';
+import { compose, mmul, mpoint, qslerp, qmul, qaxis, type Mat4, type Quat, type Vec3 } from '../../../runtime/src/rig/math.ts';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = path.join(root, 'art/locomotion/source');
 const src: Glb = { json: JSON.parse(readFileSync(path.join(source, 'AnimationLibrary.gltf'), 'utf8')),
@@ -32,14 +32,49 @@ const sh=map(src,sourceNames),th=map(target,targetNames);
 const nodes=structuredClone(target.json.nodes!);for(const n of nodes){delete n.mesh;delete (n as typeof n & {skin?:number}).skin;}
 const out:Glb={json:{asset:{version:'2.0',generator:'Kloey/harness retarget'},nodes,scenes:[{nodes:nodes.map((_,i)=>i).filter(i=>th.parent[i]<0)}],scene:0,animations:[]},bin:Buffer.alloc(0)};
 const all=src.json.animations!;
-for(const [from,name] of [['Walk_Loop','stroll'],['Walk_Formal_Loop','stroll_formal']]) {
- const anim=all.find(a=>a.name===from);if(!anim)throw new Error(`Missing ${from}`);
- src.json.animations=[anim];
- const clip=retarget(src,sh,th);
+function writeClip(name: string, clip: ReturnType<typeof retarget>) {
  const input=addAccessor(out,clip.times,'SCALAR',true),samplers=[],channels=[];
  for(const t of clip.tracks){const output=addAccessor(out,t.values,t.path==='rotation'?'VEC4':'VEC3');samplers.push({input,output,interpolation:'LINEAR'});channels.push({sampler:samplers.length-1,target:{node:t.node,path:t.path}});}
  out.json.animations!.push({name,samplers,channels});
  console.log(`${name}: ${clip.times.at(-1)!.toFixed(3)} s, ${clip.tracks.length} tracks`);
+}
+function sourceClip(name: string) {
+ const animation=all.find(a=>a.name===name);if(!animation)throw new Error(`Missing ${name}`);
+ return retarget({...src,json:{...src.json,animations:[animation]}},sh,th);
+}
+const walk=sourceClip('Walk_Loop'), idle=sourceClip('Idle_Loop');
+writeClip('stroll',walk);writeClip('stroll_formal',sourceClip('Walk_Formal_Loop'));
+function sample(clip: typeof walk, node: number, kind: string, time: number): number[] {
+ const track=clip.tracks.find(t=>t.node===node&&t.path===kind);
+ if(!track)return Array.from(kind==='rotation'?th.local[node].r:th.local[node].t);
+ const width=kind==='rotation'?4:3;
+ const t=Math.min(Math.max(time,0),clip.times.at(-1)!);
+ let frame=0;while(frame+1<clip.times.length&&clip.times[frame+1]<t)frame++;
+ const next=Math.min(frame+1,clip.times.length-1), span=clip.times[next]-clip.times[frame];
+ const k=span>0?(t-clip.times[frame])/span:0;
+ const a=Array.from(track.values.subarray(frame*width,(frame+1)*width));
+ const b=Array.from(track.values.subarray(next*width,(next+1)*width));
+ return kind==='rotation'?qslerp(a as Quat,b as Quat,k):a.map((v,i)=>v+(b[i]-v)*k);
+}
+for(const [name,duration] of [['start',.65],['stop',.65],['pivot_left',.8],['pivot_right',.8],['observe',3.2]] as const) {
+ const frames=Math.round(duration*30)+1, times=Float32Array.from({length:frames},(_,i)=>i*duration/(frames-1));
+ const tracks=walk.tracks.map(track=>{
+  const width=track.path==='rotation'?4:3, values=new Float32Array(frames*width);
+  for(let f=0;f<frames;f++) {
+   const u=f/(frames-1), ease=u*u*(3-2*u);
+   const w=sample(walk,track.node,track.path,name==='stop'?.55+times[f]:times[f]);
+   const rest=sample(idle,track.node,track.path,times[f]%idle.times.at(-1)!);
+   let blend=name==='start'?ease:name==='stop'?1-ease:name.startsWith('pivot')?Math.sin(Math.PI*u)*.45:0;
+   let value=track.path==='rotation'?qslerp(rest as Quat,w as Quat,blend):rest.map((v,i)=>v+(w[i]-v)*blend);
+   if(track.path==='rotation'&&track.node===th.bones.hips&&name.startsWith('pivot'))
+    value=qmul(qaxis([0,1,0],(name==='pivot_left'?1:-1)*12*Math.sin(Math.PI*u)),value as Quat);
+   if(track.path==='rotation'&&track.node===th.bones.chest&&name==='observe')
+    value=qmul(qaxis([1,0,0],5*Math.sin(Math.PI*u)**2),value as Quat);
+   values.set(value,f*width);
+  }
+  return {...track,values};
+ });
+ writeClip(name,{...walk,times,tracks});
 }
 const output=path.join(root,'app/assets/foxglove/locomotion.glb');writeFileSync(output,writeGlb(out));
 console.log(output);

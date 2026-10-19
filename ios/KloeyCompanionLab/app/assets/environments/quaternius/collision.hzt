@@ -1,0 +1,5 @@
+type CalmWorldBlobAsset
+version 23
+---
+ground "environments/quaternius/collision_ground.hzt" CalmCollisionMeshBlobAsset
+solid "environments/quaternius/collision_solid.hzt" CalmCollisionMeshBlobAsset

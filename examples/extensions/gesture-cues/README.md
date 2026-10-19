@@ -4,6 +4,10 @@ The extension `docs/your-first-extension.md` builds. When the character says one
 
 No model call and no key. It runs on `on_sentence`, blocking, with 500 ms.
 
+This example re-exports the shared implementation in `extensions/gesture-cues`.
+Production manifests can point there directly. An existing gesture from an
+earlier extension takes priority, so a cue never duplicates its gesture.
+
 ## Use it
 
 ```yaml

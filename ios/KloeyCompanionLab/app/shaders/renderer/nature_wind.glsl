@@ -1,25 +1,10 @@
-// Project-local foliage material adapted from the SDK standard material.
-// The standard material über-shader. ONE shader, gated entirely by keywords; the
-// renderer's default materials and all standard content select variants of this
-// file via different keyword sets (see material .hzt `keywords`). Replaces the old
-// standard_{static,skinned,blendshape}{,_unlit,_gbuffer,_transparent,...} family.
-//
-// Keyword axes (material keywords are injected into BOTH stages by the cook):
-//   deform   : (none)=rigid / HZ_RENDERER_SKINNED / HZ_RENDERER_BLENDSHAPED (excl.)
-//   output   : (none)=forward 1-MRT / HZ_RENDERER_GBUFFER 3-MRT (+motion vectors)
-//                                     / +HZ_RENDERER_TAAU 6-MRT (requires GBUFFER)
-//   shading  : (none)=lit PBR / HZ_RENDERER_UNLIT (N.L diffuse)
-//   surface  : HZ_RENDERER_TRANSPARENT (alpha blend) / HZ_RENDERER_ALPHA_CUTOUT
-//              (discard a<0.5; an alpha_to_coverage material's forward variant adds
-//              HZ_RENDERER_ALPHA_COVERAGE_HW/_MASK) / HZ_RENDERER_DOUBLE_SIDED (backface normal flip)
-//   lit subs : HZ_RENDERER_SHADOWS, HZ_RENDERER_LIGHTING_CLUSTERS, HZ_RENDERER_IBL,
-//              HZ_RENDERER_FOG (LIGHTING_BASIC is auto-implied by SHADOWS/CLUSTERS)
+// Project-local standard foliage with shared color, shadow and temporal deformation.
+#define HZ_RENDERER_ALPHA_CUTOUT
 #include "renderer.glsl"
+#include "nature_wind_common.glsl"
 
 @vs
-// paired with standard_static_depth.glsl: the depth pre-pass writes depth
-// with that shader and this one early-Z's against it with GREATER_EQUAL, so
-// both must compute gl_Position identically. see the note there.
+// The nature_depth pre-pass must use identical deformation and clip projection for early-Z.
 #define HZ_RENDERER_VERTEX_SHADER
 #include "renderer_shaders.glsl"
 invariant gl_Position;
@@ -57,14 +42,7 @@ void main() {
 #endif
 
     vec4 world_pos = v.model * vec4(v.pos, 1.0);
-    // RGB is authored wind data; only vegetation materials use this shader.
-    float amplitude = clamp(v.color.r, 0.0, 1.0) * 0.08;
-    float phase = v.color.g * 6.2831853;
-    float tip = v.color.b;
-    float sway = sin(hz_scene.time * 0.9 + phase)
-               + 0.22 * sin(hz_scene.time * 1.6 + phase * 1.4);
-    float flutter = sin(hz_scene.time * 3.2 + phase) * tip * tip * 0.08;
-    world_pos.xz += vec2(0.94, 0.34) * amplitude * (sway + flutter);
+    world_pos = nature_wind_position(world_pos, v.color, nature_wind_frame.times.x);
     gl_Position = hz_instance_clip(v, world_pos); // jittered (raster)
     v_uv = v.uv;
     v_color = vec4(1.0);
@@ -84,7 +62,7 @@ void main() {
 #endif
 
 #ifdef HZ_RENDERER_GBUFFER
-    HzVelocity vel = hz_instance_velocity(v, world_pos, hz_world_pos_prev(bind_pos, v));
+    HzVelocity vel = hz_instance_velocity(v, world_pos, nature_wind_position(hz_world_pos_prev(bind_pos, v), v.color, nature_wind_frame.times.y));
     v_clip_cur = vel.clip_cur;
     v_clip_prev = vel.clip_prev;
 #endif

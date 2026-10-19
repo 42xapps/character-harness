@@ -13,7 +13,8 @@ no paid Pro/Source assets are used.
 Run `node tools/prepare-locomotion.ts` from the lab root (Node >=23.6).
 It maps the source's named humanoid bones and FoxGlove's named VRM bones,
 then uses the character-harness normalized humanoid retargeter unchanged.
-The four upstream helpers and Apache 2.0 license are under tools/vendor/harness.
+The tool imports the canonical helpers directly from runtime/src/rig. Their
+Apache 2.0 license and provenance note remain under tools/vendor/harness.
 FoxGlove's original GLB, materials, existing clips and harness manifest stay
 unchanged. The output is a separate, skinless animation library in
 app/assets/foxglove/locomotion.glb, bound to the live skeleton by joint name.
@@ -22,5 +23,8 @@ Both walk loops are 1.333 seconds; the relaxed Walk_Loop is active. On the
 retargeted FoxGlove, low-stance foot velocity measures approximately -1.05 and
 -1.13 m/s. CALM_CLIP_SPEED=1.09 m/s uses their average to match playback rate
 to actual ground speed. The companion cruises at 0.58 m/s. Turning uses a
-restrained step blend; there are no dedicated authored turn/start/stop clips
-in this integration.
+restrained step blend. The tool also derives 0.65 s start/stop, 0.8 s left/right
+pivot and 3.2 s observation clips from the walk and idle pose. These are authored
+transitions, not dedicated motion-capture clips from the source pack. A separate
+Kaigen animation layer crossfades them while the harness retains face, gesture
+and cloth priority. See IDLE-LIFE.md and IOS-WORK.md for the validation status.

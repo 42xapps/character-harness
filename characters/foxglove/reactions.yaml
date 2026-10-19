@@ -1,0 +1,21 @@
+# Faces only: deterministic cues own greeting/celebration gestures.
+# Two decision questions stay within the first-sentence budget.
+model:
+  api: openai_decisions
+  api_key_env: OPENAI_API_KEY
+  base_url: https://api.openai.com/v1
+  model: gpt-6-luna
+  timeout_ms: 1200
+context: 2
+signals: []
+about: An expressive companion who is proud and playful, but gentle when the user shares something painful.
+beat:
+  nothing: ""
+  delight: happy
+  soften: sympathetic
+  tease: playful
+  flustered: flustered
+  startle: surprised
+  turn_it_over: thoughtful
+thresholds:
+  strong: 0.7

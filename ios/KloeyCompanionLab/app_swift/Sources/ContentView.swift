@@ -9,14 +9,43 @@ enum CameraFraming: UInt32, CaseIterable, Identifiable {
 final class CompanionModel: ObservableObject, HZEventHandler {
     @Published var framing: CameraFraming = .fullBody
     @Published var confirmedFraming: CameraFraming = .fullBody
-    @Published var intention = "Make room for a small win."
-    let engine = Engine()
+    @Published var actionError: String?
+    @Published var pendingText: UInt32?
+    private var nextRequest = UInt32.random(in: 1...UInt32.max - 1)
+    let engine = Engine.shared
 
     init() { engine.handler = self }
 
     func selectFraming(_ framing: CameraFraming) {
         self.framing = framing
         engine.send(.setFraming(framing.rawValue))
+    }
+
+    @discardableResult func submit(_ text: String) -> Bool {
+        guard pendingText == nil else { return false }
+        nextRequest &+= 1
+        let request = nextRequest
+        pendingText = request
+        guard engine.send(.submitText(requestID: request, text: text)) else {
+            pendingText = nil
+            actionError = "Couldn’t send this message. Open the iPhone app with a conversation connection and try again."
+            return false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            guard let self, self.pendingText == request else { return }
+            self.actionError = "This message is still waiting for the companion. Return to the scene to finish sending it."
+        }
+        return true
+    }
+
+    func onTextSubmitted(_ event: HZTextSubmitted) {
+        guard pendingText == event.requestID else { return }
+        pendingText = nil
+        if event.status != 0 {
+            actionError = event.status == 1
+                ? "Your conversation isn’t connected yet. Please try again when it connects."
+                : "This message couldn’t be sent. Please try again."
+        }
     }
 
     func onFramingChanged(_ event: HZFramingChanged) {
@@ -28,16 +57,15 @@ final class CompanionModel: ObservableObject, HZEventHandler {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var detailPresented = false
     @StateObject private var model = CompanionModel()
-    @State private var showingIntentions = false
     @State private var showingSceneOptions = false
     @State private var cardsExpanded = false
     @State private var cardsHeight: CGFloat = 0
     @AppStorage(CompanionProfile.nameKey) private var userName = ""
     @State private var nameDraft = ""
-    private let intentions = ["Make room for a small win.", "Take a moment to recharge.",
-                              "Be present for someone you love."]
+
 
     var body: some View {
         GeometryReader { geometry in
@@ -46,7 +74,9 @@ struct ContentView: View {
                     .ignoresSafeArea()
                 HomeView(isExpanded: $cardsExpanded, onDetailVisibilityChange: { visible in
                     detailPresented = visible
-                }, onMenu: { nameDraft = userName; showingSceneOptions = true })
+                }, onMenu: { nameDraft = userName; showingSceneOptions = true },
+                onConversation: { text in model.submit(text) }, actionPending: model.pendingText != nil,
+                actionError: $model.actionError)
                     .padding(.top, 8)
                     .onGeometryChange(for: CGFloat.self) { proxy in
                         proxy.size.height
@@ -58,38 +88,22 @@ struct ContentView: View {
             .onChange(of: cardsHeight) { updateCardsLayout(geometry) }
             .onChange(of: geometry.size) { updateCardsLayout(geometry) }
         }
-        .onAppear { model.selectFraming(model.framing); updateActivity(); updateProfile() }
+        .onAppear { model.selectFraming(model.framing); updateActivity(); updateProfile(); updateDeviceBudget() }
         .onChange(of: scenePhase) {
             updateActivity()
-            if scenePhase == .active { updateProfile() }
+            if scenePhase == .active { updateProfile(); updateDeviceBudget() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification)
+            .receive(on: RunLoop.main)) { _ in updateDeviceBudget() }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)
+            .receive(on: RunLoop.main)) { _ in updateDeviceBudget() }
         .onChange(of: userName) { updateProfile() }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)
             .receive(on: RunLoop.main)) { _ in updateProfile() }
         .onChange(of: showingSceneOptions) { updateActivity() }
         .onChange(of: reduceMotion) { updateActivity() }
         .onChange(of: detailPresented) { updateActivity() }
-        .sheet(isPresented: $showingIntentions) {
-            NavigationStack {
-                List(intentions, id: \.self) { intention in
-                    Button {
-                        model.intention = intention
-                        showingIntentions = false
-                    } label: {
-                        HStack {
-                            Text(intention).foregroundStyle(.primary)
-                            Spacer()
-                            if intention == model.intention {
-                                Image(systemName: "checkmark").foregroundStyle(.green)
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("An intention for today")
-                .toolbar { Button("Done") { showingIntentions = false } }
-            }
-            .presentationDetents([.medium])
-        }
+        .modifier(ConversationErrorAlert(message: $model.actionError, enabled: !detailPresented && !showingSceneOptions))
         .sheet(isPresented: $showingSceneOptions) {
             NavigationStack {
                 Form {
@@ -128,13 +142,18 @@ struct ContentView: View {
                         .disabled(!CompanionProfile.validName(nameDraft))
                 }
             }
-            .presentationDetents([.medium])
+            .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         }
     }
 
     private func updateActivity() {
         let active = scenePhase == .active && !detailPresented && !showingSceneOptions
         model.engine.send(.setActivity(flags: (active ? 1 : 0) | (reduceMotion ? 2 : 0)))
+    }
+
+    private func updateDeviceBudget() {
+        let info = ProcessInfo.processInfo
+        model.engine.send(.setDeviceBudget(thermal: UInt32(info.thermalState.rawValue), lowPower: info.isLowPowerModeEnabled))
     }
 
     private func updateProfile() {
@@ -148,27 +167,22 @@ struct ContentView: View {
         model.engine.send(.setCardsLayout(reservedFraction: fraction))
     }
 
-    private var intentionCard: some View {
-        HStack(spacing: 18) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("TODAY’S INTENTION")
-                    .font(.caption2.weight(.semibold)).tracking(1.5)
-                    .foregroundStyle(.secondary)
-                Text(model.intention)
-                    .font(.headline)
-                    .fixedSize(horizontal: false, vertical: true)
+}
+
+struct ConversationErrorAlert: ViewModifier {
+    @Binding var message: String?
+    var enabled = true
+    @State private var showing = false
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: enabled && message != nil, initial: true) { _, visible in showing = visible }
+            .onChange(of: showing) { _, visible in
+                if !visible && enabled && message != nil { message = nil }
             }
-            Spacer(minLength: 0)
-            Button("Choose") { showingIntentions = true }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.borderedProminent)
-                .tint(Color(red: 0.18, green: 0.29, blue: 0.24))
-                .accessibilityIdentifier("ChooseIntentionButton")
-        }
-        .padding(22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
-        .accessibilityIdentifier("IntentionCard")
+            .alert("Conversation message", isPresented: $showing) {
+                Button("OK") { message = nil }
+            } message: { Text(message ?? "") }
     }
 }
 

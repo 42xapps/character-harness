@@ -2,6 +2,7 @@
 // docs/your-first-extension.md builds: its handler, its check, and a
 // character that lists it. Run with `npm test`.
 
+import { parse, stringify } from "yaml";
 import assert from "node:assert/strict";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -71,10 +72,11 @@ function withCues(cuesYaml: string): string {
 	const dir = mkdtempSync(path.join(tmpdir(), "harness-cues-"));
 	temp.push(dir);
 	cpSync(FOXGLOVE, dir, { recursive: true, filter: (src) => !src.includes(`${path.sep}animations`) });
-	const manifest = readFileSync(path.join(dir, "character.yaml"), "utf8")
-		.replaceAll("../../extensions", path.resolve(FOXGLOVE, "../../extensions"))
-		.replace(/(emotion-tags\n    config_file: director\.yaml\n)/, `$1  - path: ${EXAMPLE}\n    config:\n      cues: ${cuesYaml}\n`);
-	writeFileSync(path.join(dir, "character.yaml"), manifest);
+	const manifest = parse(readFileSync(path.join(dir, "character.yaml"), "utf8"));
+	manifest.extensions = manifest.extensions.filter((e: {path: string}) => ["world-context", "emotion-tags", "director"].includes(path.basename(e.path)));
+	for (const extension of manifest.extensions) extension.path = path.resolve(FOXGLOVE, extension.path);
+	manifest.extensions.splice(2, 0, {path: EXAMPLE, config: {cues: parse(cuesYaml)}});
+	writeFileSync(path.join(dir, "character.yaml"), stringify(manifest));
 	return dir;
 }
 const keys = { OPENAI_API_KEY: "x", ELEVENLABS_API_KEY: "x" };

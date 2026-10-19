@@ -29,7 +29,7 @@ extension MeshGradient {
 
 // MARK: - Model
 
-enum CardKind: CaseIterable, Identifiable {
+enum CardKind: String, CaseIterable, Identifiable {
     case intentions, affirmation, wellbeing, question
     var id: Self { self }
 
@@ -58,6 +58,17 @@ enum CardKind: CaseIterable, Identifiable {
         case .question: "Start chat"
         }
     }
+    var conversationPrompt: String {
+        switch self {
+        case .intentions: "I’d like to choose an intention for today."
+        case .affirmation: "Can we talk about this affirmation: \(Self.affirmationText)"
+        case .wellbeing: "Help me reflect on moments that brought me satisfaction."
+        case .question: "Let’s talk about a time I was accidentally right."
+        }
+    }
+    static let intentionChoices = ["Make room for a small win.", "Take a moment to recharge.",
+                             "Be present for someone you love."]
+
     var fill: AnyShapeStyle {
         switch self {
         case .intentions:
@@ -72,7 +83,7 @@ enum CardKind: CaseIterable, Identifiable {
             AnyShapeStyle(Color(hex: 0xFAF8F3))
         }
     }
-    var isLight: Bool { self == .question }
+    var isLight: Bool { self == .question || self == .intentions }
     var foreground: Color { isLight ? .ink : .white }
     var contrast: Color { isLight ? .white : .ink }
     var isDismissible: Bool { self != .question }
@@ -119,6 +130,7 @@ struct CircleButton: View {
 struct HaloButtonStyle: ButtonStyle {
     let fill: Color
     let ink: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -126,8 +138,8 @@ struct HaloButtonStyle: ButtonStyle {
             .background(fill, in: .capsule)
             .padding(5)
             .background(fill.opacity(0.2), in: .capsule)
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.snappy, value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(reduceMotion ? nil : .snappy, value: configuration.isPressed)
     }
 }
 
@@ -186,41 +198,52 @@ struct CardView: View {
     let kind: CardKind
     let onAction: () -> Void
     let onDismiss: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private static let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
 
     var body: some View {
         VStack(spacing: 0) {
             Eyebrow(text: kind.eyebrow)
-            Spacer()
+                .padding(.horizontal, 48)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 12)
             Text(kind.title)
                 .font(.system(.title3, design: .serif))
                 .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 32)
-            Spacer()
+            Spacer(minLength: 12)
             actionButton
         }
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
-        .frame(height: 188)
+        .frame(minHeight: 188)
         .background(kind.fill, in: Self.shape)
-        .overlay { decoration }
+        .overlay {
+            if !dynamicTypeSize.isAccessibilitySize {
+                decoration.allowsHitTesting(false).accessibilityHidden(true)
+            }
+        }
         .overlay(alignment: .topTrailing) { accessories }
         .foregroundStyle(kind.foreground)
         .contentShape(Self.shape)
-        .onTapGesture(perform: onAction)
+        .accessibilityAction(named: kind.buttonTitle ?? "Open affirmation", onAction)
     }
 
     private var actionButton: some View {
         Button(action: onAction) {
             if let title = kind.buttonTitle {
-                Text(title).font(.headline).padding(.horizontal, 16).frame(height: 40)
+                Text(title).font(.headline).multilineTextAlignment(.center)
+                    .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16).frame(minHeight: 44)
             } else {
-                Image(systemName: "play.fill").frame(width: 42, height: 42)
+                Label("Reveal affirmation", systemImage: "play.fill").labelStyle(.iconOnly).frame(width: 44, height: 44)
             }
         }
         .buttonStyle(HaloButtonStyle(fill: kind.foreground, ink: kind.contrast))
+        .accessibilityIdentifier("CardAction_\(kind.rawValue)")
     }
 
     @ViewBuilder private var decoration: some View {
@@ -243,13 +266,13 @@ struct CardView: View {
         HStack(spacing: 0) {
             if kind == .wellbeing {
                 Button(action: onAction) {
-                    Image(systemName: "text.bubble.fill").font(.title3).frame(width: 44, height: 44)
+                    Image(systemName: "text.bubble.fill").font(.system(size: 18)).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Chat")
             }
             if kind.isDismissible {
                 Button(action: onDismiss) {
-                    Image(systemName: "xmark").font(.footnote.weight(.bold)).opacity(0.6)
+                    Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).opacity(0.6)
                         .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Dismiss")
@@ -268,6 +291,10 @@ struct HomeView: View {
     @Binding var isExpanded: Bool
     var onDetailVisibilityChange: (Bool) -> Void = { _ in }
     var onMenu: () -> Void = {}
+    var onConversation: (String) -> Bool = { _ in false }
+    var actionPending = false
+    @Binding var actionError: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var presented: CardKind?
     @Namespace private var zoom
 
@@ -285,7 +312,13 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .fullScreenCover(item: $presented) { kind in
-            DetailView(kind: kind).navigationTransition(.zoom(sourceID: kind, in: zoom))
+            let detail = DetailView(kind: kind, actionError: $actionError, onConversation: { text in
+                let accepted = onConversation(text)
+                if accepted { isExpanded = false }
+                return accepted
+            })
+            if reduceMotion { detail }
+            else { detail.navigationTransition(.zoom(sourceID: kind, in: zoom)) }
         }
         .onChange(of: presented != nil) { _, visible in onDetailVisibilityChange(visible) }
         .sensoryFeedback(.selection, trigger: selection)
@@ -302,12 +335,7 @@ struct HomeView: View {
                 }
             }
             Spacer()
-            barButton("Tasks", alignment: .trailing) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .frame(width: 26, height: 26)
-                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(lineWidth: 2.5))
-            }
+
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 26)
@@ -326,16 +354,19 @@ struct HomeView: View {
     private var toggle: some View {
         CircleButton(symbol: isExpanded ? "chevron.up" : "chevron.down",
                      label: isExpanded ? "Collapse cards" : "Expand cards") {
-            withAnimation(.smooth) { isExpanded.toggle() }
+            withAnimation(reduceMotion ? nil : .smooth) { isExpanded.toggle() }
         }
         .accessibilityIdentifier("ToggleCompanionCards")
         .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         .overlay(alignment: .topTrailing) {
             if unseen > 0 {
                 Text("\(unseen)")
-                    .font(.caption.bold())
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.ink)
-                    .frame(width: 22, height: 22)
+                    .fixedSize()
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .frame(minWidth: 22, minHeight: 22)
                     .background(Color(hex: 0xF6CF68), in: .circle)
                     .overlay(Circle().stroke(Color.ink, lineWidth: 2))
                     .offset(x: 8, y: -7)
@@ -351,7 +382,12 @@ struct HomeView: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
                     ForEach(cards) { card in
-                        CardView(kind: card, onAction: { presented = card }, onDismiss: { dismiss(card) })
+                        CardView(kind: card, onAction: {
+                            if card == .question {
+                                if onConversation(card.conversationPrompt) { isExpanded = false }
+                            } else { presented = card }
+                        }, onDismiss: { dismiss(card) })
+                            .disabled(actionPending)
                             .matchedTransitionSource(id: card, in: zoom)
                             .padding(.horizontal, 32)
                             .containerRelativeFrame(.horizontal)
@@ -379,7 +415,7 @@ struct HomeView: View {
 
     private func dismiss(_ card: CardKind) {
         guard let i = cards.firstIndex(of: card) else { return }
-        withAnimation(.smooth) {
+        withAnimation(reduceMotion ? nil : .smooth) {
             cards.remove(at: i)
             selection = cards.indices.contains(i) ? cards[i] : cards.last
             if cards.isEmpty { isExpanded = false }
@@ -391,10 +427,14 @@ struct HomeView: View {
 
 struct DetailView: View {
     let kind: CardKind
+    @Binding var actionError: String?
+    var onConversation: (String) -> Bool = { _ in false }
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 0) {
+        GeometryReader { geometry in
+        ScrollView {
+        VStack(spacing: 24) {
             Eyebrow(text: kind.eyebrow, font: .callout.weight(.semibold), rule: 45)
             Spacer()
             VStack(spacing: 20) {
@@ -404,7 +444,6 @@ struct DetailView: View {
                     .fontWeight(.medium)
                     .kerning(-0.5)
                     .multilineTextAlignment(.center)
-//                    .padding(.horizontal)
                 if kind == .affirmation {
                     ShareLink(item: CardKind.affirmationText) {
                         Label("Share", systemImage: "square.and.arrow.up")
@@ -416,6 +455,32 @@ struct DetailView: View {
                 }
             }
             Spacer()
+            if kind == .intentions {
+                ForEach(Array(CardKind.intentionChoices.enumerated()), id: \.offset) { index, intention in
+                    Button {
+                        if onConversation("My intention today is: " + intention) { dismiss() }
+                    } label: {
+                        Text(intention).frame(minHeight: 44)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle(radius: 16))
+                    .tint(kind.foreground)
+                    .foregroundStyle(kind.contrast)
+                    .accessibilityIdentifier("ChooseIntention_\(index)")
+                }
+            } else {
+                Button {
+                    if onConversation(kind.conversationPrompt) { dismiss() }
+                } label: {
+                    Text(kind == .affirmation ? "Talk about this" : "Start chat").frame(minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.roundedRectangle(radius: 16))
+                .tint(kind.foreground)
+                .foregroundStyle(kind.contrast)
+                .accessibilityIdentifier("StartCardConversation")
+            }
             if kind == .affirmation {
                 Text("Breathe")
                     .font(.title3.weight(.medium))
@@ -423,37 +488,22 @@ struct DetailView: View {
                     .padding(.bottom, 20)
             }
             CircleButton(symbol: "chevron.right", size: 52, fill: kind.foreground, ink: kind.contrast,
-                         label: "Continue") { dismiss() }
+                         label: "Close") { dismiss() }
+                .accessibilityIdentifier("CloseCardDetail")
         }
 
         .foregroundStyle(kind.foreground)
         .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: geometry.size.height)
+        }
+        }
         .background(Rectangle().fill(kind.fill).ignoresSafeArea())
-
-    }
-}
-
-// MARK: - Placeholder scene (swap for your own artwork / 3D view)
-
-struct SceneBackground: View {
-    private let trunk = Color(hex: 0x4B5430)
-
-    var body: some View {
-        Color(hex: 0x111A4A)
-            .overlay {
-                HStack(spacing: 0) {
-                    Color.clear.frame(width: 70)
-                    trunk.frame(width: 87)
-                    Spacer()
-                    trunk.frame(width: 108)
-                }
-            }
-            .ignoresSafeArea()
+        .modifier(ConversationErrorAlert(message: $actionError))
     }
 }
 
 #Preview {
     @Previewable @State var expanded = false
-    HomeView(isExpanded: $expanded).preferredColorScheme(.dark)
+    HomeView(isExpanded: $expanded, actionError: .constant(nil)).preferredColorScheme(.dark)
 }

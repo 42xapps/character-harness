@@ -196,8 +196,8 @@ bpy.ops.export_scene.gltf(filepath=str(out/'clearing.glb'),export_format='GLB',u
 import struct
 b=(out/'clearing.glb').read_bytes();n=struct.unpack_from('<I',b,12)[0];d=json.loads(b[20:20+n])
 names=[m['name'] for m in d['materials'] if any(word in m['name'].lower() for word in ('leav','grass','flower'))]
-(out/'clearing.import.hzt').write_text('type ModelImportSettings\nversion 23\n---\nrig_mode "none"\nimport_scale 1\nshader_override '+str(len(names))+'\n'+''.join('  material "'+name+'"\n  shader "/shaders/renderer/nature_wind.glsl"\n\n' for name in names)+'pass_override 0\n')
-
 import runpy
+runpy.run_path(str(Path(__file__).with_name('prepare-nature-materials.py')), run_name='__main__')
+
 validation=runpy.run_path(str(root/'tools/verify-nature.py'))['verify'](root)
 print(json.dumps(validation,indent=2))

@@ -59,7 +59,7 @@ void main() {
     v_model_c2 = v.model[2].xyz;
 
     vec4 position_ws = v.model * vec4(v.pos, 1.0);
-    gl_Position = hz_scene.view_proj * position_ws;
+    gl_Position = hz_instance_clip(v, position_ws);
 #ifdef MTOON_OVER_HAIR
     // move only the depth: test as if `push` meters closer to the camera, so
     // the brows win over the bangs right in front of them and still lose to
@@ -69,7 +69,7 @@ void main() {
     float camera_dist = length(toward_camera);
     vec3 nearer = position_ws.xyz +
                   toward_camera * (min(push, 0.5 * camera_dist) / max(camera_dist, 1e-4));
-    vec4 nearer_clip = hz_scene.view_proj * vec4(nearer, 1.0);
+    vec4 nearer_clip = hz_instance_clip(v, vec4(nearer, 1.0));
     gl_Position.z = nearer_clip.z / nearer_clip.w * gl_Position.w;
 #endif
     v_world_pos = position_ws.xyz;
@@ -83,11 +83,12 @@ void main() {
 #ifdef HZ_RENDERER_GBUFFER
     // this frame's and last frame's clip positions, without jitter, for motion
     // vectors; last frame's pose is rebuilt the same way, blendshapes then skin
-    v_clip_cur = hz_scene.view_proj_unjittered * position_ws;
     vec3 last_pos = rest_pos;
     apply_blendshapes_prev(last_pos, v.vertex_index, v.bs_offsets_base, v.bs_weights_offset);
     last_pos = apply_skinning_prev_pos(last_pos, v.bone_offset, v.vertex_base, v.vertex_layout_flags);
-    v_clip_prev = hz_scene.prev_view_proj * (unpack_prev_model() * vec4(last_pos, 1.0));
+    HzVelocity velocity = hz_instance_velocity(v, position_ws, unpack_prev_model() * vec4(last_pos, 1.0));
+    v_clip_cur = velocity.clip_cur;
+    v_clip_prev = velocity.clip_prev;
 #endif
 }
 @end

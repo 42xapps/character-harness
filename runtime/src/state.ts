@@ -40,6 +40,7 @@ export interface State {
 	turn?: number;
 	sentence?: string;
 	beats?: Beat[];
+	readonly staged_beats?: readonly Beat[]; // runtime-owned cues accepted from earlier on_sentence extensions, not confirmed playback
 	timing?: Timing;
 	cancel?: boolean;
 	error?: string;

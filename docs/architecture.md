@@ -136,6 +136,7 @@ Every event carries one JSON state object. Extensions receive it, may change it,
 | `turn` | the turn's number, the same for every hook of one turn |
 | `sentence` | the current sentence, inside `on_sentence` and `on_speak` |
 | `beats` | inside `on_sentence`: cues an extension adds for this sentence (see "Beats") |
+| `staged_beats` | inside `on_sentence`: read-only cues accepted from earlier extensions for this sentence, not confirmed playback. The runtime clears each extension's `beats` after queuing them and keeps this record for channel arbitration. Extensions must not write it |
 | `timing` | when each character of the sentence is heard, inside `on_speak` |
 | `cancel` | `true` to end the turn without replying, set on `before_reply` or `before_llm` |
 | `error` | why the turn failed, if it did |

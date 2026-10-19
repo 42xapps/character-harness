@@ -19,7 +19,7 @@ blend
   op_alpha GPU_BLEND_OP_ADD
 depth_bias 0.000000
 slope_scaled_depth_bias 0.000000
-properties 8
+properties 6
   name "color"
   type MAT_PROP_COLOR4
   c4
@@ -46,19 +46,11 @@ properties 8
 
   name "emission_intensity"
   type MAT_PROP_FLOAT
-  f 39321.601563
+  f 0.000000
 
   name "albedo"
   type MAT_PROP_TEXTURE
   texture "/environments/quaternius/textures/Leaves_NormalTree_C_8.hzt" TextureBlobAsset
-
-  name "normal_map"
-  type MAT_PROP_TEXTURE
-  texture "" TextureBlobAsset
-
-  name "orm_map"
-  type MAT_PROP_TEXTURE
-  texture "" TextureBlobAsset
 keywords 6
   name "HZ_RENDERER_SHADOWS"
   value ""
@@ -78,15 +70,15 @@ keywords 6
   name "HZ_RENDERER_ALPHA_CUTOUT"
   value ""
 passes 1
-  source "/shaders/renderer/standard_shadow_cutout.glsl"
+  source "/shaders/renderer/nature_shadow.glsl"
   phase RENDERER_PHASE_SHADOW
   order 0
-  state_mask 0
+  state_mask 7
   cull_mode GPU_CULL_NONE
-  depth_compare GPU_COMPARE_GREATER
-  depth_write false
-  depth_bias -800.000000
-  slope_scaled_depth_bias -8.000000
+  depth_compare GPU_COMPARE_GREATER_EQUAL
+  depth_write true
+  depth_bias 0.000000
+  slope_scaled_depth_bias 0.000000
   blend
     enabled false
     src_factor GPU_BLEND_ZERO

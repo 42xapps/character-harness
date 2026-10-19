@@ -6,4 +6,5 @@
 #include "player_json.c"
 #include "player_vrm.c"
 #include "calm_life.c"
+#include "calm_world.c"
 #include "player.c"

@@ -19,7 +19,7 @@ blend
   op_alpha GPU_BLEND_OP_ADD
 depth_bias 0.000000
 slope_scaled_depth_bias 0.000000
-properties 8
+properties 6
   name "color"
   type MAT_PROP_COLOR4
   c4
@@ -46,19 +46,11 @@ properties 8
 
   name "emission_intensity"
   type MAT_PROP_FLOAT
-  f 39321.601563
+  f 0.000000
 
   name "albedo"
   type MAT_PROP_TEXTURE
   texture "/environments/quaternius/textures/Grass.hzt" TextureBlobAsset
-
-  name "normal_map"
-  type MAT_PROP_TEXTURE
-  texture "" TextureBlobAsset
-
-  name "orm_map"
-  type MAT_PROP_TEXTURE
-  texture "" TextureBlobAsset
 keywords 5
   name "HZ_RENDERER_SHADOWS"
   value ""
@@ -74,4 +66,41 @@ keywords 5
 
   name "HZ_RENDERER_FOG"
   value ""
-passes 0
+passes 2
+  source "/shaders/renderer/nature_shadow.glsl"
+  phase RENDERER_PHASE_SHADOW
+  order 0
+  state_mask 7
+  cull_mode GPU_CULL_NONE
+  depth_compare GPU_COMPARE_GREATER_EQUAL
+  depth_write true
+  depth_bias 0.000000
+  slope_scaled_depth_bias 0.000000
+  blend
+    enabled false
+    src_factor GPU_BLEND_ZERO
+    dst_factor GPU_BLEND_ZERO
+    op GPU_BLEND_OP_ADD
+    src_factor_alpha GPU_BLEND_ZERO
+    dst_factor_alpha GPU_BLEND_ZERO
+    op_alpha GPU_BLEND_OP_ADD
+  keywords 0
+
+  source "/shaders/renderer/nature_depth.glsl"
+  phase RENDERER_PHASE_DEPTH_PREPASS
+  order 0
+  state_mask 7
+  cull_mode GPU_CULL_NONE
+  depth_compare GPU_COMPARE_GREATER_EQUAL
+  depth_write true
+  depth_bias 0.000000
+  slope_scaled_depth_bias 0.000000
+  blend
+    enabled false
+    src_factor GPU_BLEND_ZERO
+    dst_factor GPU_BLEND_ZERO
+    op GPU_BLEND_OP_ADD
+    src_factor_alpha GPU_BLEND_ZERO
+    dst_factor_alpha GPU_BLEND_ZERO
+    op_alpha GPU_BLEND_OP_ADD
+  keywords 0

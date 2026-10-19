@@ -403,15 +403,18 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		// each extension's beats go out as soon as it returns, so a fast one is
 		// not held back by a slow one after it
 		if (t && hasHook(exts, "on_sentence")) {
+			const staged: Beat[] = [];
 			const takeBeats = (s: State): State => {
 				if (Array.isArray(s.beats)) {
-					sp.pending.push(...s.beats.filter(isBeat));
+					const added = structuredClone(s.beats.filter(isBeat));
+					sp.pending.push(...added);
+					staged.push(...added);
 					flushBeats(sp);
 				}
-				return { ...s, beats: [] };
+				return { ...s, beats: [], staged_beats: structuredClone(staged) };
 			};
 			const before = t.state.ext;
-			void runHook(exts, "on_sentence", { ...t.state, sentence: text, beats: [] }, log, takeBeats).then((s) =>
+			void runHook(exts, "on_sentence", { ...t.state, sentence: text, beats: [], staged_beats: [] }, log, takeBeats).then((s) =>
 				mergeExt(t, before, s),
 			);
 		}

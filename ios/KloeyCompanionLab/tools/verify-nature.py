@@ -35,7 +35,7 @@ def verify(root, check_materials=False):
             colors = accessor(primitive['attributes']['COLOR_0'])
             assert all(abs(c[3] - 1) < .001 for c in colors), f'{name}: unexpected surface alpha'
             entry = f'  material "{name}"'
-            assert (entry in settings) == moving, f'{name}: incorrect wind shader routing'
+            assert ('hz_material' in gltf['materials'][primitive['material']].get('extras', {})) == moving, f'{name}: incorrect wind shader routing'
             if moving:
                 weights = [c[0] for c in colors]
                 assert max(weights) - min(weights) > .03, f'{name}: constant/missing bend data'
@@ -54,6 +54,11 @@ def verify(root, check_materials=False):
                 text = (folder / 'materials' / (name + '_mat.hzt')).read_text()
                 shader = '/shaders/renderer/nature_wind.glsl' if moving else '/shaders/renderer/standard.glsl'
                 assert f'shader_source "{shader}"' in text, f'{name}: stale generated shader binding'
+                if moving:
+                    assert 'source "/shaders/renderer/nature_shadow.glsl"' in text, f'{name}: static wind shadow'
+                    assert 'phase RENDERER_PHASE_SHADOW' in text, f'{name}: missing shadow phase'
+                    if gltf['materials'][primitive['material']].get('alphaMode') != 'MASK':
+                        assert 'source "/shaders/renderer/nature_depth.glsl"' in text, f'{name}: static depth pass'
                 for texture in re.findall(r'texture "([^"]+)" TextureBlobAsset', text):
                     cooked = root / 'app/cooked' / Path(texture.lstrip('/')).with_suffix('.hza')
                     assert cooked.is_file(), f'{name}: missing cooked texture {cooked.name}'

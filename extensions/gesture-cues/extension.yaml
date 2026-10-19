@@ -1,0 +1,5 @@
+name: gesture-cues
+handler: index.ts
+hooks:
+  # no model call, so half a second is plenty
+  on_sentence: { timeout_ms: 500 }

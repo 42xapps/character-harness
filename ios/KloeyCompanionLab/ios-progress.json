@@ -1,0 +1,951 @@
+{
+  "schema": 1,
+  "baseline": "45f0b6d495662fd5c6c2d7d7f08f104fcef38406",
+  "engine": "0.6.2.001-beta",
+  "canonical_root": "ios/KloeyCompanionLab",
+  "audit": "docs/review-2026-10-19.md",
+  "scope": "Native iOS only. Reuse existing OpenAI key. No sign-in or production identity integration while in development.",
+  "excluded": [
+    "Conversation state UI/mute/stop controls",
+    "Persistent memory",
+    "Sign-in/production account integration",
+    "Desktop/Windows/WebGPU fixes and validation",
+    "Changes to shared SDK or separate working copies"
+  ],
+  "status_values": [
+    "pending",
+    "in_progress",
+    "implemented",
+    "verified",
+    "awaiting_external",
+    "excluded"
+  ],
+  "items": [
+    {
+      "id": "01",
+      "title": "Consistent iOS Debug/Release artifacts and truthful capture results",
+      "source": "F1 shared POD copy; F2; F6",
+      "acceptance": "Build both iOS configurations, reject stale reuse, reproduce failure exit propagation.",
+      "status": "verified",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:28:08.769487+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:28:08.769960+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:28:08.770247+00:00",
+          "sha256": "4eb1a1dc0b00f9ef39ac3f80c4263beab8389cbbc85af4c2d51c832d94ef9963"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/SKILL.md",
+          "reviewed_at": "2026-10-19T05:28:08.770499+00:00",
+          "sha256": "1bee52c5ca1daecdeac802f34e6dbead6717cc8bc0fc93f61e85985781120948"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Inside-a-project",
+          "reviewed_at": "2026-10-19T05:28:08.770699+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#configuration",
+          "reviewed_at": "2026-10-19T05:28:08.771107+00:00"
+        }
+      ],
+      "changes": [
+        "Pass Debug/Release through both native build layers; stamp inputs, engine identity and output hashes; reject stale reuse.",
+        "Copy the fixed POD profile with explicit termination; preserve screenshot test exit status and require named captures."
+      ],
+      "evidence": [
+        "Debug and Release engine + iphoneos SwiftUI builds pass; configuration/input/output hashes reject stale or wrong-configuration reuse.",
+        "Intentional missing-control assertion exits 65 through shot.sh while exporting its diagnostic image; successful native UI run exits 0 with all named captures.",
+        "Capture names match exactly and output cleanup is confined to app_swift/build; unsafe output paths are rejected before deletion."
+      ],
+      "remaining": []
+    },
+    {
+      "id": "02",
+      "title": "Reliable host commands and suspension transitions",
+      "source": "F3; F4",
+      "acceptance": "Stress real bridge; preserve all settings and quiet reset across inactive/active without a simulation tick.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:32:24.865468+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:32:24.865816+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:32:24.866076+00:00",
+          "sha256": "4eb1a1dc0b00f9ef39ac3f80c4263beab8389cbbc85af4c2d51c832d94ef9963"
+        },
+        {
+          "reference": "IDLE-LIFE.md",
+          "reviewed_at": "2026-10-19T05:32:24.866246+00:00",
+          "sha256": "5a046b1aecab7d58da23710795e164bdd520c2cba409fe301e4319237ba86a57"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-core/SKILL.md",
+          "reviewed_at": "2026-10-19T05:32:24.866413+00:00",
+          "sha256": "c44ca4b92efd20efc192bf784e1063301928c78d97055e834c31304e2aa64556"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T05:32:24.866614+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "app/hz/wiki/engine/ecs.md#Events-between-systems",
+          "reviewed_at": "2026-10-19T05:32:24.866788+00:00",
+          "sha256": "1653ca481e9c59f1f45ef73f5933a9d5d2a173fefb1a13d0591c1cd233ae326d"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T05:32:24.867001+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#every-core-runs-your-code",
+          "reviewed_at": "2026-10-19T05:32:24.867372+00:00"
+        }
+      ],
+      "changes": [
+        "Replace lossy camera/settings ring with an exclusive-slot SPSC snapshot; accumulate bounded orbit inputs and retain latest settings plus suspension generations.",
+        "Carry reset generations through CalmLifeInput so intent observes a pause even after immediate resume."
+      ],
+      "evidence": [
+        "tools/check-ios-bridge.py passed 1000 queued inputs, reset ordering and 100000 concurrent publications with profile integrity checks."
+      ],
+      "remaining": [
+        "Physical background/resume and quiet-interval validation in step 11."
+      ]
+    },
+    {
+      "id": "03",
+      "title": "Matching foliage shadow and temporal motion shaders",
+      "source": "F5; temporal prerequisites",
+      "acceptance": "Compile pinned Metal iOS variants and inspect physical-device captures.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:35:43.598109+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:35:43.598564+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-shaders/SKILL.md",
+          "reviewed_at": "2026-10-19T05:35:43.598868+00:00",
+          "sha256": "2deddd94b7d3b48393618fc62f10f3e9c23b2c748a0499479495a3a3791d4cb5"
+        },
+        {
+          "reference": "app/hz/wiki/shaders/conventions.md",
+          "reviewed_at": "2026-10-19T05:35:43.599179+00:00",
+          "sha256": "9788164474123100aa76b8878942bc24a2939770dfd1431aa1b2ac3d92077246"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/material.md",
+          "reviewed_at": "2026-10-19T05:35:43.599235+00:00",
+          "sha256": "bda5efc44036ff48a1c96c0005edd3e5072e84a05abb581c29b6702905d5cb88"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/renderer.md",
+          "reviewed_at": "2026-10-19T05:35:43.599429+00:00",
+          "sha256": "75b4e9533368078eb6da7694cafefd5fe395444ffd84efc81b25cb5f86d8f4c0"
+        },
+        {
+          "reference": "app/hz/src/engine/rendering/material.h",
+          "reviewed_at": "2026-10-19T05:35:43.599624+00:00",
+          "sha256": "c7b70b211653f21338612aea6f0846351e84c054680d20294398cd746e338995"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T05:35:43.599846+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#the-main-systems",
+          "reviewed_at": "2026-10-19T05:35:43.600259+00:00"
+        }
+      ],
+      "changes": [
+        "Use extras.hz_material to author all foliage pass ownership; a sidecar shadow override conflicts with the importer-created cutout pass in this SDK.",
+        "Share wind across lit/depth/shadow shaders, preserve cutout silhouettes, and publish typed current/previous frame times through a renderer feature."
+      ],
+      "evidence": [
+        "Pinned iOS shader/cook/framework build and the expanded material contract guard passed."
+      ],
+      "remaining": [
+        "Inspect foliage and temporal output on the physical iPhone in step 11."
+      ]
+    },
+    {
+      "id": "04",
+      "title": "Target-specific iOS asset staging and size budget",
+      "source": "F7",
+      "acceptance": "Verify dependency closure and compare resource bytes; launch from staged assets.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:40:09.255284+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:40:09.255724+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:40:09.255769+00:00",
+          "sha256": "4eb1a1dc0b00f9ef39ac3f80c4263beab8389cbbc85af4c2d51c832d94ef9963"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/SKILL.md",
+          "reviewed_at": "2026-10-19T05:40:09.255813+00:00",
+          "sha256": "1bee52c5ca1daecdeac802f34e6dbead6717cc8bc0fc93f61e85985781120948"
+        },
+        {
+          "reference": "app/hz/wiki/engine/asset-cook.md",
+          "reviewed_at": "2026-10-19T05:40:09.256024+00:00",
+          "sha256": "e7b898c396b8cdc00d5e6c19a9cb85c8467a68f6fd324c807635f5f084047789"
+        },
+        {
+          "reference": "app/hz/wiki/engine/assets.md",
+          "reviewed_at": "2026-10-19T05:40:09.256354+00:00",
+          "sha256": "0dd125f354117c0f956d6299893876b2b77c415f5e127613859ad8c82715356f"
+        },
+        {
+          "reference": "app/hz/wiki/lib/blob-asset.md",
+          "reviewed_at": "2026-10-19T05:40:09.256594+00:00",
+          "sha256": "2ddbc0070e5eb0e727b88cc4d050dbed1abc5cace87eeb44481fcaffc0a515bd"
+        },
+        {
+          "reference": "app/hz/wiki/lib/assets-io.md",
+          "reviewed_at": "2026-10-19T05:40:09.256894+00:00",
+          "sha256": "8ec6cff3516011c910e3efb6d4b00e54dc9c041744c98270e3bb8e90ac81f166"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Inside-a-project",
+          "reviewed_at": "2026-10-19T05:40:09.256941+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://developer.apple.com/documentation/xcode/reducing-your-app-s-size",
+          "reviewed_at": "2026-10-19T05:40:09.257382+00:00"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/",
+          "reviewed_at": "2026-10-19T05:40:09.257401+00:00"
+        }
+      ],
+      "changes": [
+        "Follow BlobAssetRefs with the pinned generated reflection, keep explicit dynamic clip groups, select ASTC/iOS shaders, and enforce a 112 MiB resource budget.",
+        "Xcode stages the selected closure instead of copying app/cooked; project regeneration preserves saved signing teams for both app and tests."
+      ],
+      "evidence": [
+        "Final signed archive contains exactly 599 staged files / 90,781,937 bytes (86.58 MiB), each matching the staging report SHA-256.",
+        "Xcode thinning estimate: 25.6 MB compressed / 96.5 MB installed. The dependency-removal guard fails, and staging preserves unrelated files by refusing an unowned destination."
+      ],
+      "remaining": [
+        "Launch and inspect the latest staged 3D bundle on an awake physical iPhone in step 11."
+      ]
+    },
+    {
+      "id": "05",
+      "title": "Working intention and chat cards with native accessibility",
+      "source": "iOS roadmap; UI cleanup",
+      "acceptance": "Use existing character_voice_inject_user_text; test native flows and exact command contract.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:44:18.947184+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:44:18.947720+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:44:18.947905+00:00",
+          "sha256": "4eb1a1dc0b00f9ef39ac3f80c4263beab8389cbbc85af4c2d51c832d94ef9963"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-core/SKILL.md",
+          "reviewed_at": "2026-10-19T05:44:18.948097+00:00",
+          "sha256": "c44ca4b92efd20efc192bf784e1063301928c78d97055e834c31304e2aa64556"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T05:44:18.948444+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Inside-a-project",
+          "reviewed_at": "2026-10-19T05:44:18.948662+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#the-main-systems",
+          "reviewed_at": "2026-10-19T05:44:18.948887+00:00"
+        },
+        {
+          "reference": "https://developer.apple.com/la/videos/play/wwdc2024/10074/",
+          "reviewed_at": "2026-10-19T05:44:18.948913+00:00"
+        },
+        {
+          "reference": "app/hz/src/engine/character/character.h#typed-user-turns",
+          "reviewed_at": "2026-10-19T05:49:10.761408+00:00",
+          "sha256": "089d6d1b828e49942c6263d7f2f5f9dc2f2141b11d6bee3142ee093523ab88fd"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T07:03:07.647717+00:00",
+          "sha256": "b09d329aaf7c4671247c7106aa0077657c56cffd95f0ed6691133d33bd10bdcf"
+        }
+      ],
+      "changes": [
+        "Tag 7 typed submissions and tag 8 acknowledgements use an independent ordered queue, with queue refusal and disconnected feedback instead of silent loss.",
+        "Intentions and chat cards use character_voice_inject_user_text; remove unused UI, respect Reduce Motion and support scalable text/hit targets.",
+        "Fix full-screen error presentation, large-type wrapping, badge/control overlap and adaptive settings height."
+      ],
+      "evidence": [
+        "Native iphoneos SwiftUI and engine builds passed; UTF-8/wire/ack and existing profile contracts passed; bounded text-queue stress passed.",
+        "Default native UI flow and accessibility XXXL on iPhone 13 mini Simulator pass; exported captures were inspected. The final run has no SwiftUI publishing-during-update warning."
+      ],
+      "remaining": [
+        "Verify the typed-card handoff through the actual engine/phone conversation and current 3D overlay headroom in step 11."
+      ]
+    },
+    {
+      "id": "06",
+      "title": "Kaigen camera rig and authored collision geometry",
+      "source": "iOS roadmap; damping duplication",
+      "acceptance": "Preserve orbit/framing/headroom/director offsets; verify clipping on iPhone.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:49:10.806754+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:49:10.807267+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "IDLE-LIFE.md",
+          "reviewed_at": "2026-10-19T05:49:10.807585+00:00",
+          "sha256": "5a046b1aecab7d58da23710795e164bdd520c2cba409fe301e4319237ba86a57"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-core/SKILL.md",
+          "reviewed_at": "2026-10-19T05:49:10.807787+00:00",
+          "sha256": "c44ca4b92efd20efc192bf784e1063301928c78d97055e834c31304e2aa64556"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T05:49:10.808047+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "app/hz/modules/gameplay_blocks/wiki/camera-rig.md",
+          "reviewed_at": "2026-10-19T05:49:10.808239+00:00",
+          "sha256": "d5270d3fc3a9831b2cc99f24e978e5d3778ea02c5160595270d82e1b53e2aa27"
+        },
+        {
+          "reference": "app/hz/modules/gameplay_blocks/src/gameplay/camera_rig/camera_rig.h",
+          "reviewed_at": "2026-10-19T05:49:10.808416+00:00",
+          "sha256": "f1d31c014072a890da6aae5a371e27013e96fecc4fb78262078fc6a3dfbb958b"
+        },
+        {
+          "reference": "app/hz/wiki/engine/physics.md",
+          "reviewed_at": "2026-10-19T05:49:10.808704+00:00",
+          "sha256": "bbf8e21c5ddc9473e770f6b732176224b4e1fc345b1de6d34bd3e147806b41ac"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T05:49:10.808979+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#every-core-runs-your-code",
+          "reviewed_at": "2026-10-19T05:49:10.809196+00:00"
+        },
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T13:27:14.854698+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T13:27:14.855008+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-core/SKILL.md",
+          "reviewed_at": "2026-10-19T13:27:14.855301+00:00",
+          "sha256": "c44ca4b92efd20efc192bf784e1063301928c78d97055e834c31304e2aa64556"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T13:27:14.855530+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/SKILL.md",
+          "reviewed_at": "2026-10-19T13:27:14.855734+00:00",
+          "sha256": "1bee52c5ca1daecdeac802f34e6dbead6717cc8bc0fc93f61e85985781120948"
+        },
+        {
+          "reference": "app/hz/wiki/engine/assets.md",
+          "reviewed_at": "2026-10-19T13:27:14.855872+00:00",
+          "sha256": "0dd125f354117c0f956d6299893876b2b77c415f5e127613859ad8c82715356f"
+        },
+        {
+          "reference": "app/hz/wiki/lib/blob-asset.md",
+          "reviewed_at": "2026-10-19T13:27:14.856136+00:00",
+          "sha256": "2ddbc0070e5eb0e727b88cc4d050dbed1abc5cace87eeb44481fcaffc0a515bd"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md",
+          "reviewed_at": "2026-10-19T13:27:14.856410+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications",
+          "reviewed_at": "2026-10-19T13:27:14.856787+00:00"
+        },
+        {
+          "reference": "https://developer.apple.com/documentation/xcode/diagnosing-issues-using-crash-reports-and-device-logs",
+          "reviewed_at": "2026-10-19T13:27:14.856800+00:00"
+        }
+      ],
+      "changes": [
+        "Use CameraFollow with native boom spherecasts, ground clearance and authored solid/terrain collision instead of hand-composed orbit/follow transforms.",
+        "Preserve framing, card headroom and director offsets as app composition inputs; use pinned damping functions and run the rig in the documented ECS order.",
+        "Register collision-world dependency enumeration and bind the two loaded mesh handles before marking its parent ready, following the existing profile loader pattern."
+      ],
+      "evidence": [
+        "iOS framework/cook built; collision inputs contain 4232 terrain and 57618 solid triangles; existing swept-corridor guard passes.",
+        "Reproduced physical iPhone Debug startup trap at 1.2 s: collision_ground.hzt referenced before its runtime asset entry existed, despite the cooked meshes being bundled. The custom collision-world blob had no registered dependency loader.",
+        "The collision dependency fix passes Debug and Release engine + signed native builds and exact cooked geometry verification. Fixed Debug installed; post-fix launch attempts were denied because the phone locked during rebuilding.",
+        "Startup fix verified on physical iPhone 14 in Debug and Release: collision ready and character spawned, no application trap during bounded 45/70 s console observations. Release PID 6505 remains alive after the console timeout, and active rendered captures were inspected. Evidence: app_swift/build/iphone/crash-fix-evidence.json."
+      ],
+      "remaining": [
+        "Inspect controlled orbit/zoom limits and collision recovery on-device; startup and collapsed/expanded static framing now have physical captures."
+      ]
+    },
+    {
+      "id": "07",
+      "title": "Measured mobile quality, thermal policy, pacing and upscaling",
+      "source": "iOS roadmap",
+      "acceptance": "Apply pinned quality APIs; test thermal transitions and sustained device performance.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:53:00.309271+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:53:00.309641+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:53:00.309905+00:00",
+          "sha256": "4eb1a1dc0b00f9ef39ac3f80c4263beab8389cbbc85af4c2d51c832d94ef9963"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-core/SKILL.md",
+          "reviewed_at": "2026-10-19T05:53:00.310075+00:00",
+          "sha256": "c44ca4b92efd20efc192bf784e1063301928c78d97055e834c31304e2aa64556"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-shaders/SKILL.md",
+          "reviewed_at": "2026-10-19T05:53:00.310284+00:00",
+          "sha256": "2deddd94b7d3b48393618fc62f10f3e9c23b2c748a0499479495a3a3791d4cb5"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/renderer-views.md",
+          "reviewed_at": "2026-10-19T05:53:00.310539+00:00",
+          "sha256": "fb9184a44037e325318cc906a966826f477192bce09154fe4fe4b887133f0b77"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/gpu-tier.md",
+          "reviewed_at": "2026-10-19T05:53:00.310806+00:00",
+          "sha256": "8818d2fbd3fcd465acf6152fdc0e7a38cd92d72f2fda0b3c8f436a106fc6aff4"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/taa.md",
+          "reviewed_at": "2026-10-19T05:53:00.311073+00:00",
+          "sha256": "ad9af94606d0f95301c46f1d8d3dcd462ebafe35fc1dbc89647d7520df25d543"
+        },
+        {
+          "reference": "app/hz/wiki/engine/frame-pacer.md",
+          "reviewed_at": "2026-10-19T05:53:00.311224+00:00",
+          "sha256": "55f7675c043e00349212a7a4e9685379c8784e3339bb0a7cb06e74025636a237"
+        },
+        {
+          "reference": "app/hz/src/engine/rendering/renderer_quality.h",
+          "reviewed_at": "2026-10-19T05:53:00.311458+00:00",
+          "sha256": "de5369d6cf62e544d195e8467ac44cfe3b0b5ce3585b69d02ba36ca12bfc3e86"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Inside-a-project",
+          "reviewed_at": "2026-10-19T05:53:00.311625+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://developer.apple.com/documentation/foundation/processinfo/thermalstate-swift.enum",
+          "reviewed_at": "2026-10-19T05:53:00.311832+00:00"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#configuration",
+          "reviewed_at": "2026-10-19T05:53:00.311847+00:00"
+        },
+        {
+          "reference": "app/hz/wiki/engine/frame-pacer.md",
+          "reviewed_at": "2026-10-19T13:31:08.588876+00:00",
+          "sha256": "55f7675c043e00349212a7a4e9685379c8784e3339bb0a7cb06e74025636a237"
+        },
+        {
+          "reference": "app/hz/src/app/app.h",
+          "reviewed_at": "2026-10-19T13:31:08.589298+00:00",
+          "sha256": "d0e82a2706ee77330805c5d2c72df8abbc9a8a92bb38ebf41622d407a626c2e0"
+        }
+      ],
+      "changes": [
+        "Apply pinned hardware/dynamic quality and steady pacing; carry thermal/Low Power state through tag 9 with fixed budgets while constrained and dynamic recovery at nominal state.",
+        "Integrate opt-in HARNESS_TEMPORAL=1 MetalFX/TAAU with matching wind history and exact motion matrix helpers; keep the measured MSAA path as the default pending visual A/B checks.",
+        "HARNESS_PERF=1 records frame, p99, CPU, GPU and quality state every 15 seconds."
+      ],
+      "evidence": [
+        "Pinned iOS shader/framework build passed; cooked collision vertex/index checks now preserve both ground and solid arrays.",
+        "Quality contract exhaustively passed every hardware/thermal/Low Power/visibility combination; latest native Debug/Release builds passed.",
+        "Physical Debug startup reports that this pinned Metal runtime cannot apply STEADY and falls back to uncapped; the earlier configuration/build evidence did not establish steady presentation on iOS.",
+        "Short Release sample on physical A15 iPhone with Low Power enabled and thermal nominal: frame average 16.67\u201316.73 ms, frame p99 16.92\u201320.54 ms, GPU 14.82\u201315.06 ms across three console samples through 52.6 s. This is a startup sample, not sustained walking/voice or thermal acceptance."
+      ],
+      "remaining": [
+        "Resolve or accurately constrain the pinned Metal pacing fallback, then collect sustained physical-device performance and temporal A/B image checks in step 11."
+      ]
+    },
+    {
+      "id": "08",
+      "title": "Navigation and smoother locomotion with safe pose ownership",
+      "source": "iOS roadmap",
+      "acceptance": "Use engine navmesh/controller and authored start/stop/turn/observe clips; validate routes, interruption and cloth.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T05:58:17.023010+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T05:58:17.023253+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "IDLE-LIFE.md",
+          "reviewed_at": "2026-10-19T05:58:17.023665+00:00",
+          "sha256": "5a046b1aecab7d58da23710795e164bdd520c2cba409fe301e4319237ba86a57"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-core/SKILL.md",
+          "reviewed_at": "2026-10-19T05:58:17.023721+00:00",
+          "sha256": "c44ca4b92efd20efc192bf784e1063301928c78d97055e834c31304e2aa64556"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T05:58:17.023947+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "app/hz/wiki/engine/navigation.md",
+          "reviewed_at": "2026-10-19T05:58:17.024172+00:00",
+          "sha256": "87bb03d2d877a7dbd9f12eebd18a2b3260e450c34192152e00b50ce1571436fe"
+        },
+        {
+          "reference": "app/hz/wiki/engine/animation.md",
+          "reviewed_at": "2026-10-19T05:58:17.024360+00:00",
+          "sha256": "1416c420799664977a0932468301698d36d6dc792216d2dab937cf362afebbea"
+        },
+        {
+          "reference": "app/hz/modules/gameplay_blocks/wiki/character.md",
+          "reviewed_at": "2026-10-19T05:58:17.024408+00:00",
+          "sha256": "2dc74d5ac499b089321d4b46446c1bcae895428ff74e2111c3a44da5eb12b063"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T05:58:17.024452+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications#the-main-systems",
+          "reviewed_at": "2026-10-19T05:58:17.024510+00:00"
+        }
+      ],
+      "changes": [
+        "Integrate asynchronous ECS navigation over authored terrain/props, with path acceptance, blocked/no-path handling, release on interruption and explicit arrival before observation.",
+        "Author start/stop/pivot/observe transitions from the installed CC0 walk/idle clips; blend a separate masked AnimationLayer and retain voice/face/cloth ownership.",
+        "HARNESS_EXTENDED_WALKS=1 enables two lateral POIs inside a bounded navigation area for device validation; default routes stay in the verified corridor."
+      ],
+      "evidence": [
+        "Native iOS engine, cook and SwiftUI linking passed; authored motion export and cooked geometry guards passed."
+      ],
+      "remaining": [
+        "Latest signed app installed; launch blocked by locked iPhone. Path and cloth visual validation remain in step 11."
+      ]
+    },
+    {
+      "id": "09",
+      "title": "Fast automatic cues and reply reactions",
+      "source": "iOS roadmap",
+      "acceptance": "Preserve extension order/beat arbitration; validate configured providers and first-audio latency.",
+      "status": "implemented",
+      "guidance": [
+        {
+          "reference": "../../AGENTS.md",
+          "reviewed_at": "2026-10-19T06:05:00.835740+00:00",
+          "sha256": "868392dd4fa0b7d2431816e28353f106cae41dfeb5cf3706e0c86eafb0025016"
+        },
+        {
+          "reference": "../../docs/architecture.md",
+          "reviewed_at": "2026-10-19T06:05:00.836259+00:00",
+          "sha256": "33465ff5240b36b9b067fb4c45124b0b9c54a9e6ffdea2f1b647ae9eedd0522f"
+        },
+        {
+          "reference": "../../examples/extensions/gesture-cues/README.md",
+          "reviewed_at": "2026-10-19T06:05:00.836502+00:00",
+          "sha256": "45cf88dbf113f8d79c6eab833f985c269e59d6b067e39df9d6525110f786ad9c"
+        },
+        {
+          "reference": "../../extensions/reactions/README.md",
+          "reviewed_at": "2026-10-19T06:05:00.836685+00:00",
+          "sha256": "9dde2e6f7a94340860f779bf9056b5b0fba4680c5a077df6743eca717ea792d7"
+        },
+        {
+          "reference": "../../extensions/director/extension.yaml",
+          "reviewed_at": "2026-10-19T06:05:00.836882+00:00",
+          "sha256": "869511b34d2defdfef96df30d0e557729b9a05de9cec7536b09f40aad8c46f70"
+        },
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T06:05:00.837037+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T06:05:00.837207+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T06:05:00.837480+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "app/hz/src/engine/character/character.h",
+          "reviewed_at": "2026-10-19T06:05:00.837710+00:00",
+          "sha256": "089d6d1b828e49942c6263d7f2f5f9dc2f2141b11d6bee3142ee093523ab88fd"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T06:05:00.838188+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications",
+          "reviewed_at": "2026-10-19T06:05:00.838578+00:00"
+        },
+        {
+          "reference": "https://developers.openai.com/api/docs/guides/decisions",
+          "reviewed_at": "2026-10-19T06:05:00.838594+00:00"
+        },
+        {
+          "reference": "../../docs/architecture.md",
+          "reviewed_at": "2026-10-19T06:44:45.709483+00:00",
+          "sha256": "029542388cb6928d091414fc2564158077b074c3924d27a084c13e864cb3ceca"
+        },
+        {
+          "reference": "../../runtime/src/state.ts",
+          "reviewed_at": "2026-10-19T06:44:45.710287+00:00",
+          "sha256": "ec6ee377ded504e983fc6513f2a09021f9bed8fcb3e7eff14e4de8532ce2c43e"
+        }
+      ],
+      "changes": [
+        "Use the existing reactions extension with an OpenAI Decisions adapter and the existing OpenAI key; a two-question face-only config keeps gesture ownership with deterministic cues.",
+        "Enable the shared gesture-cues extension, protect earlier gesture/opening emotion channels in director arbitration, and reduce the first director batch delay to 40 ms.",
+        "Runtime exposes read-only staged_beats cues per sentence so downstream extensions can arbitrate after beats are emitted; no character-specific runtime branch."
+      ],
+      "evidence": [
+        "152 offline runtime tests and typecheck pass; manifest check has 0 errors/warnings. Session-level tests prove staged-cue isolation, no duplicate emission and in-flight cancellation.",
+        "Two bounded synthetic live probes returned PCM, with first audio 2331\u20132530 ms from submission / 191\u2013193 ms from TTS request. Reaction-only examples took 480/308/306 ms with appropriate good-news/grief/neutral behavior. This is not phone playback or a before/after latency guarantee."
+      ],
+      "remaining": [
+        "Repeat spoken first-audio, barge-in and expression checks on the physical iPhone in step 11."
+      ]
+    },
+    {
+      "id": "10",
+      "title": "Shared-source drift guards, configuration cleanup and iOS CI",
+      "source": "maintenance roadmap",
+      "acceptance": "Remove redundant helpers/config, update docs/canonical paths, run native contracts and CI commands.",
+      "status": "awaiting_external",
+      "guidance": [
+        {
+          "reference": "../../AGENTS.md",
+          "reviewed_at": "2026-10-19T06:12:21.620622+00:00",
+          "sha256": "868392dd4fa0b7d2431816e28353f106cae41dfeb5cf3706e0c86eafb0025016"
+        },
+        {
+          "reference": "../../docs/architecture.md",
+          "reviewed_at": "2026-10-19T06:12:21.621391+00:00",
+          "sha256": "33465ff5240b36b9b067fb4c45124b0b9c54a9e6ffdea2f1b647ae9eedd0522f"
+        },
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T06:12:21.621621+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app/AGENTS.md",
+          "reviewed_at": "2026-10-19T06:12:21.621808+00:00",
+          "sha256": "c57d1ddab6c4851ae765a18011ace2841581cdfac2f022a6914361c4d7634b51"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T06:12:21.621990+00:00",
+          "sha256": "4eb1a1dc0b00f9ef39ac3f80c4263beab8389cbbc85af4c2d51c832d94ef9963"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-lint/SKILL.md",
+          "reviewed_at": "2026-10-19T06:12:21.622037+00:00",
+          "sha256": "5ff4577267d52c250cdc2ec087061004824045a10e58bcdee18ff27409ca4d93"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/SKILL.md",
+          "reviewed_at": "2026-10-19T06:12:21.622234+00:00",
+          "sha256": "1bee52c5ca1daecdeac802f34e6dbead6717cc8bc0fc93f61e85985781120948"
+        },
+        {
+          "reference": "app/hz/wiki/engine/codegen.md",
+          "reviewed_at": "2026-10-19T06:12:21.622292+00:00",
+          "sha256": "6db9c6f456036c22d8349bfd6e6cfdd77ea2cb458fc677b44b3d70792770b686"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Inside-a-project",
+          "reviewed_at": "2026-10-19T06:12:21.622365+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/",
+          "reviewed_at": "2026-10-19T06:12:21.622540+00:00"
+        },
+        {
+          "reference": "https://github.com/actions/runner-images",
+          "reviewed_at": "2026-10-19T06:12:21.622578+00:00"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-lint/SKILL.md",
+          "reviewed_at": "2026-10-19T06:44:45.774896+00:00",
+          "sha256": "5ff4577267d52c250cdc2ec087061004824045a10e58bcdee18ff27409ca4d93"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/renderer.md",
+          "reviewed_at": "2026-10-19T06:44:45.775456+00:00",
+          "sha256": "75b4e9533368078eb6da7694cafefd5fe395444ffd84efc81b25cb5f86d8f4c0"
+        },
+        {
+          "reference": "app/hz/wiki/lib/thread.md",
+          "reviewed_at": "2026-10-19T07:03:07.592712+00:00",
+          "sha256": "a012532eca24155d4cfaf71c54a551dc7130ba8a6b53735df2090af7665975b2"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Terms",
+          "reviewed_at": "2026-10-19T13:17:05.900327+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets",
+          "reviewed_at": "2026-10-19T13:17:05.900556+00:00"
+        },
+        {
+          "reference": "https://docs.github.com/en/actions/reference/workflows-and-actions/variables",
+          "reviewed_at": "2026-10-19T13:17:05.900574+00:00"
+        },
+        {
+          "reference": "https://github.com/actions/runner-images",
+          "reviewed_at": "2026-10-19T13:17:05.900584+00:00"
+        }
+      ],
+      "changes": [
+        "Remove four identical vendored retarget helpers in favor of canonical runtime imports, remove unused configuration/UI, preserve signing through repeated generation, and add required native Debug/Release CI.",
+        "Refresh current iOS notes and retain the historical audit; source-drift guard covers seven shared player files and fails when a reference is missing.",
+        "Add an explicit synchronization command for the seven shared C helpers; add real Swift-to-C and C-to-Swift wire fixtures; remove the native startup bearer-URL log."
+      ],
+      "evidence": [
+        "Local CI command passed both iOS configurations, source/wire/stress/quality checks and asset guards. Signing team survived two further regenerations; signed Release archive/export passed.",
+        "Final native contract runner passes the real two-way Swift/C fixture, 100000 concurrent bridge publications and every quality-policy combination. Cooked vertex positions and triangle indices exactly match their authored sources.",
+        "Bash syntax, Python compilation, git diff whitespace and final exact cooked vertex/index comparisons pass. Detailed results and tool limits are in docs/ios-validation-2026-10-19.md.",
+        "The iOS workflow is present and locally validated. Remote inspection/setup is blocked: gh reports the configured GitHub token is invalid and GitHub API requests cannot connect; no KAIGEN_LICENSE or KAIGEN_TERMS_ACCEPTED setting is available in this environment. The workflow requires both and accepts Kaigen terms only when the repository variable explicitly asserts prior acceptance.",
+        "GitHub keyring authentication and remote branch fetch succeed outside the command sandbox; the earlier token/API failures were sandbox access errors. Repository secret and variable names were both confirmed empty before commit/push."
+      ],
+      "remaining": [
+        "Configure the Kaigen license repository secret and confirm acceptance of the current agreements before setting KAIGEN_TERMS_ACCEPTED=true, then trigger the iOS workflow and inspect its artifacts and result."
+      ]
+    },
+    {
+      "id": "11",
+      "title": "Final iOS device and conversation verification",
+      "source": "validation roadmap",
+      "acceptance": "Build Release, inspect captures, test voice/barge-in/resume and record sustained performance without false certification.",
+      "status": "in_progress",
+      "guidance": [
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T06:44:03.655739+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T06:44:03.656190+00:00",
+          "sha256": "b09d329aaf7c4671247c7106aa0077657c56cffd95f0ed6691133d33bd10bdcf"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/SKILL.md",
+          "reviewed_at": "2026-10-19T06:44:03.656405+00:00",
+          "sha256": "1bee52c5ca1daecdeac802f34e6dbead6717cc8bc0fc93f61e85985781120948"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/references/platforms.md",
+          "reviewed_at": "2026-10-19T06:44:03.656613+00:00",
+          "sha256": "e9bff1f43090e26f30c806865b79cfabd54d5ede4315cf228685c2e3490cba78"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/references/screenshot-verification.md",
+          "reviewed_at": "2026-10-19T06:44:03.656792+00:00",
+          "sha256": "0631528de9aa34283e6f1e4dbe34c8103cef020195fdcf8931c14340cc9536cb"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T06:44:03.656991+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications",
+          "reviewed_at": "2026-10-19T06:44:03.657399+00:00"
+        },
+        {
+          "reference": "https://developer.apple.com/documentation/xcode/testing",
+          "reviewed_at": "2026-10-19T06:44:03.657420+00:00"
+        },
+        {
+          "reference": "AGENTS.md",
+          "reviewed_at": "2026-10-19T13:17:05.844837+00:00",
+          "sha256": "0d64e1cd285ea13a009276dcc392c1307f39e21f1bead55093712ccb40d62c20"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T13:17:05.845269+00:00",
+          "sha256": "b09d329aaf7c4671247c7106aa0077657c56cffd95f0ed6691133d33bd10bdcf"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/references/screenshot-verification.md",
+          "reviewed_at": "2026-10-19T13:17:05.845557+00:00",
+          "sha256": "0631528de9aa34283e6f1e4dbe34c8103cef020195fdcf8931c14340cc9536cb"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-game/SKILL.md",
+          "reviewed_at": "2026-10-19T13:17:05.845824+00:00",
+          "sha256": "856effeaae7b01cf1c262c11d959e0d00a7680d142ebfc762386fa74ee2c4fce"
+        },
+        {
+          "reference": "app/hz/wiki/engine/ecs.md",
+          "reviewed_at": "2026-10-19T13:17:05.846064+00:00",
+          "sha256": "1653ca481e9c59f1f45ef73f5933a9d5d2a173fefb1a13d0591c1cd233ae326d"
+        },
+        {
+          "reference": "app/hz/wiki/rendering/renderer.md",
+          "reviewed_at": "2026-10-19T13:17:05.846408+00:00",
+          "sha256": "75b4e9533368078eb6da7694cafefd5fe395444ffd84efc81b25cb5f86d8f4c0"
+        },
+        {
+          "reference": "/Users/m0saan/.codex/.tmp/marketplaces/kaigen/plugins/kaigen/skills/kaigen-setup/SKILL.md#Rules",
+          "reviewed_at": "2026-10-19T13:17:05.846742+00:00",
+          "sha256": "1468c505a61f5d23f4fa7747fc456a0e93957b599e6d0113447468760b4aface"
+        },
+        {
+          "reference": "https://kaigen3d.com/docs/writing-applications",
+          "reviewed_at": "2026-10-19T13:17:05.847128+00:00"
+        },
+        {
+          "reference": "https://developer.apple.com/documentation/xcode/testing",
+          "reviewed_at": "2026-10-19T13:17:05.847155+00:00"
+        },
+        {
+          "reference": "https://developer.apple.com/documentation/foundation/processinfo/thermalstate-swift.enum",
+          "reviewed_at": "2026-10-19T13:17:05.847167+00:00"
+        },
+        {
+          "reference": "app_swift/AGENTS.md",
+          "reviewed_at": "2026-10-19T13:30:55.736225+00:00",
+          "sha256": "b09d329aaf7c4671247c7106aa0077657c56cffd95f0ed6691133d33bd10bdcf"
+        },
+        {
+          "reference": "app/hz/.claude/skills/hz-build/references/screenshot-verification.md",
+          "reviewed_at": "2026-10-19T13:30:55.736723+00:00",
+          "sha256": "0631528de9aa34283e6f1e4dbe34c8103cef020195fdcf8931c14340cc9536cb"
+        }
+      ],
+      "changes": [],
+      "evidence": [
+        "Release archive and local debugging export succeeded; Xcode App Thinning Size Report estimates 25.6 MB compressed and 96.5 MB installed.",
+        "Live synthetic WebSocket turn with the existing OpenAI/ElevenLabs keys: 264960 PCM bytes, first audio 2331 ms from submission / 193 ms from TTS request; reactions and director events arrived. This is not physical microphone/playback evidence.",
+        "The final signed Release archive, export and installation pass. Its 599 staged resource files match the report hash-for-hash; launch is denied by CoreDevice because the iPhone is locked.",
+        "Current live network probe returns 245760 PCM bytes: first audio 2530 ms after user submission / 191 ms after the TTS request. Native iPhone microphone/playback is still unverified.",
+        "After the user reported the iPhone unlocked, xcrun devicectl list devices still timed out waiting for CoreDeviceService; xcdevice reported invalid CoreSimulatorService, and USB inventory showed no attached iPhone. No new physical-device observations were possible.",
+        "CoreDevice works outside the command sandbox: iPhone 14 is connected. Earlier device-service timeouts were sandbox access failures; unlocked-phone testing is now available.",
+        "The fixed Debug build is installed and Release also builds/signs. Two post-fix launches were denied explicitly by iOS Locked after the screen went off. Current server restart succeeded. No post-fix runtime or rendering success is claimed.",
+        "Patched Debug and Release both boot and render on the phone. Debug expanded-card and Release collapsed-card captures were inspected; the character, forest and static skirt render. Release process survives the bounded console observation. Mic capture/AEC initialize, but audible playback is not yet acceptance-tested."
+      ],
+      "remaining": [
+        "Complete controlled camera/cards, route/cloth and lifecycle/quiet-reset checks on the physical iPhone; current fixed Release is installed and running.",
+        "Validate real microphone/playback, barge-in, audio interruptions and route changes; collect sustained walking-plus-voice thermal/performance/battery and MetalFX comparison evidence.",
+        "Inspect skirt deformation during locomotion and resolve the foot-plant interaction before enabling it; foot planting remains disabled."
+      ]
+    }
+  ],
+  "updated_at": "2026-10-19T13:44:09.947531+00:00",
+  "notes": [
+    "Original audit retained unchanged. Existing untracked diff.txt is user-owned. A step is verified only against its recorded acceptance evidence.",
+    "Foot planting must remain disabled unless the documented skirt distortion is resolved and visually verified."
+  ],
+  "implementation_start": "abb446878af993ca4d3074320ca8f417804f2846",
+  "validation": "docs/ios-validation-2026-10-19.md"
+}

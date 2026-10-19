@@ -4,9 +4,11 @@ import HZEngine
 #endif
 
 final class Engine {
+    static let shared = Engine()
     weak var handler: HZEventHandler?
 
-    init() {
+    private init() {
+        precondition(Thread.isMainThread)
         #if !targetEnvironment(simulator)
         engine_set_host_recv({ buffer, count, context in
             guard let buffer, let context else { return }
@@ -20,22 +22,20 @@ final class Engine {
         #endif
     }
 
-    deinit {
-        #if !targetEnvironment(simulator)
-        engine_set_host_recv(nil, nil)
-        #endif
-    }
-
-    func send(_ command: HZCommand) {
+    @discardableResult func send(_ command: HZCommand) -> Bool {
+        precondition(Thread.isMainThread)
         #if targetEnvironment(simulator)
         if case .setFraming(let value) = command {
             handler?.onFramingChanged(HZFramingChanged(value: value))
         }
+        if case .submitText = command { return false }
+        return true
         #else
         let data = command.encoded()
-        data.withUnsafeBytes { bytes in
+        guard !data.isEmpty else { return false }
+        return data.withUnsafeBytes { bytes in
             engine_recv(bytes.bindMemory(to: UInt8.self).baseAddress, UInt32(data.count))
-        }
+        } != 0
         #endif
     }
 }

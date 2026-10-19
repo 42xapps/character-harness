@@ -251,3 +251,6 @@ prompt: |
 
   Every field is a string. Use `"none"` for gesture/camera when unused; register is
   `regular`, or `"none"` on a reaction beat.
+
+# Start the opening sentence promptly; later sentences may still batch.
+first_batch_idle_ms: 40
