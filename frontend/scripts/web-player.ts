@@ -238,9 +238,10 @@ function copy(from: string | undefined, target: string) {
   }
   const next = `${target}.new`;
   rmSync(next, { recursive: true, force: true });
-  // as in a release: no engine test page, static-host headers, native-only
-  // files, engine sample assets or the player's cache of imported models
-  const skip = new Set(["index.html", "_headers", ...["vrm", "cook_deps", "gameplay_blocks"].map((name) => path.join("cooked", name))]);
+  // as in a release: no engine test page, static-host headers, unused host
+  // message bindings, native-only files, engine sample assets or the player's
+  // cache of imported models
+  const skip = new Set(["index.html", "_headers", "host_messages.gen.js", ...["vrm", "cook_deps", "gameplay_blocks"].map((name) => path.join("cooked", name))]);
   cpSync(source, next, {
     recursive: true,
     dereference: true,

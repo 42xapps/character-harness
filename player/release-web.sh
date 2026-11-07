@@ -92,13 +92,14 @@ if [ ${#bundles[@]} -ne 1 ]; then
 	exit 1
 fi
 bundle="${bundles[0]}"
-# what Studio serves; index.html is the engine's test page and _headers is for
-# static hosts, so neither ships. Anything else new has to be looked at first
+# what Studio serves; index.html is the engine's test page, _headers is for
+# static hosts and host_messages.gen.js is for HZ_HOST_MESSAGE (unused), so
+# none of those ship. Anything else new has to be looked at first
 files=(main.js main_worker.js worker.js audio_worklet.js mic_worklet.js game.wasm.br)
 for name in "${files[@]}"; do
 	[ -f "$bundle/$name" ] || { echo "the publish build left no $name in $bundle" >&2; exit 1; }
 done
-unknown="$(find "$bundle" -mindepth 1 -maxdepth 1 ! -name cooked ! -name index.html ! -name _headers \
+unknown="$(find "$bundle" -mindepth 1 -maxdepth 1 ! -name cooked ! -name index.html ! -name _headers ! -name host_messages.gen.js \
 	$(printf '! -name %s ' "${files[@]}") -print)"
 if [ -n "$unknown" ]; then
 	echo "the publish build made files this script doesn't know; check them:" >&2

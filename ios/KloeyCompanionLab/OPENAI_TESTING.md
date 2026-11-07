@@ -19,7 +19,7 @@ Provider keys stay on the Mac and are not copied into the app. Do not commit
 `.env`.
 
 The Mac needs Node.js 23.6 or later, Xcode with your Apple ID signed in, and
-Kaigen activated with the pinned `0.6.2.001-beta` engine and its iOS component.
+Kaigen activated with the pinned `0.6.4.002` engine and its iOS component.
 Keep the phone unlocked, trusted by Xcode, in Developer Mode, and on the same
 Wi-Fi as the Mac. On a new Mac, automatic signing may first ask you to select
 your development team in Xcode.

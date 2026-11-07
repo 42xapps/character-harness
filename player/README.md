@@ -110,7 +110,7 @@ HARNESS_PLAYER="cd player && hz/hzbuild macos run"
 ## Kaigen Studio and iOS
 
 In Studio, choose **Projects > Add Existing** and select this `player/` folder,
-which contains `hzproject.hzt`. This branch targets Kaigen `0.6.2.001-beta`.
+which contains `hzproject.hzt`. This branch targets Kaigen `0.6.4.002`.
 After the engine link is restored, run the Desktop target to preview FoxGlove.
 The preview does not connect to a conversation server or capture the microphone.
 Run `npm start` from the repository root with `HARNESS_PLAYER` configured above

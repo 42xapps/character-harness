@@ -23,7 +23,14 @@
         const { createGame } = await import("./main.js");
         const game = createGame({ canvas: document.getElementById("canvas"), allowFullscreen: false });
         game.oncrash = (message) => tell({ error: `The web player stopped: ${message || "it crashed"}.` });
-        game.ready.catch((error) => tell({ error: `The web player could not start (${error?.message ?? error}).` }));
+        game.ready.catch((error) =>
+          tell({
+            error:
+              error?.code === "webgpu_unavailable"
+                ? "WebGPU is unavailable in this browser."
+                : `The web player could not start (${error?.message ?? error}).`,
+          }),
+        );
       }
       start().catch((error) => tell({ error: `The web player could not start (${error?.message ?? error}).` }));
     </script>
