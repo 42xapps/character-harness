@@ -16,9 +16,18 @@
     "start": "node runtime/src/main.ts",
     "check": "node runtime/src/main.ts --check",
     "test": "node --test \"runtime/test/*.test.ts\"",
-    "typecheck": "tsc -p runtime"
+    "typecheck": "tsc -p runtime",
+    "memory:local": "node tools/supermemory/local.ts",
+    "memory:ollama": "node tools/supermemory/ollama.ts",
+    "memory:start": "node tools/supermemory/start.ts",
+    "memory:qualify": "node tools/supermemory/qualify.ts",
+    "memory:verify-local": "node tools/supermemory/verify-local.ts",
+    "memory:control": "node tools/supermemory/control.ts",
+    "memory:backup": "node tools/supermemory/backup.ts",
+    "memory:evaluate": "node tools/supermemory/evaluate.ts"
   },
   "dependencies": {
+    "supermemory": "5.0.2",
     "ws": "^8.22.0",
     "yaml": "^2.9.1"
   },

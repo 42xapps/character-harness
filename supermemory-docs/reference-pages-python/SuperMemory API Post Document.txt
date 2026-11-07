@@ -1,0 +1,212 @@
+# Add document
+
+- **Method:** `POST`
+- **Path:** `/ns/{namespace}/document`
+- **Operation ID:** `postNsByNamespaceDocument`
+- **Tags:** Ingest
+
+Turn text or a supported URL into searchable, evolving memory. Supply a new ID to create a document, or reuse an existing ID to append new information while preserving its history.
+
+## Effective servers
+
+- `https://api.supermemory.ai`
+
+  Production Server
+
+## Authentication
+
+- **bearerAuth**: HTTP bearer
+
+## Path parameters
+
+- **`namespace` (required)**: `string`, maxLength: `100`, pattern: `^[a-zA-Z0-9_:-]+$`
+
+  The isolated namespace. This can be an ID for your user, a project ID, or any other identifier you wish to use to scope documents.
+
+## Request body
+
+**Required:** `true`
+
+**Content type:** `application/json`
+
+no additional properties
+
+- **`content` (required)**: `string`
+
+  The content to process. This may be plaintext or a URL to supported rich content.
+- **`date`**: `string`
+
+  When the source content is from, in ISO 8601 format
+- **`dreaming`**: `string`, possible values: `"dynamic", "instant"`
+
+  Processing mode. "dynamic" (default) groups related documents so memories form from coherent context. "instant" processes each document independently right away and bills one extra operation per document.
+- **`group`**: `object`
+
+  Metadata values that isolate related context within the namespace
+
+  **Additional properties:**
+
+  `string | number | boolean | (array of string)`
+- **`id`**: `string`, minLength: `1`, maxLength: `255`
+
+  An optional caller-defined document ID
+- **`metadata`**: `object`
+
+  Arbitrary metadata attached to the document and derived data
+
+  **Additional properties:**
+
+  `string | number | boolean | (array of string)`
+- **`supportingContext`**: `string`, maxLength: `1500`
+
+  Context used to guide memory extraction within this namespace. Max 1500 characters.
+- **`taskType`**: `string`, possible values: `"memory", "superrag"`
+
+  Processing pipeline. "memory" builds durable learned context; "superrag" optimizes the document for retrieval without generating memories.
+
+**Example:**
+
+```json
+{
+  "content": "Supermemory turns unstructured content into evolving memory.",
+  "id": "my-doc-123",
+  "supportingContext": "Focus on product decisions, dates, and owners.",
+  "metadata": {
+    "source": "api-docs"
+  },
+  "group": {
+    "additionalProperty": ""
+  },
+  "date": "2026-01-15",
+  "taskType": "memory",
+  "dreaming": "dynamic"
+}
+```
+
+## Responses
+
+### 200 Document accepted for processing
+
+**Content type:** `application/json`
+
+no additional properties
+
+- **`id` (required)**: `string`, minLength: `1`
+
+  Document identifier to poll or retrieve
+- **`status` (required)**: `string`, possible values: `"unknown", "queued", "extracting", "chunking", "embedding", "indexing", "done", "failed"`
+
+  The document's processing state after this request. queued when new work was queued; otherwise its current state, e.g. done for an unchanged duplicate or failed for a metadata-only update to a failed document.
+
+**Example:**
+
+```json
+{
+  "id": "",
+  "status": "unknown"
+}
+```
+
+### 400 Invalid request parameters
+
+**Content type:** `application/json`
+
+**One of:**
+
+- `object`, schema: `ErrorResponse`
+  - **`error` (required)**: `string`
+
+    Error message
+  - **`details`**: `string`
+
+    Additional error details
+- `object`, schema: `ValidationErrorResponse`
+
+  Body returned when request input fails schema validation
+  - **`error` (required)**: `array`
+
+    Validation issues
+
+    **Items:**
+    - **`message` (required)**: `string`
+    - **`path`**: `array of (string | number)`
+  - **`success` (required)**: `boolean`, possible values: `false`
+  - **`data`**: `any`
+
+    The input that failed validation
+
+**Example:**
+
+```json
+{
+  "error": "Invalid request parameters",
+  "details": "Query must be at least 1 character long"
+}
+```
+
+### 401, 402, 403, 409, 500
+
+- `401` Unauthorized
+- `402` Insufficient processing credits
+- `403` Namespace write access denied
+- `409` Namespace merge or filepath conflict
+- `500` Server error
+
+**Content type:** `application/json`
+
+schema: `ErrorResponse`
+
+- **`error` (required)**: `string`
+
+  Error message
+- **`details`**: `string`
+
+  Additional error details
+
+**Example:**
+
+```json
+{
+  "error": "Invalid request parameters",
+  "details": "Query must be at least 1 character long"
+}
+```
+
+## Schemas
+
+- `ErrorResponse` — shown above.
+
+### ValidationErrorResponse
+
+**Type:** `object`
+
+Body returned when request input fails schema validation
+
+- **`error` (required)**: `array`
+
+  Validation issues
+
+  **Items:**
+  - **`message` (required)**: `string`
+  - **`path`**: `array of (string | number)`
+- **`success` (required)**: `boolean`, possible values: `false`
+- **`data`**: `any`
+
+  The input that failed validation
+
+**Example:**
+
+```json
+{
+  "success": false,
+  "error": [
+    {
+      "message": "",
+      "path": [
+        ""
+      ]
+    }
+  ],
+  "data": null
+}
+```

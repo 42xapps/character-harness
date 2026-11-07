@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-22T16:46:20.129Z",
+  "model": "gpt-oss:20b-cloud",
+  "cloudInference": true,
+  "storagePath": ".cache/supermemory-tuned/data",
+  "dataDirectoryChanged": false,
+  "namespaceChanged": false,
+  "existingDocumentsPreserved": 6,
+  "existingMemoryEntriesPreserved": 24,
+  "currentDocuments": 6,
+  "currentMemoryEntries": 107,
+  "syntheticChecks": {
+    "passed": 9,
+    "total": 10,
+    "failed": [
+      "employment_correction_supersedes_previous_fact"
+    ]
+  },
+  "automatedTestsPassed": 190,
+  "typecheckPassed": true,
+  "productionQualified": false,
+  "knownLimitation": "GPT-OSS learned the new employer but left the previous employer marked current in the synthetic correction test."
+}

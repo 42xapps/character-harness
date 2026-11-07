@@ -1,0 +1,270 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://supermemory.ai/docs/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Search
+
+> Semantic search across your memories and documents
+
+Search through your memories and documents with a single API call. Each search runs inside one `namespace` (what v3/v4 called a container tag).
+
+<Tip>
+  **`searchMode: "hybrid"`** is the default and gives the best results. It searches both memories and document chunks, returning the most relevant content.
+</Tip>
+
+<Note>
+  **TypeScript SDK:** one call, `supermemory.search(namespace, { query, searchMode })`. `searchMode` (`"memories"`, `"chunks"`, or `"hybrid"`) picks what comes back. There is no v5 Python SDK yet; the Python tab shows the legacy client.
+</Note>
+
+## Quick start
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import { Supermemory } from "supermemory";
+
+    const supermemory = new Supermemory({ apiKey: process.env.SUPERMEMORY_API_KEY });
+
+    const results = await supermemory.search("user_123", {
+      query: "machine learning",
+      searchMode: "hybrid",
+      limit: 5,
+    });
+
+    results.results.forEach(result => {
+      console.log(result.memory || result.chunk, result.similarity);
+    });
+    ```
+  </Tab>
+
+  <Tab title="Python">
+    ```python theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    from supermemory import Supermemory
+
+    client = Supermemory()
+
+    results = client.search(
+        "user_123",
+        query="machine learning",
+        search_mode="hybrid",
+        limit=5,
+    )
+
+    for result in results.results:
+        print(result.memory or result.chunk, result.similarity)
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl -X POST "https://api.supermemory.ai/ns/user_123/search?searchMode=hybrid&limit=5" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "query": "machine learning" }'
+    ```
+  </Tab>
+</Tabs>
+
+**Response:**
+
+```json theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+{
+  "results": [
+    {
+      "id": "mem_xyz",
+      "memory": "User is interested in machine learning for product recommendations",
+      "similarity": 0.91,
+      "metadata": { "topic": "interests" },
+      "isLatest": true,
+      "system": { "createdAt": "2024-01-15T10:30:00.000Z", "updatedAt": "2024-01-15T10:30:00.000Z" }
+    },
+    {
+      "id": "chunk_abc",
+      "chunk": "Machine learning enables personalized experiences at scale...",
+      "similarity": 0.87,
+      "metadata": { "source": "onboarding_doc" },
+      "isLatest": true,
+      "system": { "createdAt": "2024-01-14T09:15:00.000Z", "updatedAt": "2024-01-14T09:15:00.000Z" }
+    }
+  ],
+  "searchTime": 92
+}
+```
+
+<Info>
+  In hybrid mode, results contain either a `memory` field (extracted facts) or a `chunk` field (document content), depending on the source. Branch on field presence.
+</Info>
+
+***
+
+## Parameters
+
+`namespace` is the URL path. Every other option goes in the JSON body (the second argument in the SDKs).
+
+| Parameter | Type | Default | Description |
+| - | - | - | - |
+| `namespace` | string | required | Namespace to search (URL path) |
+| `query` | string | required | Search query |
+| `searchMode` | string | `"hybrid"` | `"hybrid"` (recommended), `"memories"`, or `"chunks"` |
+| `limit` | number | 10 | Max results (max 100) |
+| `threshold` | 0-1 | 0.3 | Similarity cutoff (higher = fewer, better results) |
+| `rerank` | string | `"none"` | `"none"`, `"order"` (re-score for relevance, +100ms), or `"aggregate"` |
+| `rewriteQuery` | boolean | false | Generate multiple rewrites, search all of them, and merge results. No extra cost, but adds latency |
+| `filter` | object | — | Metadata filter expression. See [Filtering](#filtering) |
+| `include` | object | — | `{ documents, related, forgotten }` — opt in to extra context per result |
+
+<Note>
+  Defaults changed from v4: `searchMode` was `memories` and is now `hybrid`; `threshold` was `0.6` and is now `0.3`. Set both explicitly if you are comparing against v4 results.
+</Note>
+
+### Search modes
+
+* **`hybrid`** (default, recommended) — Searches both memories and document chunks, and returns both in the response
+* **`memories`** — Only searches extracted memories
+* **`chunks`** — Only searches raw document/chunk content, skipping extracted memories
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+// Hybrid: memories + document chunks (default)
+await supermemory.search("user_123", {
+  query: "quarterly goals",
+});
+
+// Memories only: just extracted facts
+await supermemory.search("user_123", {
+  query: "user preferences",
+  searchMode: "memories",
+});
+
+// Chunks only: RAG over documents
+await supermemory.search("user_123", {
+  query: "refund policy",
+  searchMode: "chunks",
+});
+```
+
+***
+
+## Filtering
+
+The `namespace` scopes results to a user or project. Use `filter` for metadata-based filtering inside that namespace:
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+const results = await supermemory.search("user_123", {
+  query: "meeting notes",
+  filter: {
+    operator: "and",
+    operands: [
+      { field: "type", operator: "eq", value: "meeting" },
+      { field: "year", operator: "eq", value: 2024 },
+    ],
+  },
+});
+```
+
+<Accordion title="Filter Types">
+  * **Equality:** `{ field: "status", operator: "eq", value: "active" }` (also `neq`; strings, numbers, booleans)
+  * **String contains:** `{ field: "title", operator: "contains", value: "react" }` (also `notContains`; optional `caseSensitive`)
+  * **Numeric:** `{ field: "priority", operator: "gte", value: 5 }` (`gt`, `gte`, `lt`, `lte`)
+  * **Array contains:** `{ field: "tags", operator: "arrayContains", value: "important" }` (also `arrayNotContains`)
+  * **Logic:** `{ operator: "and" | "or", operands: [...] }`, nested up to 5 levels
+
+  Keys are literal: `customer.plan` is one field name, not a nested path. See [Organizing & Filtering](/docs/concepts/filtering) for full syntax.
+</Accordion>
+
+***
+
+## Query optimization
+
+### Reranking
+
+Re-scores results for better relevance. Adds \~100ms latency.
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+const results = await supermemory.search("user_123", {
+  query: "complex technical question",
+  rerank: "order",
+});
+```
+
+### Threshold
+
+Control result quality vs quantity:
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+// Broad search — more results
+await supermemory.search("user_123", { query: "...", threshold: 0.3 });
+
+// Precise search — fewer, better results
+await supermemory.search("user_123", { query: "...", threshold: 0.8 });
+```
+
+### Attachments
+
+* `attach.documents` adds the most relevant source document to each result.
+* `attach.related` adds parent, child, and sibling memories (see [graph memory](/docs/concepts/graph-memory)).
+* `attach.forgotten` allows forgotten memories in related context. By default, search excludes memories that have been forgotten or have passed their `forgetAfter` expiration.
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+await supermemory.search("user_123", {
+  query: "old project notes",
+  include: { related: true, forgotten: true },
+  searchMode: "memories",
+});
+```
+
+Attached context arrives under `result.included` (`included.document`, `included.related.{parents,children,siblings}`).
+
+***
+
+## Chatbot example
+
+Optimal configuration for conversational AI:
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+async function getContext(userId: string, message: string) {
+  const results = await supermemory.search(userId, {
+    query: message,
+    threshold: 0.6,
+    searchMode: "hybrid",
+    limit: 5,
+  });
+
+  return results.results
+    .map(r => r.memory || r.chunk)
+    .join('\n\n');
+}
+```
+
+<Accordion title="Response schema">
+  ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+  interface SearchResult {
+    id: string;
+    memory?: string;        // Present for memory results
+    chunk?: string;         // Present for document chunk results
+    similarity: number;     // 0-1
+    metadata: object | null;
+    isLatest: boolean;
+    system: { createdAt: string; updatedAt: string };
+    included?: {            // Only when you pass attach
+      document?: object;
+      related?: { parents: object[]; children: object[]; siblings: object[] };
+    };
+  }
+
+  interface SearchResponse {
+    results: SearchResult[];
+    searchTime: number;     // ms
+  }
+  ```
+</Accordion>
+
+***
+
+## Next steps
+
+* [Ingesting Content](/docs/ingestion/add-memories) — Add content to search
+* [User Profiles](/docs/recall/user-profiles) — Get user context
+* [Organizing & Filtering](/docs/concepts/filtering) — Namespaces and metadata
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

@@ -40,7 +40,8 @@ import { LlmHttpError, LlmStreamError, streamChat } from "./llm.ts";
 import { ELEVENLABS_KEY } from "./manifest.ts";
 import type { Character } from "./manifest.ts";
 import { STATE_SCHEMA } from "./state.ts";
-import type { Beat, Message, State, Timing } from "./state.ts";
+import { validatePrincipal } from "./principal.ts";
+import type { Beat, Message, State, Timing, SessionPrincipal } from "./state.ts";
 import { SttRelay } from "./stt.ts";
 import { Tts } from "./tts.ts";
 import { Alignment } from "./align.ts";
@@ -153,11 +154,11 @@ export function applyExt(ext: State["ext"], c: ExtChanges): State["ext"] {
 	return out;
 }
 
-export function runSession(ws: WebSocket, character: Character, exts: Loaded[]): void {
+export function runSession(ws: WebSocket, character: Character, exts: Loaded[], principal?: SessionPrincipal): void {
 	const sessionId = randomUUID();
 	// a log line can carry the character's and its providers' text
 	const log = (line: string) => console.log(printable(`[${sessionId.slice(0, 8)}] ${line}`));
-	const session: State["session"] = { id: sessionId, channel: "voice" };
+	const session: State["session"] = { id: sessionId, channel: "voice", ...(principal ? { principal: validatePrincipal(principal) } : {}) };
 	let closed = false;
 	// extension data, carried from turn to turn for the whole session
 	let ext: Record<string, unknown> = {};
@@ -201,6 +202,8 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 
 	const closeTurn = async (t: Turn) => {
 		if (t.closed) return;
+		// Unknown completion is never treated as a delivered assistant reply.
+		t.state.turn_outcome ??= "interrupted";
 		t.closed = true;
 		clearTimeout(t.idle);
 		ext = t.state.ext;
@@ -240,7 +243,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		const channel = source === "chat" || source === "screen" ? source : "voice";
 		const t: Turn = {
 			id,
-			state: { ...baseState(), turn: id, input: { text: lastUser, channel }, context, messages, prompt: character.prompt },
+			state: { ...baseState(), turn: id, input_event: { id: randomUUID(), accepted_at: new Date().toISOString() }, input: { text: lastUser, channel }, context, messages, prompt: character.prompt },
 			llmDone: false,
 			ttsInFlight: 0,
 			firstSentence: true,
@@ -257,6 +260,7 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		};
 		const silent = () => {
 			t.state.cancel = true;
+			t.state.turn_outcome = "silent";
 			send({ t: "llm_delta", id, text: SILENT_TURN });
 			send({ t: "llm_done", id });
 			finish("cancelled, nothing spoken");
@@ -313,10 +317,12 @@ export function runSession(ws: WebSocket, character: Character, exts: Loaded[]):
 		if (cancelled) return silent();
 		t.state.reply = reply;
 		if (failure) {
+			t.state.turn_outcome = "failed";
 			t.state.error = failure;
 			send({ t: "error", id, text: failure });
 			return finish(`failed: ${failure}`);
 		}
+		t.state.turn_outcome = "generated";
 		send({ t: "llm_done", id });
 		// the reply is done; after_llm below no longer counts against the limit
 		if (llmStreams.get(id) === ac) llmStreams.delete(id);

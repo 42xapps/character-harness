@@ -59,6 +59,13 @@ out: { state }
 
 A module's default export is that function, sync or async. Returning nothing means no change. An HTTP handler gets the input as a JSON `POST` and answers with the output. Keys from `.env` are in `process.env`.
 
+A module can optionally export `dispose()` for process shutdown. The runtime awaits
+these handlers on a normal stop, with a 15-second deadline. Existing extensions
+without a disposer keep their current behavior; durable side effects must remain
+recoverable after a forced stop. The opt-in [Supermemory extension](../extensions/supermemory/README.md)
+uses this to finish bounded in-flight work and close its journal. It is not enabled
+in the active character manifest while provider qualification is incomplete.
+
 An extension runs with the runtime's access: your keys, your files, the network. Only use extensions you trust (see `SECURITY.md`).
 
 ### Checking its config

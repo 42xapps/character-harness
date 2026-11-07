@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-22T05:07:36.261Z",
+  "scope": "synthetic local engine and extension integration",
+  "server": "0.0.9",
+  "sdk": "5.0.2",
+  "model": "kloey-memory-gemma4:12b",
+  "baseUrl": "http://127.0.0.1:6779",
+  "tests": [
+    {
+      "name": "namespace_settings_and_buckets",
+      "passed": false,
+      "elapsedMs": 23.795792000000006,
+      "detail": {
+        "error": "NotFoundError",
+        "message": "NotFoundError\nStatus code: 404\nBody: {\n  \"error\": \"Namespace not found\"\n}"
+      }
+    },
+    {
+      "name": "five_explicit_facts_and_source_processing",
+      "passed": true,
+      "elapsedMs": 63703.708958,
+      "detail": {
+        "factsCovered": 5,
+        "documentStatus": {
+          "status": "done",
+          "createdAt": "2026-10-22T04:58:17.271Z",
+          "updatedAt": "2026-10-22T04:59:17.846Z",
+          "filepath": null
+        }
+      }
+    },
+    {
+      "name": "relevant_grounded_memory_and_hybrid_recall",
+      "passed": true,
+      "elapsedMs": 62.43520799999533,
+      "detail": {
+        "recallDeadlineMs": 300
+      }
+    },
+    {
+      "name": "profiles_contain_learned_preferences",
+      "passed": true,
+      "elapsedMs": 8.999959000000672,
+      "detail": {
+        "static": 6,
+        "dynamic": 0
+      }
+    },
+    {
+      "name": "hypothetical_and_assistant_suggestion_are_not_biography",
+      "passed": true,
+      "elapsedMs": 6.418958000002021,
+      "detail": true
+    },
+    {
+      "name": "namespace_isolation",
+      "passed": true,
+      "elapsedMs": 21.202041999997164,
+      "detail": true
+    },
+    {
+      "name": "employment_correction_supersedes_previous_fact",
+      "passed": false,
+      "elapsedMs": 240951.191458,
+      "detail": {
+        "error": "Error",
+        "message": "Synthetic learning deadline exceeded"
+      }
+    },
+    {
+      "name": "semantic_forget_preview_selects_only_target",
+      "passed": true,
+      "elapsedMs": 2631.8720829999656,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "exact_forget_removes_target_from_memory_search",
+      "passed": true,
+      "elapsedMs": 38.43045799998799,
+      "detail": true
+    },
+    {
+      "name": "namespace_erasure_removes_memories_profiles_and_sources",
+      "passed": true,
+      "elapsedMs": 8065.574000000022,
+      "detail": {
+        "afterMs": 8000
+      }
+    },
+    {
+      "name": "durable_extension_recall_across_reopened_sessions_and_deletion",
+      "passed": false,
+      "elapsedMs": 243497.91845800006,
+      "detail": {
+        "error": "Error",
+        "message": "Synthetic learning deadline exceeded"
+      }
+    }
+  ],
+  "qualified": false,
+  "productionQualified": false,
+  "remainingProductionGates": [
+    "authenticated multi-user deployment",
+    "full quality/abstention corpus",
+    "sustained load and failure/restore drills",
+    "egress and capacity/license review"
+  ]
+}

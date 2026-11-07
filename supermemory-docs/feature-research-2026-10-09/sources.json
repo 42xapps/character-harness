@@ -1,0 +1,197 @@
+{
+  "fetched_date": "2026-10-09",
+  "scope": "Public documentation only; no credentials or account requests",
+  "sources": [
+    {
+      "file": "graph-memory.md",
+      "url": "https://supermemory.ai/docs/concepts/graph-memory.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "6a5ca73a5fdb81c4fcf26be052a6d49f1fa3e7c8567f50bca8b01ca993e435bf",
+      "bytes": 10039
+    },
+    {
+      "file": "how-it-works.md",
+      "url": "https://supermemory.ai/docs/concepts/how-it-works.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "a76aec9b39aee6434f42b4691fa3b020f2a1220c3f480e644fc222c511400344",
+      "bytes": 10037
+    },
+    {
+      "file": "customization.md",
+      "url": "https://supermemory.ai/docs/concepts/customization.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "1c7e7a9ec351f24ddd035b16d8fbb48acf02dae57ec1e36854ff62c840673887",
+      "bytes": 8659
+    },
+    {
+      "file": "profile-buckets.md",
+      "url": "https://supermemory.ai/docs/user-profiles/buckets.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "b53b1a8d39ac8a7f85a5fe39d8c508356a55130a0a78dc3170a8c857e6ee492f",
+      "bytes": 12099
+    },
+    {
+      "file": "user-profiles.md",
+      "url": "https://supermemory.ai/docs/recall/user-profiles.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "716b59327a3cdf2f964d7bc41eb131743e256757fcee0aeae19f8cd0638423dd",
+      "bytes": 11373
+    },
+    {
+      "file": "search-guide.md",
+      "url": "https://supermemory.ai/docs/recall/search.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "c6fc8adb26c44223464cff091639702031036580cc739720645c97ad0ea49621",
+      "bytes": 9279
+    },
+    {
+      "file": "memory-review.md",
+      "url": "https://supermemory.ai/docs/recall/memory-review.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "ffce671af09276b1a6b7822a9614cef26e0b05c1d4d67ec795fb290b14674106",
+      "bytes": 10222
+    },
+    {
+      "file": "rules.md",
+      "url": "https://supermemory.ai/docs/concepts/rules.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "4192bad15d4ff93bf71eae340cbbf53c342c66a04b137fa0543ca3c7fcd38170",
+      "bytes": 13318
+    },
+    {
+      "file": "billing.md",
+      "url": "https://supermemory.ai/docs/overview/billing.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "961f9588ae6b5ae11e0943248ebd05e1c03baac402d59e54d25b36bbf41e4ad2",
+      "bytes": 15356
+    },
+    {
+      "file": "memorybench.md",
+      "url": "https://supermemory.ai/docs/memorybench/overview.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "9aecfa02bafe15c7ecc2e25ca3b8b82a5f2e5f9506fa933109ace1c027dc5174",
+      "bytes": 6382
+    },
+    {
+      "file": "memorybench-custom.md",
+      "url": "https://supermemory.ai/docs/memorybench/extend-benchmark.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "5df86bd712d93cd32a68738b040463ad4e22174e3fdeb1994bee6542f1fb27aa",
+      "bytes": 4810
+    },
+    {
+      "file": "memorybench-scoring.md",
+      "url": "https://supermemory.ai/docs/memorybench/memscore.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "c4ef8723d060a4f0b2b7fadc5fcc6567e2b23d23eca281a410b6fafd7d025547",
+      "bytes": 5171
+    },
+    {
+      "file": "agents-sdk.md",
+      "url": "https://supermemory.ai/docs/integrations/openai-agents-sdk.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "4a8cb9b4811123563d6d78037e3d97a8bb2a7c005aa4e6f3c0990ca882d7af32",
+      "bytes": 13446
+    },
+    {
+      "file": "v5-add.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/ingest/add-document.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "f89fe14e09d110a9929ce114e64fd4c421e782309fb3c4a255932257c0bbdd04",
+      "bytes": 10959
+    },
+    {
+      "file": "v5-search.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/recall-search/search-memories.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "15933c3196a2195fa5b4f4f2798ff615a6cc58e42f0f9b861921e6341ee9aa4a",
+      "bytes": 33582
+    },
+    {
+      "file": "v5-profile.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/profiles/get-profile.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "c9f848ee62661c7d0b09e86ffcc39cc5509de2142b11d70ca7c9b3dafe502cea",
+      "bytes": 15954
+    },
+    {
+      "file": "v5-buckets.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/profiles/add-or-update-profile-buckets.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "0538b3084c389b49de6e3aff56e7d5b6fa0cff4586bb217183bdc0629647076a",
+      "bytes": 8307
+    },
+    {
+      "file": "v5-namespace-settings.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/namespaces/update-namespace-settings.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "332a04ca219615552677d8bd59d532963ffad3c4b3b45b32ae5ddaf45935acac",
+      "bytes": 7959
+    },
+    {
+      "file": "v5-organization.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/organization/update-organization-settings.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "fc74e441c45df93da0e75b075bcc6570a5edc93ea138f6ceb3f67d0c0b96494f",
+      "bytes": 6776
+    },
+    {
+      "file": "v5-list.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/content-management/list-resources.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "417654bfc6fa08a0dc46f3e01b43d63de4dec71f4e7415a75ed95cf73fa3102d",
+      "bytes": 26019
+    },
+    {
+      "file": "v5-forget.md",
+      "url": "https://supermemory.ai/docs/v5/api-reference/content-management/forget-memories-by-id.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "5c1542a75d4be2b9ff9d52be15c1e897b393b17ab9256f384534f3e5843b4533",
+      "bytes": 8331
+    },
+    {
+      "file": "v5-migration.md",
+      "url": "https://supermemory.ai/docs/migration/api-v5.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "5f4b9512a927e705fd40f11b4a43dbd0d3610cf89fa62b6b37141392b7562a53",
+      "bytes": 55997
+    },
+    {
+      "file": "v5-recall-migration.md",
+      "url": "https://supermemory.ai/docs/migration/api-v5-recall.md",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "sha256": "831a45f809f2f9e6243eb6660e8a33bbda3b7f81f19171786eccd422b3ab691d",
+      "bytes": 5127
+    },
+    {
+      "file": "openapi-v5.json",
+      "url": "https://api.supermemory.ai/v5/openapi",
+      "status": 200,
+      "sha256": "7626899b026b64027e6d6e55086566609ef00e09ce9f40c4a0346a2709527496",
+      "bytes": 189405
+    }
+  ]
+}

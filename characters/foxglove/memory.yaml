@@ -1,0 +1,29 @@
+# Explicit iPhone test activation; inference is now user-selected Ollama Cloud.
+# The activation flag is not model qualification: GPT-OSS's temporal correction
+# check failed. See docs/reports/supermemory-gpt-oss-cloud-verification.json.
+enabled: true
+qualified: true
+log_events: true
+source_rebuild_qualified: false
+base_url: http://127.0.0.1:6779
+api_key_env: SUPERMEMORY_LOCAL_API_KEY
+encryption_key_env: SUPERMEMORY_JOURNAL_KEY
+dir: .cache/supermemory
+recall_ms: 300
+prompt_tokens: 1500
+max_pending: 1000
+supporting_context: >-
+  These are conversations between a human user and Kloey, their fictional companion.
+  Learn explicit real-life user facts, stated preferences, boundaries, relationships,
+  goals and meaningful conversation episodes. Treat emotions as dated observations.
+  Distinguish the human from third parties. Do not learn authored character lore,
+  hypothetical examples, roleplay, assistant suggestions, diagnoses or speculative
+  psychology as user biography. Assistant output is generated and playback is
+  unverified; it does not prove actions occurred or promises were heard. Prefer
+  explicit corrections and retain temporal context when facts change.
+buckets:
+  preferences: Explicit user-stated likes and dislikes.
+  relationships: People and relationships the user explicitly describes.
+  goals: Goals the user states; distinguish aspirations from completed events.
+  boundaries: Explicit user boundaries and communication preferences.
+  episodes: Meaningful real conversations with this companion; no invented activities.

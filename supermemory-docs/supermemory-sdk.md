@@ -1,0 +1,743 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://supermemory.ai/docs/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Supermemory SDK
+
+> Official Python and JavaScript SDKs for Supermemory
+
+<CardGroup cols={2}>
+  <Card title="Python SDK" icon="https://mintcdn.com/supermemory/p0zPjih-OxhkPwgX/icons/hugeicons/python.svg?fit=max&auto=format&n=p0zPjih-OxhkPwgX&q=85&s=4c226f82ad1964cd3505a9179e9f0995" href="https://pypi.org/project/supermemory/" width="24" height="24" data-path="icons/hugeicons/python.svg">
+    pip install supermemory
+  </Card>
+
+  <Card title="JavaScript SDK" icon="https://mintcdn.com/supermemory/p0zPjih-OxhkPwgX/icons/hugeicons/java-script.svg?fit=max&auto=format&n=p0zPjih-OxhkPwgX&q=85&s=2cc23dea75191ee9f063584406350696" href="https://www.npmjs.com/package/supermemory" width="24" height="24" data-path="icons/hugeicons/java-script.svg">
+    npm install supermemory
+  </Card>
+</CardGroup>
+
+<Tip>
+  Both SDKs also work against [self-hosted Supermemory](/docs/self-hosting/overview) running `supermemory-server` v0.0.9 or later. Pass `baseUrl: "http://localhost:6767"` (TypeScript) or `base_url="http://localhost:6767"` (Python) when creating the client.
+</Tip>
+
+<Tabs>
+  <Tab title="TypeScript">
+    ## Install the TypeScript SDK
+
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    npm i supermemory
+    ```
+
+    ## Start a TypeScript client
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import { Supermemory } from "supermemory";
+
+    const supermemory = new Supermemory({ apiKey: process.env.SUPERMEMORY_API_KEY });
+    ```
+
+    One rule for every call: URL values first as positional arguments (`namespace`, then `id` where there is one), then a single object with everything else. A namespace scopes memories to one user, workspace, or tenant, and you pass it on every call.
+
+    ## Add
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { id, status } = await supermemory.add("user_123", {
+      content: "Meeting notes from Q1 planning",
+      id: "meeting-q1", // optional, your own id; the response echoes it
+      metadata: { category: "engineering", priority: "high" },
+      dreaming: "instant",
+    });
+    ```
+
+    `dreaming` defaults to `"dynamic"`, which batches memory extraction. A fresh namespace can show zero memories and an empty profile for minutes. Pass `dreaming: "instant"` in quick-start flows and anywhere the next step is a memory search or a profile read.
+
+    ## Search
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { results, searchTime } = await supermemory.search("user_123", {
+      query: "planning notes",
+      limit: 10,
+    });
+
+    for (const result of results) {
+      console.log(result.memory ?? result.chunk, result.similarity);
+    }
+    ```
+
+    `searchMode` is `"hybrid"` (default), `"memories"`, or `"chunks"`. Filter on metadata with a typed expression:
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { results } = await supermemory.search("user_123", {
+      query: "design document",
+      filter: { field: "category", operator: "eq", value: "engineering" },
+      searchMode: "chunks",
+    });
+    ```
+
+    Two defaults changed from the legacy SDK: `threshold` is now `0.3` (was `0.6`) and `searchMode` is now `hybrid` (was `memories`). Set both explicitly if you compare results against old code.
+
+    ## Profile
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { profile } = await supermemory.profile("user_123");
+    console.log(profile.static);
+    console.log(profile.dynamic);
+    console.log(profile.buckets);
+    ```
+
+    Buckets group profile facts under names you define:
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.profiles.setBuckets("user_123", {
+      buckets: { work: "Job, team, and current projects" },
+    });
+
+    const buckets = await supermemory.profiles.getBuckets("user_123");
+
+    await supermemory.profiles.deleteBuckets("user_123", {
+      buckets: ["work"],
+    });
+    ```
+
+    ## List
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { documents, pagination } = await supermemory.list("user_123", "documents", {
+      page: 1,
+      limit: 20,
+      sort: "createdAt",
+      order: "desc",
+    });
+
+    console.log(documents[0]?.system.status, pagination.totalPages);
+    ```
+
+    `type` is required: `"documents"`, `"chunks"`, or `"memories"`. The response always has `documents`, `chunks`, `memories`, and `pagination`, and only the requested array is filled. Pass `{ filter }` to narrow the list.
+
+    ## Documents
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const doc = await supermemory.documents.get("user_123", "meeting-q1", {
+      include: ["chunks", "memories"],
+    });
+    console.log(doc.title, doc.summary, doc.system.status);
+
+    await supermemory.documents.update("user_123", "meeting-q1", {
+      metadata: { priority: "low" },
+    });
+
+    await supermemory.documents.batchAdd("user_123", {
+      documents: [{ content: "First note" }, { content: "Second note" }],
+    });
+
+    await supermemory.documents.uploadFile("user_123", { // file is a File or Blob
+      file,
+      metadata: JSON.stringify({ source: "upload" }),
+    });
+
+    const { count, errors } = await supermemory.documents.delete("user_123", {
+      ids: ["meeting-q1"],
+    });
+    ```
+
+    `uploadFile` is multipart, so `metadata` is a JSON string there. `delete` can return partial failures, so check `errors` as well as `count`.
+
+    ## Memories
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const preview = await supermemory.memories.forgetMatching("user_123", {
+      query: "old office address",
+      dryRun: true,
+    });
+
+    const { count } = await supermemory.memories.forget("user_123", {
+      ids: preview.matches.map((match) => match.id),
+    });
+    ```
+
+    `dryRun` is required on `forgetMatching`. Preview with `dryRun: true`, review `matches`, then forget by id. There is no direct memory create or update: ingest or update the source document instead.
+
+    ## Namespaces
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { namespaces, pagination } = await supermemory.namespaces.list({ limit: 50 });
+
+    const ns = await supermemory.namespaces.get("user_123");
+    console.log(ns.supportingContext, namespaces[0]?.documentCount, pagination.totalPages);
+
+    await supermemory.namespaces.update("user_123", {
+      supportingContext: "A paying customer on the Pro plan",
+    });
+
+    await supermemory.namespaces.delete("user_123", { // optional, moves content instead of deleting it
+      moveTo: "archive",
+    });
+    ```
+
+    ## Organization
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { organizationalContext, namespaceCount } = await supermemory.organization.get();
+
+    await supermemory.organization.update({
+      organizationalContext: "Acme sells billing software to dental clinics",
+    });
+    ```
+
+    ## Connectors
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { id, authorization } = await supermemory.connectors.create("user_123", {
+      provider: "notion",
+      redirectUrl: "https://app.example.com/connected",
+    });
+    // send the user to authorization.url before authorization.expiresAt
+
+    const connectors = await supermemory.connectors.list("user_123");
+    const everyConnector = await supermemory.connectors.listAll();
+
+    const connector = await supermemory.connectors.get("user_123", id, {
+      include: ["syncs", "picker"],
+    });
+    console.log(connector.latestRun?.system.status, connector.documentCount);
+
+    await supermemory.connectors.update("user_123", id, {
+      documentLimit: 500,
+    });
+
+    await supermemory.connectors.sync("user_123", id);
+
+    await supermemory.connectors.delete("user_123", id, { deleteDocuments: true });
+    ```
+
+    OAuth providers (`notion`, `google-drive`, `onedrive`, `gmail`, `github`) return an `authorization` link. Config providers start syncing right away and return `authorization: null`:
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.connectors.create("user_123", {
+      provider: "web-crawler",
+      config: { startUrl: "https://docs.example.com", crawlDepth: 2 },
+    });
+    ```
+
+    `sync` returns `{ id, status: "queued" }` and responds with 409 if a sync is already running.
+
+    ### Error handling
+
+    Every HTTP error throws a `SupermemoryError` with `statusCode`, `body`, and `rawResponse`. Common statuses have their own subclasses, all exported from the package root: `BadRequestError` (400), `UnauthorizedError` (401), `PaymentRequiredError` (402), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409), `InternalServerError` (500), and `ServiceUnavailableError` (503). A timeout throws `SupermemoryTimeoutError`; a network failure is a `SupermemoryError` without a `statusCode`.
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import { Supermemory, NotFoundError, SupermemoryError } from "supermemory";
+
+    try {
+      await supermemory.documents.get("user_123", "missing");
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        console.log("gone");
+      } else if (error instanceof SupermemoryError) {
+        console.error(error.statusCode, error.body);
+      } else {
+        throw error;
+      }
+    }
+    ```
+
+    ### Timeouts and retries
+
+    The client retries connection errors, 408, 429, and 5xx responses twice with backoff. Tune it on the client or per call; the per-call options object is always the optional last argument.
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const supermemory = new Supermemory({
+      apiKey: process.env.SUPERMEMORY_API_KEY,
+      timeoutInSeconds: 30, // default 60
+      maxRetries: 0, // default 2
+    });
+
+    await supermemory.search("user_123", { query: "planning notes" }, {
+      timeoutInSeconds: 5,
+      maxRetries: 3,
+      abortSignal: controller.signal,
+    });
+    ```
+  </Tab>
+
+  <Tab title="Python">
+    ## Install the Python SDK
+
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    pip install supermemory
+    ```
+
+    ## Start a Python client
+
+    ```python theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import os
+    from supermemory import Supermemory
+
+    client = Supermemory(
+        api_key=os.environ.get("SUPERMEMORY_API_KEY"),  # Default, can be omitted
+    )
+
+    # Add a document
+    result = client.add(
+        "user_123",
+        content="Meeting notes from Q1 planning",
+        id="meeting-q1",  # optional, your own id; the response echoes it
+        metadata={"category": "engineering", "priority": "high"},
+        dreaming="instant",
+    )
+    print(result.id, result.status)
+
+    # Search (hybrid by default: memories plus document chunks)
+    response = client.search("user_123", query="planning notes", limit=10)
+    for hit in response.results:
+        print(hit.memory or hit.chunk, hit.similarity)
+
+    # Get user profile
+    profile = client.profile("user_123").profile
+    print(profile.static)
+    print(profile.dynamic)
+    print(profile.buckets)
+    ```
+
+    ## Run common Python operations
+
+    ```python theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import json
+
+    # Search document chunks with a filter
+    results = client.search(
+        "user_123",
+        query="design document",
+        search_mode="chunks",
+        filter={"field": "category", "operator": "eq", "value": "engineering"},
+    )
+
+    # Profile buckets
+    client.profiles.set_buckets("user_123", buckets={"work": "Job, team, and current projects"})
+    buckets = client.profiles.get_buckets("user_123")
+    client.profiles.delete_buckets("user_123", buckets=["work"])
+
+    # List documents
+    page = client.list("user_123", "documents", page=1, limit=20, sort="createdAt", order="desc")
+    print(page.pagination.total_pages)
+
+    # Get, update, batch add, upload
+    doc = client.documents.get("user_123", "meeting-q1", include=["chunks", "memories"])
+    client.documents.update("user_123", "meeting-q1", metadata={"priority": "low"})
+    client.documents.batch_add(
+        "user_123",
+        documents=[{"content": "First note"}, {"content": "Second note"}],
+    )
+    with open("notes.pdf", "rb") as f:
+        client.documents.upload_file("user_123", file=f, metadata=json.dumps({"source": "upload"}))
+
+    # Delete documents
+    result = client.documents.delete("user_123", ids=["meeting-q1"])
+
+    # Forget memories: preview, then apply
+    preview = client.memories.forget_matching("user_123", query="old office address", dry_run=True)
+    client.memories.forget("user_123", ids=[m.id for m in preview.matches])
+
+    # Namespaces and organization
+    page = client.namespaces.list()  # page.namespaces, page.pagination
+    ns = client.namespaces.get("user_123")
+    client.namespaces.update("user_123", supporting_context="A paying customer on the Pro plan")
+    client.namespaces.delete("user_123", move_to="archive")  # optional, moves content instead of deleting it
+    client.organization.update(organizational_context="Acme sells billing software to dental clinics")
+
+    # Connectors
+    setup = client.connectors.create(
+        "user_123",
+        request={"provider": "notion", "redirectUrl": "https://app.example.com/connected"},
+    )
+    # send the user to setup.authorization.url before setup.authorization.expires_at
+    connector = client.connectors.get("user_123", setup.id, include=["syncs", "picker"])
+    client.connectors.sync("user_123", setup.id)
+    client.connectors.delete("user_123", setup.id, delete_documents=True)
+    ```
+
+    ## Handle Python SDK errors
+
+    Failed requests raise `supermemory.APIStatusError` (`.status_code`, `.body`) or a subclass such as `NotFoundError` or `RateLimitError`. Network failures raise `supermemory.APIConnectionError`. Set `max_retries=` and `timeout=` on the client, or per call. `AsyncSupermemory` has the same methods, awaited.
+
+    Requires Python 3.10+.
+  </Tab>
+</Tabs>
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.
+
+
+
+-------------------
+
+
+
+> ## Documentation Index
+> Fetch the complete documentation index at: https://supermemory.ai/docs/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Supermemory SDK
+
+> Official Python and JavaScript SDKs for Supermemory
+
+<CardGroup cols={2}>
+  <Card title="Python SDK" icon="https://mintcdn.com/supermemory/p0zPjih-OxhkPwgX/icons/hugeicons/python.svg?fit=max&auto=format&n=p0zPjih-OxhkPwgX&q=85&s=4c226f82ad1964cd3505a9179e9f0995" href="https://pypi.org/project/supermemory/" width="24" height="24" data-path="icons/hugeicons/python.svg">
+    pip install supermemory
+  </Card>
+
+  <Card title="JavaScript SDK" icon="https://mintcdn.com/supermemory/p0zPjih-OxhkPwgX/icons/hugeicons/java-script.svg?fit=max&auto=format&n=p0zPjih-OxhkPwgX&q=85&s=2cc23dea75191ee9f063584406350696" href="https://www.npmjs.com/package/supermemory" width="24" height="24" data-path="icons/hugeicons/java-script.svg">
+    npm install supermemory
+  </Card>
+</CardGroup>
+
+<Tip>
+  Both SDKs also work against [self-hosted Supermemory](/docs/self-hosting/overview) running `supermemory-server` v0.0.9 or later. Pass `baseUrl: "http://localhost:6767"` (TypeScript) or `base_url="http://localhost:6767"` (Python) when creating the client.
+</Tip>
+
+<Tabs>
+  <Tab title="TypeScript">
+    ## Install the TypeScript SDK
+
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    npm i supermemory
+    ```
+
+    ## Start a TypeScript client
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import { Supermemory } from "supermemory";
+
+    const supermemory = new Supermemory({ apiKey: process.env.SUPERMEMORY_API_KEY });
+    ```
+
+    One rule for every call: URL values first as positional arguments (`namespace`, then `id` where there is one), then a single object with everything else. A namespace scopes memories to one user, workspace, or tenant, and you pass it on every call.
+
+    ## Add
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { id, status } = await supermemory.add("user_123", {
+      content: "Meeting notes from Q1 planning",
+      id: "meeting-q1", // optional, your own id; the response echoes it
+      metadata: { category: "engineering", priority: "high" },
+      dreaming: "instant",
+    });
+    ```
+
+    `dreaming` defaults to `"dynamic"`, which batches memory extraction. A fresh namespace can show zero memories and an empty profile for minutes. Pass `dreaming: "instant"` in quick-start flows and anywhere the next step is a memory search or a profile read.
+
+    ## Search
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { results, searchTime } = await supermemory.search("user_123", {
+      query: "planning notes",
+      limit: 10,
+    });
+
+    for (const result of results) {
+      console.log(result.memory ?? result.chunk, result.similarity);
+    }
+    ```
+
+    `searchMode` is `"hybrid"` (default), `"memories"`, or `"chunks"`. Filter on metadata with a typed expression:
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { results } = await supermemory.search("user_123", {
+      query: "design document",
+      filter: { field: "category", operator: "eq", value: "engineering" },
+      searchMode: "chunks",
+    });
+    ```
+
+    Two defaults changed from the legacy SDK: `threshold` is now `0.3` (was `0.6`) and `searchMode` is now `hybrid` (was `memories`). Set both explicitly if you compare results against old code.
+
+    ## Profile
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { profile } = await supermemory.profile("user_123");
+    console.log(profile.static);
+    console.log(profile.dynamic);
+    console.log(profile.buckets);
+    ```
+
+    Buckets group profile facts under names you define:
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.profiles.setBuckets("user_123", {
+      buckets: { work: "Job, team, and current projects" },
+    });
+
+    const buckets = await supermemory.profiles.getBuckets("user_123");
+
+    await supermemory.profiles.deleteBuckets("user_123", {
+      buckets: ["work"],
+    });
+    ```
+
+    ## List
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { documents, pagination } = await supermemory.list("user_123", "documents", {
+      page: 1,
+      limit: 20,
+      sort: "createdAt",
+      order: "desc",
+    });
+
+    console.log(documents[0]?.system.status, pagination.totalPages);
+    ```
+
+    `type` is required: `"documents"`, `"chunks"`, or `"memories"`. The response always has `documents`, `chunks`, `memories`, and `pagination`, and only the requested array is filled. Pass `{ filter }` to narrow the list.
+
+    ## Documents
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const doc = await supermemory.documents.get("user_123", "meeting-q1", {
+      include: ["chunks", "memories"],
+    });
+    console.log(doc.title, doc.summary, doc.system.status);
+
+    await supermemory.documents.update("user_123", "meeting-q1", {
+      metadata: { priority: "low" },
+    });
+
+    await supermemory.documents.batchAdd("user_123", {
+      documents: [{ content: "First note" }, { content: "Second note" }],
+    });
+
+    await supermemory.documents.uploadFile("user_123", { // file is a File or Blob
+      file,
+      metadata: JSON.stringify({ source: "upload" }),
+    });
+
+    const { count, errors } = await supermemory.documents.delete("user_123", {
+      ids: ["meeting-q1"],
+    });
+    ```
+
+    `uploadFile` is multipart, so `metadata` is a JSON string there. `delete` can return partial failures, so check `errors` as well as `count`.
+
+    ## Memories
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const preview = await supermemory.memories.forgetMatching("user_123", {
+      query: "old office address",
+      dryRun: true,
+    });
+
+    const { count } = await supermemory.memories.forget("user_123", {
+      ids: preview.matches.map((match) => match.id),
+    });
+    ```
+
+    `dryRun` is required on `forgetMatching`. Preview with `dryRun: true`, review `matches`, then forget by id. There is no direct memory create or update: ingest or update the source document instead.
+
+    ## Namespaces
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { namespaces, pagination } = await supermemory.namespaces.list({ limit: 50 });
+
+    const ns = await supermemory.namespaces.get("user_123");
+    console.log(ns.supportingContext, namespaces[0]?.documentCount, pagination.totalPages);
+
+    await supermemory.namespaces.update("user_123", {
+      supportingContext: "A paying customer on the Pro plan",
+    });
+
+    await supermemory.namespaces.delete("user_123", { // optional, moves content instead of deleting it
+      moveTo: "archive",
+    });
+    ```
+
+    ## Organization
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { organizationalContext, namespaceCount } = await supermemory.organization.get();
+
+    await supermemory.organization.update({
+      organizationalContext: "Acme sells billing software to dental clinics",
+    });
+    ```
+
+    ## Connectors
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { id, authorization } = await supermemory.connectors.create("user_123", {
+      provider: "notion",
+      redirectUrl: "https://app.example.com/connected",
+    });
+    // send the user to authorization.url before authorization.expiresAt
+
+    const connectors = await supermemory.connectors.list("user_123");
+    const everyConnector = await supermemory.connectors.listAll();
+
+    const connector = await supermemory.connectors.get("user_123", id, {
+      include: ["syncs", "picker"],
+    });
+    console.log(connector.latestRun?.system.status, connector.documentCount);
+
+    await supermemory.connectors.update("user_123", id, {
+      documentLimit: 500,
+    });
+
+    await supermemory.connectors.sync("user_123", id);
+
+    await supermemory.connectors.delete("user_123", id, { deleteDocuments: true });
+    ```
+
+    OAuth providers (`notion`, `google-drive`, `onedrive`, `gmail`, `github`) return an `authorization` link. Config providers start syncing right away and return `authorization: null`:
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.connectors.create("user_123", {
+      provider: "web-crawler",
+      config: { startUrl: "https://docs.example.com", crawlDepth: 2 },
+    });
+    ```
+
+    `sync` returns `{ id, status: "queued" }` and responds with 409 if a sync is already running.
+
+    ### Error handling
+
+    Every HTTP error throws a `SupermemoryError` with `statusCode`, `body`, and `rawResponse`. Common statuses have their own subclasses, all exported from the package root: `BadRequestError` (400), `UnauthorizedError` (401), `PaymentRequiredError` (402), `ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409), `InternalServerError` (500), and `ServiceUnavailableError` (503). A timeout throws `SupermemoryTimeoutError`; a network failure is a `SupermemoryError` without a `statusCode`.
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import { Supermemory, NotFoundError, SupermemoryError } from "supermemory";
+
+    try {
+      await supermemory.documents.get("user_123", "missing");
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        console.log("gone");
+      } else if (error instanceof SupermemoryError) {
+        console.error(error.statusCode, error.body);
+      } else {
+        throw error;
+      }
+    }
+    ```
+
+    ### Timeouts and retries
+
+    The client retries connection errors, 408, 429, and 5xx responses twice with backoff. Tune it on the client or per call; the per-call options object is always the optional last argument.
+
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const supermemory = new Supermemory({
+      apiKey: process.env.SUPERMEMORY_API_KEY,
+      timeoutInSeconds: 30, // default 60
+      maxRetries: 0, // default 2
+    });
+
+    await supermemory.search("user_123", { query: "planning notes" }, {
+      timeoutInSeconds: 5,
+      maxRetries: 3,
+      abortSignal: controller.signal,
+    });
+    ```
+  </Tab>
+
+  <Tab title="Python">
+    ## Install the Python SDK
+
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    pip install supermemory
+    ```
+
+    ## Start a Python client
+
+    ```python theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import os
+    from supermemory import Supermemory
+
+    client = Supermemory(
+        api_key=os.environ.get("SUPERMEMORY_API_KEY"),  # Default, can be omitted
+    )
+
+    # Add a document
+    result = client.add(
+        "user_123",
+        content="Meeting notes from Q1 planning",
+        id="meeting-q1",  # optional, your own id; the response echoes it
+        metadata={"category": "engineering", "priority": "high"},
+        dreaming="instant",
+    )
+    print(result.id, result.status)
+
+    # Search (hybrid by default: memories plus document chunks)
+    response = client.search("user_123", query="planning notes", limit=10)
+    for hit in response.results:
+        print(hit.memory or hit.chunk, hit.similarity)
+
+    # Get user profile
+    profile = client.profile("user_123").profile
+    print(profile.static)
+    print(profile.dynamic)
+    print(profile.buckets)
+    ```
+
+    ## Run common Python operations
+
+    ```python theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    import json
+
+    # Search document chunks with a filter
+    results = client.search(
+        "user_123",
+        query="design document",
+        search_mode="chunks",
+        filter={"field": "category", "operator": "eq", "value": "engineering"},
+    )
+
+    # Profile buckets
+    client.profiles.set_buckets("user_123", buckets={"work": "Job, team, and current projects"})
+    buckets = client.profiles.get_buckets("user_123")
+    client.profiles.delete_buckets("user_123", buckets=["work"])
+
+    # List documents
+    page = client.list("user_123", "documents", page=1, limit=20, sort="createdAt", order="desc")
+    print(page.pagination.total_pages)
+
+    # Get, update, batch add, upload
+    doc = client.documents.get("user_123", "meeting-q1", include=["chunks", "memories"])
+    client.documents.update("user_123", "meeting-q1", metadata={"priority": "low"})
+    client.documents.batch_add(
+        "user_123",
+        documents=[{"content": "First note"}, {"content": "Second note"}],
+    )
+    with open("notes.pdf", "rb") as f:
+        client.documents.upload_file("user_123", file=f, metadata=json.dumps({"source": "upload"}))
+
+    # Delete documents
+    result = client.documents.delete("user_123", ids=["meeting-q1"])
+
+    # Forget memories: preview, then apply
+    preview = client.memories.forget_matching("user_123", query="old office address", dry_run=True)
+    client.memories.forget("user_123", ids=[m.id for m in preview.matches])
+
+    # Namespaces and organization
+    page = client.namespaces.list()  # page.namespaces, page.pagination
+    ns = client.namespaces.get("user_123")
+    client.namespaces.update("user_123", supporting_context="A paying customer on the Pro plan")
+    client.namespaces.delete("user_123", move_to="archive")  # optional, moves content instead of deleting it
+    client.organization.update(organizational_context="Acme sells billing software to dental clinics")
+
+    # Connectors
+    setup = client.connectors.create(
+        "user_123",
+        request={"provider": "notion", "redirectUrl": "https://app.example.com/connected"},
+    )
+    # send the user to setup.authorization.url before setup.authorization.expires_at
+    connector = client.connectors.get("user_123", setup.id, include=["syncs", "picker"])
+    client.connectors.sync("user_123", setup.id)
+    client.connectors.delete("user_123", setup.id, delete_documents=True)
+    ```
+
+    ## Handle Python SDK errors
+
+    Failed requests raise `supermemory.APIStatusError` (`.status_code`, `.body`) or a subclass such as `NotFoundError` or `RateLimitError`. Network failures raise `supermemory.APIConnectionError`. Set `max_retries=` and `timeout=` on the client, or per call. `AsyncSupermemory` has the same methods, awaited.
+
+    Requires Python 3.10+.
+  </Tab>
+</Tabs>
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

@@ -26,6 +26,7 @@ import { loadExtensions } from "./extensions.ts";
 import { ManifestError, loadCharacter, requiredKeys } from "./manifest.ts";
 import { manualStart, playerLog, startPlayer, type PlayerLaunch } from "./player.ts";
 import { runSession } from "./session.ts";
+import { localPrincipal } from "./principal.ts";
 
 function fail(message: string): never {
 	console.error(printable(message));
@@ -63,6 +64,16 @@ const secrets = new Set([
 const extensions = await loadExtensions(character.extensions).catch((e: unknown) =>
 	fail(e instanceof Error ? e.message : String(e)),
 );
+let shuttingDown = false;
+const shutdown = () => {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	const disposers = extensions.filter((e) => e.dispose);
+	if (!disposers.length) process.exit(0);
+	// Bound graceful cleanup; the journal remains replayable if providers hang.
+	const deadline = setTimeout(() => process.exit(0), 15000);
+	void Promise.allSettled(disposers.map((e) => Promise.resolve().then(() => e.dispose!()))).finally(() => { clearTimeout(deadline); process.exit(0); });
+};
 
 // the checks prepare the model too, as the player will show it
 const report = await checkCharacter(character, extensions, process.env, !checkOnly);
@@ -94,7 +105,9 @@ const wss = new WebSocketServer({
 	// the player sends no Origin; a browser always does
 	verifyClient: ({ req }: { req: IncomingMessage }) => req.headers.origin === undefined,
 });
-wss.on("connection", (ws) => runSession(ws, character, extensions));
+const principal = localPrincipal(process.env);
+wss.on("connection", (ws) => runSession(ws, character, extensions, principal));
+if (extensions.some((e) => e.dispose)) for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, shutdown);
 // the socket server re-emits the HTTP server's errors, so both are handled
 const listenFailed = (e: Error) => fail(`could not listen on ${host}:${port}: ${e.message}`);
 server.on("error", listenFailed);
@@ -115,11 +128,12 @@ server.listen(port, host, () => {
 			if (code) fail(`the player exited with ${code}; see ${playerLog}`);
 			if (signal) fail(`the player was stopped by ${signal}; see ${playerLog}`);
 			console.log("the player closed");
-			process.exit(0);
+			if (extensions.some((e) => e.dispose)) shutdown();
+			else process.exit(0);
 		});
 		// the player runs in its own process group, so every way out stops it
 		process.on("exit", stopPlayer);
-		for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, () => process.exit(0));
+		if (!extensions.some((e) => e.dispose)) for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, () => process.exit(0));
 	} catch (e) {
 		fail(e instanceof Error ? e.message : String(e));
 	}

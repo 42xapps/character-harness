@@ -10,6 +10,7 @@ import type { HookInput, Loaded } from "../src/extensions.ts";
 import type { Character } from "../src/manifest.ts";
 import type { HookName } from "../src/state.ts";
 import { applyExt, extChanges, runSession } from "../src/session.ts";
+import type { SessionPrincipal } from "../src/state.ts";
 
 test("a hook's stale copy of ext does not undo what another hook wrote", () => {
 	const start = { a: { n: 1 }, b: 1 };
@@ -104,21 +105,24 @@ async function until(done: () => boolean, what: string) {
 
 // One session over a fake socket. `answer` plays every upstream request (the
 // chat model and the voice), so nothing leaves the machine.
-function session(t: TestContext, answer: (n: number, signal: AbortSignal) => Response, exts: Loaded[] = []) {
+function session(t: TestContext, answer: (n: number, signal: AbortSignal) => Response, exts: Loaded[] = [], principal?: SessionPrincipal) {
 	const lines: string[] = [];
 	t.mock.method(console, "log", (line: string) => { lines.push(line); });
 	const calls: AbortSignal[] = [];
+	const requests: Record<string, unknown>[] = [];
 	t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
 		const signal = init.signal as AbortSignal;
 		calls.push(signal);
+		if (typeof init.body === "string") requests.push(JSON.parse(init.body));
 		return answer(calls.length - 1, signal);
 	});
 	const { ws, app } = fakeSocket();
-	runSession(ws as unknown as WebSocket, character, exts);
+	runSession(ws as unknown as WebSocket, character, exts, principal);
 	const logged = (text: string) => lines.some((l) => l.includes(text));
 	return {
 		app,
 		calls,
+		requests,
 		logged,
 		// what the app got for one id, without the staging beats
 		sentFor: (id: number) => ws.sent.filter((m) => m.id === id && m.t !== "beat"),
@@ -131,6 +135,21 @@ function session(t: TestContext, answer: (n: number, signal: AbortSignal) => Res
 }
 
 const history = [{ role: "user", content: "hi" }];
+
+test("server principal and unique event IDs do not change model input or trust client identity", async (t) => {
+	const seen: HookInput["state"][] = [];
+	const principal = { user_id: "server_user", companion_id: "server_companion" };
+	const s = session(t, () => reply("Hello."), [hook("before_llm", ({ state }) => { seen.push(structuredClone(state)); })], principal);
+	for (let n = 1; n <= 2; n++) {
+		s.app({ t: "llm", id: 5, history, principal: { user_id: "attacker", companion_id: "other" }, namespace: "forged", input_event: { id: "forged" } });
+		await until(() => s.requests.length === n && s.sentFor(5).filter((m) => m.t === "llm_done").length === n, "the reply to finish");
+	}
+	assert.deepEqual(seen.map((state) => state.session.principal), [principal, principal]);
+	assert.notEqual(seen[0].input_event!.id, seen[1].input_event!.id);
+	assert.notEqual(seen[0].input_event!.id, "forged");
+	for (const request of s.requests) assert.deepEqual(request.messages, [{ role: "system", content: character.prompt }, ...history]);
+	await s.close();
+});
 const answered = (text: string) => [
 	{ t: "llm_delta", id: 5, text },
 	{ t: "llm_done", id: 5 },

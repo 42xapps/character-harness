@@ -129,6 +129,9 @@ Every event carries one JSON state object. Extensions receive it, may change it,
 | `schema` | state version |
 | `character` | the loaded manifest |
 | `session` | session id, the channel, and the end reason on `on_session_end` |
+| `session.principal` | optional server-verified `{ user_id, companion_id }`; never supplied by client telemetry. Local development identity is explicit; production requires authentication |
+| `input_event` | optional `{ id, accepted_at }` for the accepted input. The server generates a unique ID independently of reusable app turn numbers |
+| `turn_outcome` | optional `generated`, `failed`, `interrupted` or `silent`; generation status, never proof of audible playback |
 | `input` | what came in this turn: `text`, and `channel` (`voice`, `chat` or `screen`) |
 | `messages` | recent conversation |
 | `prompt` | the system prompt being built |

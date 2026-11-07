@@ -59,5 +59,7 @@ extensions:
         "well done": nod
   - path: ../../extensions/director
     config_file: director.yaml
+  - path: ../../extensions/supermemory
+    config_file: memory.yaml
 
 env_file: ../../.env

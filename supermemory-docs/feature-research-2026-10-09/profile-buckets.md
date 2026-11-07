@@ -1,0 +1,259 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://supermemory.ai/docs/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Profile buckets
+
+> Custom topical categories for user profiles
+
+Buckets are **custom topical categories** for a profile — an axis that sits alongside `static` and `dynamic`. Where static/dynamic split facts by how long-lived they are, buckets group them by subject (e.g. `preferences`, `goals`, `work`). As content is ingested, a classifier assigns each memory to the buckets it matches, so you can pull just the slice of context a given surface needs.
+
+<Tip>
+  New to buckets? Read the [conceptual overview](/docs/concepts/user-profiles#buckets) first — this page is the API reference for reading, creating, and managing them.
+</Tip>
+
+Every org starts with a built-in `preferences` bucket. You can define your own at the organization level, and add more per namespace (what v3/v4 called a container tag) — all covered below.
+
+***
+
+## Reading buckets
+
+### Requesting bucketed profiles
+
+`supermemory.profile` returns `buckets` next to `static` and `dynamic`. Omit `buckets` in the request to get every effective bucket, or pass up to 50 names to narrow only the bucket section.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { profile } = await supermemory.profile("user_123", { // optional — omit for all buckets
+      buckets: ["preferences", "goals"],
+    });
+
+    console.log(profile.buckets.preferences.map((m) => m.memory));
+    console.log(profile.buckets.goals.map((m) => m.memory));
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl -X POST "https://api.supermemory.ai/ns/user_123/profile" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "buckets": ["preferences", "goals"] }'
+    ```
+  </Tab>
+</Tabs>
+
+**Response:**
+
+```json theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+{
+  "profile": {
+    "static": [],
+    "dynamic": [],
+    "buckets": {
+      "preferences": [
+        { "id": "mem_1", "memory": "[Summary] Prefers concise, technical answers and dark-mode tooling" },
+        { "id": "mem_2", "memory": "[Recent] Switched their editor to Zed" }
+      ],
+      "goals": [
+        { "id": "mem_3", "memory": "[Recent] Wants to ship the billing revamp this quarter" }
+      ]
+    }
+  }
+}
+```
+
+<Note>
+  **`[Recent]` and `[Summary]` labels.** To keep profiles dense, an entity's older memories are periodically aggregated into a short synthesis. Entries prefixed `[Summary]` are that aggregated context; entries prefixed `[Recent]` were ingested since the last aggregation and aren't summarized yet. The `dynamic` section uses the same `[Recent]` prefix (plus a `[YYYY-MM-DD]` date). Strip the prefixes if you only want raw text, or keep them to signal recency to your model.
+</Note>
+
+### List bucket definitions
+
+To see which buckets are configured for a namespace (org buckets merged with any namespace-level additions), call `profiles.getBuckets`:
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const { buckets } = await supermemory.profiles.getBuckets("user_123");
+    // { preferences: "Explicit first-person preferences...", work: "..." }
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl "https://api.supermemory.ai/ns/user_123/profile/buckets" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
+    ```
+  </Tab>
+</Tabs>
+
+**Response:**
+
+```json theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+{
+  "buckets": {
+    "preferences": "Explicit first-person preferences the person directly stated."
+  }
+}
+```
+
+| Field | Type | Description |
+| - | - | - |
+| `buckets` | object | Map of bucket name to description. The name is a stable slug, also stored on each memory. Lowercase alphanumeric with `-`/`_`, 1–64 chars |
+| `buckets[name]` | string | What belongs in the bucket — guides the ingestion classifier |
+
+***
+
+## Creating and configuring buckets
+
+Bucket definitions live at two levels: **organization** (the default set every namespace gets) and **namespace** (per-namespace additions). Namespace buckets are managed through `profiles.setBuckets` and `profiles.deleteBuckets`.
+
+### Namespace buckets
+
+`setBuckets` sends 1 to 50 name-to-description entries. Existing namespace names are updated, new names are added, and omitted namespace buckets remain unchanged. These are **add-only** on top of org buckets — a namespace always keeps every org bucket, and if a namespace bucket's name collides with an org bucket, the org's definition wins in the merged, effective set used at ingestion and read time.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.profiles.setBuckets("user_alex", {
+      buckets: {
+        work: "Professional role, employer, projects, and work-related decisions.",
+        trip_planning: "Upcoming trip details specific to this user.",
+      },
+    });
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl -X PUT "https://api.supermemory.ai/ns/user_alex/profile/buckets" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "buckets": {
+          "work": "Professional role, employer, projects, and work-related decisions.",
+          "trip_planning": "Upcoming trip details specific to this user."
+        }
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+### Delete namespace buckets
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.profiles.deleteBuckets("user_alex", {
+      buckets: ["trip_planning"],
+    });
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl -X DELETE "https://api.supermemory.ai/ns/user_alex/profile/buckets" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "buckets": ["trip_planning"] }'
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Organization-owned buckets appear in the effective `getBuckets` response but cannot be changed or removed through namespace `setBuckets` or `deleteBuckets` calls. Organization-level buckets are managed in the [console](https://console.supermemory.ai), not through the v5 API.
+</Note>
+
+### Starter presets
+
+If you'd rather start from a template than write descriptions from scratch, these are the same presets available in the console UI:
+
+| Name | Description |
+| - | - |
+| `preferences` | Stated likes, dislikes, and personal settings choices — food, media, tools, aesthetics, and other expressed tastes. |
+| `interests` | Topics, hobbies, and domains the person is curious about or actively follows, even if not yet a firm preference. |
+| `goals` | Short- and long-term objectives, aspirations, and things the person wants to achieve or work toward. |
+| `work` | Professional context: current role, employer, projects, colleagues, career trajectory, and work-related decisions. |
+| `relationships` | People in the person's life — family, friends, colleagues, partners — and the nature of those connections. |
+| `health` | Physical and mental wellbeing: conditions, habits, medications, fitness routines, and health-related goals. |
+| `skills` | Competencies, expertise areas, tools mastered, and things the person is actively learning. |
+| `finances` | Financial habits, spending patterns, savings goals, income context, and money-related decisions. |
+| `education` | Academic background, current courses, learning goals, and educational achievements. |
+| `travel` | Places visited, travel preferences, upcoming trips, and destinations the person wants to visit. |
+| `values` | Core beliefs, ethical stances, principles, and things that matter most to the person. |
+| `projects` | Personal and professional side projects, creative endeavors, and things being built outside of primary work. |
+
+### Default bucket
+
+If neither the org nor the namespace has configured any buckets, ingestion falls back to a single built-in `preferences` bucket, scoped tightly to explicit first-person statements ("prefers X over Y", "always uses W") — not inferred traits or general observations. Configuring your own buckets replaces this default.
+
+***
+
+## Validation & limits
+
+| Rule | Detail |
+| - | - |
+| Name format | Lowercase alphanumeric, starting with a letter/digit, may contain `-`/`_`. 1–64 chars |
+| Reserved names | `static` and `dynamic` can't be used as bucket names |
+| Max buckets | 50 per request — applies separately to an org's list and to each namespace's list |
+| Duplicate names | Rejected within a single request |
+| Description | Up to 2,000 chars |
+
+<Tip>
+  Bucket descriptions steer classification. A precise description ("Explicit first-person preferences only — exclude inferred traits") yields cleaner buckets than a vague one.
+</Tip>
+
+***
+
+## Configure
+
+### Instructions
+
+Bucket descriptions only steer classification *within* a bucket — they don't tell the model anything about the namespace itself. For that, set [`supportingContext`](/docs/concepts/customization#entity-context) on the namespace: a free-text field that's appended alongside the org-level `organizationalContext` into the same prompt the extraction/classification step uses, so it shapes bucket assignment too, not just fact extraction.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    await supermemory.namespaces.update("user_alex", {
+      supportingContext: "This namespace belongs to a solo founder juggling sales, hiring, and product.",
+    });
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl -X PATCH "https://api.supermemory.ai/ns/user_alex" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "supportingContext": "This namespace belongs to a solo founder juggling sales, hiring, and product."
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+| Field | Type | Limit |
+| - | - | - |
+| `supportingContext` | string \| null | Up to 1,500 characters. Pass `null` to clear |
+
+<Tip>
+  `supportingContext` is per-namespace, so use it for context specific to that user/namespace (who they are, what the namespace is for) — use org-level [`organizationalContext`](/docs/concepts/customization) for guidance that should apply everywhere. Both are combined into the same prompt, so keep them complementary rather than redundant.
+</Tip>
+
+You can also set `supportingContext` inline when adding content, via `supportingContext` in the body of [`supermemory.add`](/docs/ingestion/add-memories#parameters) — useful if you don't want a separate namespace call.
+
+### Model selection
+
+The model behind extraction and bucket classification isn't configurable through the API on supermemory Cloud — it's managed for you. If you're self-hosting, you choose the provider and model yourself via environment variables (`OPENAI_MODEL` and related) — see [Self-hosting Configuration](/docs/self-hosting/configuration).
+
+***
+
+## Next steps
+
+* [User Profiles](/docs/recall/user-profiles) — Fetch and use profiles via the API
+* [User Profiles Concept](/docs/concepts/user-profiles) — Static vs dynamic vs buckets
+* [Namespaces](/docs/concepts/container-tags) — How namespaces work
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

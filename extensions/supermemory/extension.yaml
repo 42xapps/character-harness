@@ -1,0 +1,10 @@
+name: supermemory
+handler: index.ts
+hooks:
+  on_session_start: { blocking: false }
+  before_llm: { timeout_ms: 1200 }
+  after_turn: { blocking: false }
+  on_session_end: { blocking: false }
+# Disabled/unqualified configurations do not require credentials. check() validates
+# the named .env variables before an enabled, qualified extension can start.
+requires_env: []

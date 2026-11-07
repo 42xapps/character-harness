@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { after, test } from "node:test";
+import { after, before, test } from "node:test";
 import { check as directorCheck } from "../../extensions/director/index.ts";
 import { check as tagsCheck } from "../../extensions/emotion-tags/index.ts";
 import { bodyOf, checkCharacter, printable, type Body, type Report } from "../src/check.ts";
@@ -16,6 +16,10 @@ import { writeGlb, type Glb } from "../src/rig/glb.ts";
 const FOXGLOVE = path.resolve(import.meta.dirname, "../../characters/foxglove");
 const report = (): Report => ({ ok: [], errors: [], warnings: [] });
 const temp: string[] = [];
+const memoryTestEnv: Record<string, string> = { SUPERMEMORY_LOCAL_API_KEY: "synthetic-check-only", SUPERMEMORY_JOURNAL_KEY: Buffer.alloc(32, 7).toString("base64") };
+const previousMemoryEnv = Object.fromEntries(Object.keys(memoryTestEnv).map((name) => [name, process.env[name]]));
+before(() => Object.assign(process.env, memoryTestEnv));
+after(() => { for (const [name, value] of Object.entries(previousMemoryEnv)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } });
 after(() => temp.forEach((d) => rmSync(d, { recursive: true, force: true })));
 const tempDir = () => {
 	const d = mkdtempSync(path.join(tmpdir(), "harness-check-"));
@@ -226,6 +230,7 @@ test("a profile this checkout doesn't have is a warning, and its words aren't ju
 	const dir = tempDir();
 	writeFileSync(path.join(dir, "world.yaml"), readFileSync(path.join(FOXGLOVE, "world.yaml")));
 	writeFileSync(path.join(dir, "reactions.yaml"), readFileSync(path.join(FOXGLOVE, "reactions.yaml")));
+	writeFileSync(path.join(dir, "memory.yaml"), readFileSync(path.join(FOXGLOVE, "memory.yaml")));
 	writeFileSync(path.join(dir, "character.yaml"), readFileSync(path.join(FOXGLOVE, "character.yaml"), "utf8").replace("profile: foxglove", "profile: elsewhere").replace(/path: \.\.\/\.\.\/extensions/g, `path: ${path.resolve(FOXGLOVE, "../../extensions")}`).replace("config_file: director.yaml", `config_file: ${path.join(FOXGLOVE, "director.yaml")}`).replace("config_file: director.yaml", `config_file: ${path.join(FOXGLOVE, "director.yaml")}`));
 	writeFileSync(path.join(dir, "system.md"), "You are a test.");
 	const c = loadCharacter(dir);

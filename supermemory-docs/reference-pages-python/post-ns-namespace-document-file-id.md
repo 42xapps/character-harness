@@ -1,0 +1,390 @@
+# Replace document with file
+
+- **Method:** `POST`
+- **Path:** `/ns/{namespace}/document/file/{id}`
+- **Operation ID:** `postNsByNamespaceDocumentFileById`
+- **Source:** `../supermemory-api.json` (saved OpenAPI snapshot)
+- **Source SHA-256:** `5741d22f80e4bf08290fecee3bb5ebb81317bc75adc6f6c8995c45d681853b72`
+
+Replace an existing document with a new file while keeping its stable document ID. Content and caller metadata are overwritten, then the document is reprocessed asynchronously.
+
+## Servers and authentication
+
+```json
+{
+  "servers": [
+    {
+      "description": "Production Server",
+      "url": "https://api.supermemory.ai"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "securitySchemes": {
+    "bearerAuth": {
+      "scheme": "bearer",
+      "type": "http"
+    }
+  }
+}
+```
+
+## Parameters
+
+```json
+[
+  {
+    "in": "path",
+    "name": "namespace",
+    "schema": {
+      "example": "user_alex",
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9_:-]+$"
+    },
+    "required": true,
+    "description": "The isolated namespace. This can be an ID for your user, a project ID, or any other identifier you wish to use to scope documents."
+  },
+  {
+    "in": "path",
+    "name": "id",
+    "schema": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "example": "my-doc-123"
+    },
+    "required": true,
+    "description": "The public document ID"
+  }
+]
+```
+
+## Request body
+
+```json
+{
+  "required": true,
+  "content": {
+    "multipart/form-data": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "description": "File contents to upload",
+            "format": "binary",
+            "type": "string"
+          },
+          "supportingContext": {
+            "description": "Context used to guide memory extraction within this namespace. Max 1500 characters.",
+            "example": "Focus on product decisions, dates, and owners.",
+            "type": "string",
+            "maxLength": 1500
+          },
+          "metadata": {
+            "description": "JSON-encoded metadata to attach to the document and its derived memories",
+            "type": "string"
+          },
+          "group": {
+            "description": "JSON-encoded metadata used to keep related context isolated during processing and recall",
+            "type": "string"
+          },
+          "date": {
+            "description": "When the source content is from, in ISO 8601 format",
+            "example": "2026-01-15",
+            "type": "string"
+          },
+          "taskType": {
+            "description": "Processing pipeline. \"memory\" builds durable learned context; \"superrag\" optimizes the document for retrieval without generating memories.",
+            "type": "string",
+            "enum": [
+              "memory",
+              "superrag"
+            ]
+          },
+          "dreaming": {
+            "description": "Processing mode. \"dynamic\" (default) groups related documents so memories form from coherent context. \"instant\" processes each document independently right away and bills one extra operation per document.",
+            "type": "string",
+            "enum": [
+              "dynamic",
+              "instant"
+            ]
+          },
+          "fileType": {
+            "description": "Explicit source type used when automatic inference is insufficient",
+            "type": "string",
+            "enum": [
+              "text",
+              "pdf",
+              "image",
+              "video",
+              "audio"
+            ]
+          },
+          "mimeType": {
+            "description": "Explicit MIME type used when upload metadata is insufficient",
+            "type": "string",
+            "pattern": "^[^\\s/]+\\/[^\\s/]+$"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
+```
+
+## Responses
+
+### 200 — Replacement accepted for processing
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Document identifier to poll or retrieve"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "queued",
+              "extracting",
+              "chunking",
+              "embedding",
+              "indexing",
+              "done",
+              "failed"
+            ],
+            "description": "The document's processing state after this request. queued when new work was queued; otherwise its current state, e.g. done for an unchanged duplicate or failed for a metadata-only update to a failed document."
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "description": "Replacement accepted for processing"
+}
+```
+
+### 400 — Invalid file request
+
+```json
+{
+  "description": "Invalid file request",
+  "content": {
+    "application/json": {
+      "schema": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "$ref": "#/components/schemas/ValidationErrorResponse"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+### 401 — Unauthorized
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/ErrorResponse"
+      }
+    }
+  },
+  "description": "Unauthorized"
+}
+```
+
+### 402 — Insufficient balance or document quota
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/ErrorResponse"
+      }
+    }
+  },
+  "description": "Insufficient balance or document quota"
+}
+```
+
+### 403 — Write access required for this namespace
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/ErrorResponse"
+      }
+    }
+  },
+  "description": "Write access required for this namespace"
+}
+```
+
+### 404 — Document not found in this namespace
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/ErrorResponse"
+      }
+    }
+  },
+  "description": "Document not found in this namespace"
+}
+```
+
+### 409 — Filepath conflict or namespace merge prevents the update
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/ErrorResponse"
+      }
+    }
+  },
+  "description": "Filepath conflict or namespace merge prevents the update"
+}
+```
+
+### 500 — Internal server error
+
+```json
+{
+  "content": {
+    "application/json": {
+      "schema": {
+        "$ref": "#/components/schemas/ErrorResponse"
+      }
+    }
+  },
+  "description": "Internal server error"
+}
+```
+
+## Python examples from the snapshot
+
+```python
+from supermemory import Supermemory
+import json
+client = Supermemory()  # reads SUPERMEMORY_API_KEY
+
+with open("notes-v2.pdf", "rb") as f:
+    doc = client.documents.replace_with_file(
+        "user_123",
+        "doc_abc123",
+        file=f,
+        metadata=json.dumps({"revision": 2}),
+    )
+print(doc.status)
+```
+
+## Referenced schemas
+
+### ErrorResponse
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "description": "Error message",
+      "example": "Invalid request parameters"
+    },
+    "details": {
+      "type": "string",
+      "description": "Additional error details",
+      "example": "Query must be at least 1 character long"
+    }
+  },
+  "required": [
+    "error"
+  ]
+}
+```
+
+### ValidationErrorResponse
+
+```json
+{
+  "type": "object",
+  "description": "Body returned when request input fails schema validation",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "enum": [
+        false
+      ]
+    },
+    "error": {
+      "type": "array",
+      "description": "Validation issues",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "data": {
+      "description": "The input that failed validation"
+    }
+  },
+  "required": [
+    "success",
+    "error"
+  ]
+}
+```

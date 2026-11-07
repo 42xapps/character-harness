@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-22T04:51:46.811Z",
+  "server": "0.0.9",
+  "sdk": "5.0.2",
+  "model": "kloey-memory-gemma4:12b",
+  "embeddings": {
+    "model": "Xenova/bge-base-en-v1.5",
+    "dimensions": "768"
+  },
+  "namespace": "qualification_6e14de4f0b1a4c0abafe0fcb6c4db15d",
+  "syntheticOnly": true,
+  "tests": [
+    {
+      "name": "ingest_instant",
+      "passed": true,
+      "elapsedMs": 46.15141600000001,
+      "detail": {
+        "accepted": true
+      }
+    },
+    {
+      "name": "namespace_settings",
+      "passed": true,
+      "elapsedMs": 6.222624999999994,
+      "detail": true
+    },
+    {
+      "name": "namespace_get",
+      "passed": true,
+      "elapsedMs": 4.767415999999997,
+      "detail": true
+    },
+    {
+      "name": "profile_buckets",
+      "passed": true,
+      "elapsedMs": 3.8424579999999935,
+      "detail": true
+    },
+    {
+      "name": "processing_done",
+      "passed": true,
+      "elapsedMs": 2021.2833329999999,
+      "detail": {
+        "status": "done"
+      }
+    },
+    {
+      "name": "search_chunks",
+      "passed": true,
+      "elapsedMs": 33.497084000000086,
+      "detail": {
+        "count": 1,
+        "serverMs": 26,
+        "text": "User: My name is Avery. I work at Cedar Labs. My sister's name is Mira. I prefer jasmine tea. Assistant (generated, playback unverified): Thanks for telling me."
+      }
+    },
+    {
+      "name": "search_memories",
+      "passed": true,
+      "elapsedMs": 15216.847208,
+      "detail": {
+        "count": 2,
+        "serverMs": 45,
+        "text": "The user's name is Avery. The user works at Cedar Labs."
+      }
+    },
+    {
+      "name": "search_hybrid",
+      "passed": true,
+      "elapsedMs": 29.439750000001368,
+      "detail": {
+        "count": 3,
+        "serverMs": 24,
+        "text": "User: My name is Avery. I work at Cedar Labs. My sister's name is Mira. I prefer jasmine tea. Assistant (generated, playback unverified): Thanks for telling me. The user's name is Avery. The user works at Cedar Labs."
+      }
+    },
+    {
+      "name": "profile",
+      "passed": true,
+      "elapsedMs": 11.674417000001995,
+      "detail": {
+        "static": 2,
+        "dynamic": 0,
+        "buckets": [
+          "preferences",
+          "goals",
+          "relationships"
+        ]
+      }
+    },
+    {
+      "name": "list",
+      "passed": true,
+      "elapsedMs": 8.581334000002244,
+      "detail": {
+        "count": 2
+      }
+    },
+    {
+      "name": "semantic_forget_preview",
+      "passed": false,
+      "elapsedMs": 3240.944040999999,
+      "detail": {
+        "error": "InternalServerError",
+        "status": 500
+      }
+    },
+    {
+      "name": "delete_namespace",
+      "passed": true,
+      "elapsedMs": 37.72708400000192,
+      "detail": {
+        "status": "deleted"
+      }
+    }
+  ],
+  "qualified": false,
+  "reason": "Basic API or extraction gate failed; live memory must remain disabled."
+}

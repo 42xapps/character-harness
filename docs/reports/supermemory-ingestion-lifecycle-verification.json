@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-22T23:03:50.225Z",
+  "automatedTestsPassed": 193,
+  "typecheckPassed": true,
+  "normalDreaming": "dynamic",
+  "sameMemoryStore": true,
+  "documents": 9,
+  "providerStates": {
+    "done": 9
+  },
+  "localJobs": [
+    {
+      "state": "done",
+      "count": 38
+    }
+  ],
+  "savedInputs": 72,
+  "workerFixDeployed": true,
+  "providerQueueFullyRecovered": true,
+  "syntheticExtractionVerified": true,
+  "recoveredSourceTextVerified": true,
+  "graphReadiness": "separate; not inferred from document done",
+  "productionQualified": false
+}

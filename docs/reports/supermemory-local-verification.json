@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-22T05:29:04.298Z",
+  "scope": "local core contract, dynamic learning and persisted recall; not production release certification",
+  "server": "0.0.9",
+  "sdk": "5.0.2",
+  "model": "kloey-memory-gemma4:12b",
+  "baseUrl": "http://127.0.0.1:6779",
+  "tests": [
+    {
+      "name": "namespace_settings_and_buckets",
+      "passed": true,
+      "elapsedMs": 35.74083299999998,
+      "detail": {
+        "buckets": 5
+      }
+    },
+    {
+      "name": "five_explicit_facts_and_source_processing",
+      "passed": true,
+      "elapsedMs": 73857.575041,
+      "detail": {
+        "factsCovered": 5,
+        "documentStatus": {
+          "status": "done",
+          "createdAt": "2026-10-22T05:03:04.527Z",
+          "updatedAt": "2026-10-22T05:04:14.283Z",
+          "filepath": null
+        }
+      }
+    },
+    {
+      "name": "relevant_grounded_memory_and_hybrid_recall",
+      "passed": true,
+      "elapsedMs": 53.84449999999197,
+      "detail": {
+        "recallDeadlineMs": 300
+      }
+    },
+    {
+      "name": "profiles_contain_learned_preferences",
+      "passed": true,
+      "elapsedMs": 7.738209000002826,
+      "detail": {
+        "static": 5,
+        "dynamic": 0
+      }
+    },
+    {
+      "name": "hypothetical_and_assistant_suggestion_are_not_biography",
+      "passed": true,
+      "elapsedMs": 4.5161669999943115,
+      "detail": true
+    },
+    {
+      "name": "namespace_isolation",
+      "passed": true,
+      "elapsedMs": 16.132375000001048,
+      "detail": true
+    },
+    {
+      "name": "employment_correction_supersedes_previous_fact",
+      "passed": true,
+      "elapsedMs": 58104.95150000001,
+      "detail": true
+    },
+    {
+      "name": "semantic_forget_preview_selects_only_target",
+      "passed": true,
+      "elapsedMs": 2710.3014580000017,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "exact_forget_removes_target_from_memory_search",
+      "passed": true,
+      "elapsedMs": 32.776041000004625,
+      "detail": true
+    },
+    {
+      "name": "namespace_erasure_removes_memories_profiles_and_sources",
+      "passed": true,
+      "elapsedMs": 8067.577583999984,
+      "detail": {
+        "afterMs": 8000
+      }
+    },
+    {
+      "name": "persisted_recall_after_journal_reopen",
+      "passed": true,
+      "detail": {
+        "evidence": "lifecycle log; independent real-relationship read-only recall returned ready in 36 ms"
+      }
+    },
+    {
+      "name": "dynamic_journal_ingestion_profile_and_erase_worker",
+      "passed": true,
+      "detail": {
+        "learnedPreference": true,
+        "profileUpdated": true,
+        "immediateSuppression": true,
+        "providerErasure": true,
+        "batchWindow": "10000 tokens or 15 minutes plus coordinator"
+      }
+    }
+  ],
+  "qualified": true,
+  "productionQualified": false,
+  "remainingProductionGates": [
+    "authenticated multi-user deployment",
+    "full quality/abstention corpus",
+    "sustained load and failure/restore drills",
+    "egress and capacity/license review"
+  ],
+  "retestNotes": [
+    "Namespace creation order and negated-employer fixture corrected.",
+    "Original lifecycle timeout was shorter than the installed batching window; extended observation confirmed learning.",
+    "Dynamic preference survived a memory-engine restart.",
+    "Deletion observer was corrected to inspect the complete synthetic erasure queue."
+  ]
+}

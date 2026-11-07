@@ -1,0 +1,295 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://supermemory.ai/docs/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Review inferred memories
+
+> List low-confidence inferred memories, then approve, decline or undo them.
+
+Supermemory's graph derives new facts from patterns across your existing memories
+(see [graph memory](/docs/concepts/graph-memory)). Because nobody stated these facts
+directly, they are flagged as inferred (`isInference: true`) and **down-weighted in
+search until someone confirms them**.
+
+These two endpoints let you build a review flow on top of that queue: list the
+inferred memories awaiting review, then approve, decline or undo a decision on each one.
+
+<Info>
+  These endpoints are scoped to a single [namespace](/docs/concepts/container-tags)
+  (what v3/v4 called a container tag). The review routes are still served under
+  `/v3/container-tags/{containerTag}`; pass your namespace as the `containerTag`
+  path parameter.
+</Info>
+
+## How review affects ranking
+
+While a memory is unreviewed and inferred it is down-weighted in search, so the
+engine's guesses rank below facts you stated explicitly. Reviewing it resolves that
+either way:
+
+| Action | Result | Effect on search |
+| - | - | - |
+| **Approve** | `isInference` cleared | Ranks like a stated fact — no longer down-weighted |
+| **Decline** | `isForgotten` set | Removed from search entirely — a rejected guess is forgotten |
+| **Undo** | back to unreviewed | Returns to the queue; inferred and down-weighted again |
+
+A reviewed memory is stamped with `reviewStatus` in its metadata so it drops out of the
+review queue (declined memories also leave search, since they're forgotten). **Undo**
+clears that stamp — and un-forgets a declined memory — bringing it back.
+
+***
+
+## List inferred memories
+
+Return the inferred memories for a namespace that are still awaiting review (the
+review queue). Reviewed memories are excluded.
+
+```
+GET /v3/container-tags/{containerTag}/inferred
+```
+
+<Tabs>
+  <Tab title="fetch">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const res = await fetch(
+      "https://api.supermemory.ai/v3/container-tags/user_123/inferred",
+      { headers: { "Authorization": `Bearer ${API_KEY}` } }
+    );
+
+    const { memories, total } = await res.json();
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl "https://api.supermemory.ai/v3/container-tags/user_123/inferred" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
+    ```
+  </Tab>
+</Tabs>
+
+### Path parameters
+
+| Parameter | Type | Description |
+| - | - | - |
+| `containerTag` | string | The namespace to read the review queue for |
+
+### Response
+
+```json theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+{
+  "memories": [
+    {
+      "id": "mem_abc123",
+      "memory": "Alex likely works on Stripe's core payments product",
+      "parentCount": 3,
+      "createdAt": "2025-01-15T10:30:00.000Z",
+      "updatedAt": "2025-01-15T10:30:00.000Z",
+      "metadata": { "source": "derive" }
+    }
+  ],
+  "total": 1
+}
+```
+
+| Field | Type | Description |
+| - | - | - |
+| `memories[].id` | string | Memory entry ID — pass to the review endpoint |
+| `memories[].memory` | string | The inferred memory text |
+| `memories[].parentCount` | number | How many source memories this was derived from. Higher = stronger signal |
+| `memories[].createdAt` | string | ISO 8601 timestamp |
+| `memories[].updatedAt` | string | ISO 8601 timestamp |
+| `memories[].metadata` | object \| null | Arbitrary metadata stored on the memory |
+| `total` | number | Count of unreviewed inferred memories returned |
+
+<Note>
+  The queue returns up to **50** memories, ordered by `parentCount` descending (most
+  strongly supported first), then by `createdAt` descending. It excludes anything that
+  is forgotten, expired, or already reviewed. An unknown or empty namespace returns
+  `{ "memories": [], "total": 0 }`.
+</Note>
+
+***
+
+## Review an inferred memory
+
+Record a decision on a single inferred memory.
+
+```
+POST /v3/container-tags/{containerTag}/inferred/{memoryId}/review
+```
+
+<Tabs>
+  <Tab title="fetch">
+    ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    const res = await fetch(
+      "https://api.supermemory.ai/v3/container-tags/user_123/inferred/mem_abc123/review",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ action: "approve" })
+      }
+    );
+
+    const result = await res.json();
+    // { id: "mem_abc123", isInference: false, isForgotten: false, reviewStatus: "approved" }
+    ```
+  </Tab>
+
+  <Tab title="cURL">
+    ```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+    curl -X POST \
+      "https://api.supermemory.ai/v3/container-tags/user_123/inferred/mem_abc123/review" \
+      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"action": "approve"}'
+    ```
+  </Tab>
+</Tabs>
+
+### Path parameters
+
+| Parameter | Type | Description |
+| - | - | - |
+| `containerTag` | string | The namespace the memory belongs to |
+| `memoryId` | string | The memory entry ID from the list endpoint |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| - | - | - | - |
+| `action` | string | yes | One of `approve`, `decline`, or `undo` |
+
+<Warning>
+  The reject action is named **`decline`**. There is no `reject` value.
+</Warning>
+
+**Action semantics:**
+
+* **`approve`** — Promote the memory: clears `isInference`, so it ranks like a stated
+  fact instead of a down-weighted guess. Stamps `reviewStatus: "approved"`.
+* **`decline`** — Reject the suggestion: the memory is **forgotten**
+  (`isForgotten: true`) and stamped `reviewStatus: "declined"`, so it leaves both
+  search and the review queue.
+* **`undo`** — Revert a prior `approve`/`decline` back to the unreviewed inferred
+  state: restores `isInference: true`, un-forgets the memory (`isForgotten: false`),
+  and clears the review stamp, so it returns to the queue.
+
+### Response
+
+```json theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+{
+  "id": "mem_abc123",
+  "isInference": false,
+  "isForgotten": false,
+  "reviewStatus": "approved"
+}
+```
+
+| Field | Type | Description |
+| - | - | - |
+| `id` | string | The reviewed memory ID |
+| `isInference` | boolean | `false` after approve; `true` after decline or undo |
+| `isForgotten` | boolean | `true` after decline (the memory is forgotten); `false` otherwise |
+| `reviewStatus` | `"approved"` \| `"declined"` \| `null` | The new status; `null` after an undo |
+
+### Errors
+
+| Status | When |
+| - | - |
+| `401` | Missing or invalid authentication |
+| `404` | The namespace or memory was not found in your organization |
+| `409` | The memory isn't reviewable for this action — it's not an inferred memory, or there's no prior review to undo |
+
+***
+
+## Building a review experience
+
+The endpoints are designed for an optimistic, one-at-a-time review UI (swipe to keep /
+decline, with undo). A typical client fetches the queue once, then pops each card off
+locally as the user decides — `undo` re-adds it.
+
+<Accordion title="React Query hooks (TypeScript)">
+  ```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+  import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+  const BASE = "https://api.supermemory.ai/v3";
+  const key = (tag: string) => ["inferred-memories", tag] as const;
+
+  export type InferredMemory = {
+    id: string;
+    memory: string;
+    parentCount: number;
+    createdAt: string;
+    updatedAt: string;
+    metadata: Record<string, unknown> | null;
+  };
+
+  export type ReviewAction = "approve" | "decline" | "undo";
+
+  export function useInferredMemories(namespace: string) {
+    return useQuery({
+      queryKey: key(namespace),
+      queryFn: async (): Promise<InferredMemory[]> => {
+        const res = await fetch(`${BASE}/container-tags/${namespace}/inferred`, {
+          headers: { Authorization: `Bearer ${API_KEY}` },
+        });
+        if (!res.ok) throw new Error("Failed to load review queue");
+        const data = await res.json();
+        return data.memories ?? [];
+      },
+      staleTime: 60_000,
+    });
+  }
+
+  export function useReviewInferredMemory(namespace: string) {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: async (vars: { memoryId: string; action: ReviewAction }) => {
+        const res = await fetch(
+          `${BASE}/container-tags/${namespace}/inferred/${vars.memoryId}/review`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action: vars.action }),
+          },
+        );
+        if (!res.ok) throw new Error("Review failed");
+        return res.json();
+      },
+      onSuccess: (_data, { memoryId, action }) => {
+        // approve/decline remove the card; undo brings it back, so refetch.
+        if (action === "undo") {
+          queryClient.invalidateQueries({ queryKey: key(namespace) });
+          return;
+        }
+        queryClient.setQueryData<InferredMemory[]>(key(namespace), (prev) =>
+          prev?.filter((m) => m.id !== memoryId),
+        );
+      },
+    });
+  }
+  ```
+</Accordion>
+
+<Note>
+  There is no separate "skip" action. A swipe-to-skip is purely client-side — don't send
+  a request and the memory simply stays in the queue for a later session.
+</Note>
+
+***
+
+## Next steps
+
+* [Graph Memory](/docs/concepts/graph-memory) — How inferred (`derive`) memories are created
+* [Memory Operations](/docs/recall/memory-operations) — Forget memories
+* [Search](/docs/recall/search) — How inferred memories are ranked in results
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

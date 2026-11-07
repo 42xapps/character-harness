@@ -1,0 +1,96 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://supermemory.ai/docs/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Measuring results
+
+> How MemoryBench scores a run with qualitative judging and quantitative metrics.
+
+Every question goes through the same pipeline (ingest → search → answer → evaluate → report) and produces two kinds of signal: a qualitative judgment on whether the answer was right, and quantitative measurements of how fast and how expensive it was to get there. MemoryBench keeps both instead of collapsing everything into a single number.
+
+## Qualitative: was the answer right?
+
+Correctness isn't decided by string matching — a **judge LLM** (GPT-4o, Claude Sonnet, or Gemini Flash, your choice) compares the provider's answer against ground truth and returns a verdict:
+
+```typescript theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+{ score: 0 | 1, label: "correct" | "incorrect", explanation: string }
+```
+
+The judge is judge-agnostic on purpose — score the same run with two different judges if you want to sanity-check that a result isn't an artifact of one model's grading bias. The prompt the judge uses can also vary by question type (temporal questions get graded differently than abstention questions, for example), and providers can supply their own judge prompts if their answers need custom framing.
+
+```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+# Grade a run with a different judge
+bun run src/index.ts run -p supermemory -b locomo -j sonnet-4
+```
+
+## Quantitative: how fast, how much
+
+Alongside the correctness verdict, every question also records hard numbers:
+
+| Metric | What it measures |
+| - | - |
+| **Accuracy** | Judge score (0–1) averaged across all questions, and broken down per question type |
+| **Latency** | Search time and answer-generation time per question (p50 / p95 across a run) |
+| **Context tokens** | How much context was sent to the answering model — a proxy for retrieval cost |
+| **Success rate** | Percentage of questions that completed without erroring (failures are excluded from accuracy, not counted against it) |
+
+## MemScore
+
+The report doesn't reduce these to one score. **MemScore** reports the three that matter for a production decision side by side:
+
+```
+MemScore: 86% / 145ms / 1823tok
+          ▲     ▲       ▲
+          │     │       └─ context tokens sent to the answering model (cost)
+          │     └───────── search latency
+          └─────────────── answer accuracy vs. ground truth
+```
+
+A provider that's 2% more accurate but 5x slower and 3x more expensive in context tokens isn't unambiguously "better" — MemScore leaves that trade-off to you instead of picking weights for you.
+
+## Reading the numbers
+
+Rough bands, from running MemoryBench across the built-in benchmarks:
+
+| Accuracy | Read |
+| - | - |
+| 80%+ | Excellent, production-ready |
+| 70–80% | Good, some room to improve |
+| 60–70% | Adequate, likely needs tuning |
+| `<60%` | Investigate — retrieval, prompts, or indexing likely need work |
+
+| Search latency | Read |
+| - | - |
+| `<100ms` | Excellent (vector-search level) |
+| 100–300ms | Good, typical API latency |
+| 300–500ms | Adequate for most use cases |
+| `>500ms` | Slow — worth optimizing |
+
+Per-question-type breakdowns are usually more useful than the headline number: strong on LoCoMo but weak on LongMemEval means good temporal/cross-session recall but weak dense-retrieval; the reverse means the opposite. That's what tells you what to actually go fix.
+
+## Digging into a specific run
+
+```bash theme={"theme":{"light":"github-light-default","dark":"github-dark-default"}}
+bun run src/index.ts status -r my-run             # progress / summary
+bun run src/index.ts show-failures -r my-run       # full context on what got graded wrong
+bun run src/index.ts serve                         # web UI at localhost:3000 for visual inspection
+```
+
+Results and checkpoints for every run live at `data/runs/{runId}/report.json`, with per-question-type accuracy, latency percentiles, and per-question token counts.
+
+***
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Adding a provider" icon="https://mintcdn.com/supermemory/p0zPjih-OxhkPwgX/icons/hugeicons/plug-01.svg?fit=max&auto=format&n=p0zPjih-OxhkPwgX&q=85&s=d19f94c6b17b7e2d41d1be8f717d95c0" href="/docs/memorybench/extend-provider" width="24" height="24" data-path="icons/hugeicons/plug-01.svg">
+    Get your own system into a run that produces these numbers.
+  </Card>
+
+  <Card title="Building a benchmark" icon="https://mintcdn.com/supermemory/p0zPjih-OxhkPwgX/icons/hugeicons/test-tube-01.svg?fit=max&auto=format&n=p0zPjih-OxhkPwgX&q=85&s=918bc054b8ea821918b0f0b12286e9e3" href="/docs/memorybench/extend-benchmark" width="24" height="24" data-path="icons/hugeicons/test-tube-01.svg">
+    Measure against scenarios specific to your product.
+  </Card>
+</CardGroup>
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

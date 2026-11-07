@@ -28,10 +28,15 @@ export interface Beat {
 	camera?: string;
 }
 
+// Supplied by the server's authenticated connection resolver, never client telemetry.
+export interface SessionPrincipal { user_id: string; companion_id: string }
+
 export interface State {
 	schema: number;
 	character: Record<string, unknown>;
-	session: { id: string; channel: string; end_reason?: string };
+	session: { id: string; channel: string; end_reason?: string; principal?: SessionPrincipal };
+	input_event?: { id: string; accepted_at: string };
+	turn_outcome?: "generated" | "interrupted" | "failed" | "silent";
 	input?: { text: string; channel: string };
 	context?: TurnContext;
 	messages?: Message[];

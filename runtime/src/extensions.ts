@@ -29,6 +29,7 @@ type Check = (input: { config: unknown; body: Body }) => Problems | void | Promi
 export interface Loaded extends Extension {
 	call: Handler;
 	check?: Check;
+	dispose?: () => void | Promise<void>;
 }
 
 class TimedOut extends Error {}
@@ -54,10 +55,11 @@ export async function loadExtensions(exts: Extension[]): Promise<Loaded[]> {
 			continue;
 		}
 		const file = path.join(e.dir, e.handler);
-		const mod = (await import(pathToFileURL(file).href)) as { default?: unknown; check?: unknown };
+		const mod = (await import(pathToFileURL(file).href)) as { default?: unknown; check?: unknown; dispose?: unknown };
 		if (typeof mod.default !== "function")
 			throw new Error(`${file}: the extension's handler must export a default function`);
-		out.push({ ...e, call: mod.default as Handler, check: typeof mod.check === "function" ? (mod.check as Check) : undefined });
+		out.push({ ...e, call: mod.default as Handler, check: typeof mod.check === "function" ? (mod.check as Check) : undefined,
+			dispose: typeof mod.dispose === "function" ? mod.dispose as () => void | Promise<void> : undefined });
 	}
 	return out;
 }
