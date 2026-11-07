@@ -19,6 +19,9 @@
 #define PLAYER_CHARACTER_ENV "HARNESS_CHARACTER"
 #define PLAYER_PREVIEW_PROFILE "foxglove"
 #define PLAYER_ENV_MAX 512
+// the character's `listen` settings as JSON, like {"end_of_speech_ms":900};
+// a key left out keeps the engine's default (player_listen in player.c)
+#define PLAYER_LISTEN_ENV "HARNESS_LISTEN"
 
 // the cooked VAD plan; character_voice_init copies the bytes
 #define PLAYER_VAD_MODEL "cooked/vad/silero_vad_16k.hza"
@@ -57,6 +60,10 @@
 // the fov the camera moves were authored against; a move's fov is scaled from
 // it to the player's
 #define PLAYER_STAGE_FOV 20.0f
+// a move with its own fov is framed for a landscape stage; on a stage narrower
+// than this aspect it widens to keep this much width, so a portrait close-up
+// still shows the shoulders
+#define PLAYER_CAM_MOVE_MIN_ASPECT 0.75f
 
 // the beat vocabulary: gesture word -> emote, camera word -> framing preset.
 // A cooked-in profile's gestures are this set (FoxGlove's); an imported

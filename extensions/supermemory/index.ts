@@ -32,7 +32,7 @@ export default async function memory({ event, state, config: raw }: HookInput): 
 	if (event === "on_session_start") { await service.getProfile(p); return; }
 	if (event === "before_llm") {
 		const input = state.input_event;
-		const retained = input && service.enqueueConversation(p, { id: input.id, sessionId: state.session.id, date: input.accepted_at,
+		const retained = input && !state.input?.offered_by && service.enqueueConversation(p, { id: input.id, sessionId: state.session.id, date: input.accepted_at,
 			text: state.input?.text ?? "", channel: state.input?.channel ?? "unknown", timezone: state.context?.profile?.timezone });
 		const previous = (state.messages ?? []).filter((m) => m.role === "user").slice(-3, -1).map((m) => m.content.slice(0, 250));
 		const recalled = await service.recall(p, [...previous, state.input?.text ?? ""].join("\n"));

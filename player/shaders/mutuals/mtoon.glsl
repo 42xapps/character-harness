@@ -59,7 +59,7 @@ void main() {
     v_model_c2 = v.model[2].xyz;
 
     vec4 position_ws = v.model * vec4(v.pos, 1.0);
-    gl_Position = hz_scene.view_proj * position_ws;
+    gl_Position = hz_instance_clip(v, position_ws);
 #ifdef MTOON_OVER_HAIR
     // move only the depth: test as if `push` meters closer to the camera, so
     // the brows win over the bangs right in front of them and still lose to
@@ -69,7 +69,7 @@ void main() {
     float camera_dist = length(toward_camera);
     vec3 nearer = position_ws.xyz +
                   toward_camera * (min(push, 0.5 * camera_dist) / max(camera_dist, 1e-4));
-    vec4 nearer_clip = hz_scene.view_proj * vec4(nearer, 1.0);
+    vec4 nearer_clip = hz_instance_clip(v, vec4(nearer, 1.0));
     gl_Position.z = nearer_clip.z / nearer_clip.w * gl_Position.w;
 #endif
     v_world_pos = position_ws.xyz;
@@ -83,11 +83,12 @@ void main() {
 #ifdef HZ_RENDERER_GBUFFER
     // this frame's and last frame's clip positions, without jitter, for motion
     // vectors; last frame's pose is rebuilt the same way, blendshapes then skin
-    v_clip_cur = hz_scene.view_proj_unjittered * position_ws;
     vec3 last_pos = rest_pos;
     apply_blendshapes_prev(last_pos, v.vertex_index, v.bs_offsets_base, v.bs_weights_offset);
     last_pos = apply_skinning_prev_pos(last_pos, v.bone_offset, v.vertex_base, v.vertex_layout_flags);
-    v_clip_prev = hz_scene.prev_view_proj * (unpack_prev_model() * vec4(last_pos, 1.0));
+    HzVelocity vel = hz_instance_velocity(v, position_ws, unpack_prev_model() * vec4(last_pos, 1.0));
+    v_clip_cur = vel.clip_cur;
+    v_clip_prev = vel.clip_prev;
 #endif
 }
 @end
@@ -96,11 +97,83 @@ void main() {
 #undef HZ_RENDERER_VERTEX_SHADER
 #define HZ_RENDERER_FRAGMENT_SHADER
 #define HZ_RENDERER_SHADOWS
-#define HZ_RENDERER_IBL
 #define HZ_RENDERER_LIGHTING_CLUSTERS
+// WebGPU allows 16 sampled textures per stage. The shadows take 2 and the sky
+// light and fog 5 (hz_env, hz_ssr, hz_sky_aerial, hz_fog_volume, hz_clouds),
+// which leaves 9 for the material's 14 maps. A material leaves out the maps it
+// never sets with MTOON_NO_<MAP> keywords (map and normal_map always stay):
+// on the web those maps aren't bound and read as their defaults, which is
+// what the default textures give elsewhere. With at most 9 maps it gets the
+// whole shader on the web too; with more, the web build leaves out the sky
+// light and fog. Elsewhere every map is bound and the keywords change nothing.
+#ifdef MTOON_NO_SHADE_MAP
+#define MTOON_HAS_SHADE_MAP 0
+#else
+#define MTOON_HAS_SHADE_MAP 1
+#endif
+#ifdef MTOON_NO_EMISSIVE_MAP
+#define MTOON_HAS_EMISSIVE_MAP 0
+#else
+#define MTOON_HAS_EMISSIVE_MAP 1
+#endif
+#ifdef MTOON_NO_MATCAP_MAP
+#define MTOON_HAS_MATCAP_MAP 0
+#else
+#define MTOON_HAS_MATCAP_MAP 1
+#endif
+#ifdef MTOON_NO_RIM_MAP
+#define MTOON_HAS_RIM_MAP 0
+#else
+#define MTOON_HAS_RIM_MAP 1
+#endif
+#ifdef MTOON_NO_SHADING_SHIFT_MAP
+#define MTOON_HAS_SHADING_SHIFT_MAP 0
+#else
+#define MTOON_HAS_SHADING_SHIFT_MAP 1
+#endif
+#ifdef MTOON_NO_FACE_MASK_MAP
+#define MTOON_HAS_FACE_MASK_MAP 0
+#else
+#define MTOON_HAS_FACE_MASK_MAP 1
+#endif
+#ifdef MTOON_NO_HIGHLIGHT_MAP
+#define MTOON_HAS_HIGHLIGHT_MAP 0
+#else
+#define MTOON_HAS_HIGHLIGHT_MAP 1
+#endif
+#ifdef MTOON_NO_BLUSH_MASK
+#define MTOON_HAS_BLUSH_MASK 0
+#else
+#define MTOON_HAS_BLUSH_MASK 1
+#endif
+#ifdef MTOON_NO_NERVOUS_MASK
+#define MTOON_HAS_NERVOUS_MASK 0
+#else
+#define MTOON_HAS_NERVOUS_MASK 1
+#endif
+#ifdef MTOON_NO_STAR_EYES_MASK
+#define MTOON_HAS_STAR_EYES_MASK 0
+#else
+#define MTOON_HAS_STAR_EYES_MASK 1
+#endif
+#ifdef MTOON_NO_TEARY_NOISE
+#define MTOON_HAS_TEARY_NOISE 0
+#else
+#define MTOON_HAS_TEARY_NOISE 1
+#endif
+#ifdef MTOON_NO_TEARY_MASK
+#define MTOON_HAS_TEARY_MASK 0
+#else
+#define MTOON_HAS_TEARY_MASK 1
+#endif
+#define MTOON_MAP_COUNT (2 + MTOON_HAS_SHADE_MAP + MTOON_HAS_EMISSIVE_MAP + MTOON_HAS_MATCAP_MAP + MTOON_HAS_RIM_MAP + MTOON_HAS_SHADING_SHIFT_MAP + MTOON_HAS_FACE_MASK_MAP + MTOON_HAS_HIGHLIGHT_MAP + MTOON_HAS_BLUSH_MASK + MTOON_HAS_NERVOUS_MASK + MTOON_HAS_STAR_EYES_MASK + MTOON_HAS_TEARY_NOISE + MTOON_HAS_TEARY_MASK)
+#if !defined(SHADER_BACKEND_WGSL) || MTOON_MAP_COUNT <= 9
+#define HZ_RENDERER_IBL
 #define HZ_RENDERER_FOG
+#endif
+// hz_output_lit declares and writes every target the pass asks for
+#define HZ_RENDERER_OUTPUT
 #include "renderer_shaders.glsl"
-layout(location = 0) out vec4 frag_color;
 in vec3 v_world_pos;
 in vec3 v_normal;
 in vec2 v_uv;
@@ -118,15 +191,102 @@ in float v_vcolor_r;
 #ifdef HZ_RENDERER_GBUFFER
 in vec4 v_clip_cur;
 in vec4 v_clip_prev;
-layout(location = 1) out vec2 frag_velocity;
-#ifdef HZ_RENDERER_TAAU
-layout(location = 2) out vec2 frag_normal;
-layout(location = 3) out float frag_depth;
-layout(location = 4) out float frag_reactive;
-layout(location = 5) out vec4 frag_opaque;
-#else
-layout(location = 2) out vec4 frag_normal;
 #endif
+
+// a map, through the keywords above: unbound on the web when left out
+#ifdef SHADER_BACKEND_WGSL
+#define MTOON_DECLARE(name) layout(binding = 0) uniform texture2D name##_tex;
+#undef DECLARE_TEXTURE
+#define DECLARE_TEXTURE(name) MTOON_DECLARE_##name
+#define MTOON_DECLARE_map MTOON_DECLARE(map)
+#define MTOON_DECLARE_normal_map MTOON_DECLARE(normal_map)
+#if MTOON_HAS_SHADE_MAP
+#define MTOON_DECLARE_shade_map MTOON_DECLARE(shade_map)
+#define MTOON_SAMPLE_shade_map(uv) texture_sample(shade_map, mat.shade_map, uv)
+#else
+#define MTOON_DECLARE_shade_map
+#define MTOON_SAMPLE_shade_map(uv) vec4(1.0)
+#endif
+#if MTOON_HAS_EMISSIVE_MAP
+#define MTOON_DECLARE_emissive_map MTOON_DECLARE(emissive_map)
+#define MTOON_SAMPLE_emissive_map(uv) texture_sample(emissive_map, mat.emissive_map, uv)
+#else
+#define MTOON_DECLARE_emissive_map
+#define MTOON_SAMPLE_emissive_map(uv) vec4(0.0)
+#endif
+#if MTOON_HAS_MATCAP_MAP
+#define MTOON_DECLARE_matcap_map MTOON_DECLARE(matcap_map)
+#define MTOON_SAMPLE_matcap_map(uv) texture_sample(matcap_map, mat.matcap_map, uv)
+#else
+#define MTOON_DECLARE_matcap_map
+#define MTOON_SAMPLE_matcap_map(uv) vec4(0.0)
+#endif
+#if MTOON_HAS_RIM_MAP
+#define MTOON_DECLARE_rim_map MTOON_DECLARE(rim_map)
+#define MTOON_SAMPLE_rim_map(uv) texture_sample(rim_map, mat.rim_map, uv)
+#else
+#define MTOON_DECLARE_rim_map
+#define MTOON_SAMPLE_rim_map(uv) vec4(1.0)
+#endif
+#if MTOON_HAS_SHADING_SHIFT_MAP
+#define MTOON_DECLARE_shading_shift_map MTOON_DECLARE(shading_shift_map)
+#define MTOON_SAMPLE_shading_shift_map(uv) texture_sample(shading_shift_map, mat.shading_shift_map, uv)
+#else
+#define MTOON_DECLARE_shading_shift_map
+#define MTOON_SAMPLE_shading_shift_map(uv) vec4(0.0)
+#endif
+#if MTOON_HAS_FACE_MASK_MAP
+#define MTOON_DECLARE_face_mask_map MTOON_DECLARE(face_mask_map)
+#define MTOON_SAMPLE_face_mask_map(uv) texture_sample(face_mask_map, mat.face_mask_map, uv)
+#else
+#define MTOON_DECLARE_face_mask_map
+#define MTOON_SAMPLE_face_mask_map(uv) vec4(1.0)
+#endif
+#if MTOON_HAS_HIGHLIGHT_MAP
+#define MTOON_DECLARE_highlight_map MTOON_DECLARE(highlight_map)
+#define MTOON_SAMPLE_highlight_map(uv) texture_sample(highlight_map, mat.highlight_map, uv)
+#else
+#define MTOON_DECLARE_highlight_map
+#define MTOON_SAMPLE_highlight_map(uv) vec4(1.0)
+#endif
+#if MTOON_HAS_BLUSH_MASK
+#define MTOON_DECLARE_blush_mask MTOON_DECLARE(blush_mask)
+#define MTOON_SAMPLE_blush_mask(uv) texture_sample(blush_mask, mat.blush_mask, uv)
+#else
+#define MTOON_DECLARE_blush_mask
+#define MTOON_SAMPLE_blush_mask(uv) vec4(1.0)
+#endif
+#if MTOON_HAS_NERVOUS_MASK
+#define MTOON_DECLARE_nervous_mask MTOON_DECLARE(nervous_mask)
+#define MTOON_SAMPLE_nervous_mask(uv) texture_sample(nervous_mask, mat.nervous_mask, uv)
+#else
+#define MTOON_DECLARE_nervous_mask
+#define MTOON_SAMPLE_nervous_mask(uv) vec4(1.0)
+#endif
+#if MTOON_HAS_STAR_EYES_MASK
+#define MTOON_DECLARE_star_eyes_mask MTOON_DECLARE(star_eyes_mask)
+#define MTOON_SAMPLE_star_eyes_mask(uv) texture_sample(star_eyes_mask, mat.star_eyes_mask, uv)
+#else
+#define MTOON_DECLARE_star_eyes_mask
+#define MTOON_SAMPLE_star_eyes_mask(uv) vec4(0.0)
+#endif
+#if MTOON_HAS_TEARY_NOISE
+#define MTOON_DECLARE_teary_noise MTOON_DECLARE(teary_noise)
+#define MTOON_SAMPLE_teary_noise(uv) texture_sample(teary_noise, mat.teary_noise, uv)
+#else
+#define MTOON_DECLARE_teary_noise
+#define MTOON_SAMPLE_teary_noise(uv) vec4(0.0)
+#endif
+#if MTOON_HAS_TEARY_MASK
+#define MTOON_DECLARE_teary_mask MTOON_DECLARE(teary_mask)
+#define MTOON_SAMPLE_teary_mask(uv) texture_sample(teary_mask, mat.teary_mask, uv)
+#else
+#define MTOON_DECLARE_teary_mask
+#define MTOON_SAMPLE_teary_mask(uv) vec4(1.0)
+#endif
+#define mtoon_sample(name, uv) MTOON_SAMPLE_##name(uv)
+#else
+#define mtoon_sample(name, uv) texture_sample(name, mat.name, uv)
 #endif
 
 // The material, as the model's VRM MToon settings fill it; the engine's
@@ -193,6 +353,24 @@ struct MaterialFS {
     vec4 over_hair_params;
 };
 
+// the sky's diffuse light toward dir; none without the sky light
+vec3 toon_sky(vec3 dir) {
+#ifdef HZ_RENDERER_IBL
+    return ibl_irradiance(dir);
+#else
+    return vec3(0.0);
+#endif
+}
+
+// fog over a lit color; none without fog
+vec3 toon_fog(vec3 color, float view_depth) {
+#ifdef HZ_RENDERER_FOG
+    return hz_fog_apply(color, view_depth);
+#else
+    return color;
+#endif
+}
+
 // 0 below a, 1 above b, linear between; never divides by zero
 float toon_step(float a, float b, float x) {
     return clamp((x - a) / max(b - a, 1e-4), 0.0, 1.0);
@@ -200,7 +378,7 @@ float toon_step(float a, float b, float x) {
 
 // how much the ramp is shifted here: the factor plus the shift map
 float toon_shift(MaterialFS mat, vec2 uv) {
-    return mat.toon.x + mat.gi_params.y * texture_sample(shading_shift_map, mat.shading_shift_map, uv).r;
+    return mat.toon.x + mat.gi_params.y * mtoon_sample(shading_shift_map, uv).r;
 }
 
 // lit amount (0 shade .. 1 lit) for the main lights: n.l remapped through a
@@ -243,11 +421,11 @@ void main() {
     // watery eyes: two scrolling noise samples at different scales offset the
     // UV, so the iris ripples; the mask is read at the steady UV
     if (mat.star_teary_params.y >= 0.5 && mat.star_teary_params.z > 0.0) {
-        float ripple_area = texture_sample(teary_mask, mat.teary_mask, uv).r;
+        float ripple_area = mtoon_sample(teary_mask, uv).r;
         float t = hz_scene.time * mat.teary_params2.y;
-        vec2 noise_a = texture_sample(teary_noise, mat.teary_noise,
+        vec2 noise_a = mtoon_sample(teary_noise,
                                       uv * mat.teary_params2.x + vec2(0.0, t)).rg;
-        vec2 noise_b = texture_sample(teary_noise, mat.teary_noise,
+        vec2 noise_b = mtoon_sample(teary_noise,
                                       uv * (mat.teary_params2.x * 1.37) + vec2(0.31, 0.73 * t)).rg;
         uv += (noise_a + noise_b - 1.0) * (mat.star_teary_params.z * mat.star_teary_params.w * ripple_area);
     }
@@ -257,26 +435,26 @@ void main() {
     if (base.a < mat.alpha_cutoff)
         discard;
     vec3 lit = base.rgb;
-    vec3 shade = mat.shade_color.rgb * texture_sample(shade_map, mat.shade_map, uv).rgb;
+    vec3 shade = mat.shade_color.rgb * mtoon_sample(shade_map, uv).rgb;
     vec3 highlight_rgb = mat.highlight_color.rgb;
     if (mat.highlight_params.z >= 0.5 && mat.highlight_params.w > 0.0)
-        highlight_rgb *= texture_sample(highlight_map, mat.highlight_map, uv).rgb;
+        highlight_rgb *= mtoon_sample(highlight_map, uv).rgb;
 
     // blush and nervous tints, on every tone
     vec3 tint = vec3(1.0);
     if (mat.blush_params.x > 0.0)
         tint *= mix(vec3(1.0), mat.blush_color.rgb,
-                    texture_sample(blush_mask, mat.blush_mask, uv).r * mat.blush_params.x);
+                    mtoon_sample(blush_mask, uv).r * mat.blush_params.x);
     if (mat.blush_params.y > 0.0)
         tint *= mix(vec3(1.0), mat.nervous_color.rgb,
-                    texture_sample(nervous_mask, mat.nervous_mask, uv).r * mat.blush_params.y);
+                    mtoon_sample(nervous_mask, uv).r * mat.blush_params.y);
     lit *= tint;
     shade *= tint;
     highlight_rgb *= tint;
 
     // sparkle: a decal over the lit and the shade tones, so it shows in shadow too
     if (mat.star_teary_params.x > 0.0) {
-        vec4 decal = texture_sample(star_eyes_mask, mat.star_eyes_mask, uv);
+        vec4 decal = mtoon_sample(star_eyes_mask, uv);
         float cover = decal.a * mat.star_teary_params.x;
         vec3 decal_rgb = decal.rgb * mat.star_eyes_tint.rgb;
         lit = mix(lit, decal_rgb, cover);
@@ -295,7 +473,7 @@ void main() {
     float face_amount = mat.face_params.w;
     if (face_amount > 0.0) {
         vec3 sphere_n = normalize(mat3(v_model_c0, v_model_c1, v_model_c2) * v_smooth_normal);
-        float where = texture_sample(face_mask_map, mat.face_mask_map, uv).r;
+        float where = mtoon_sample(face_mask_map, uv).r;
         ramp_n = normalize(mix(N, sphere_n, face_amount * where));
     }
 
@@ -336,8 +514,8 @@ void main() {
     // ambient: the sky's diffuse light plus the scene ambient, blended toward
     // its up/down average by the GI equalization factor
     vec3 scene_ambient = hz_scene.lights.ambient * hz_scene.lights.ambient_intensity;
-    vec3 sky_here = ibl_irradiance(N);
-    vec3 sky_even = 0.5 * (ibl_irradiance(vec3(0.0, 1.0, 0.0)) + ibl_irradiance(vec3(0.0, -1.0, 0.0)));
+    vec3 sky_here = toon_sky(N);
+    vec3 sky_even = 0.5 * (toon_sky(vec3(0.0, 1.0, 0.0)) + toon_sky(vec3(0.0, -1.0, 0.0)));
     vec3 ambient = scene_ambient + mix(sky_here, sky_even, mat.gi_params.x);
     color += lit * ambient;
     received += ambient;
@@ -354,50 +532,23 @@ void main() {
     vec3 frame_x = dot(side, side) > 1e-12 ? normalize(side) : vec3(1.0, 0.0, 0.0);
     vec3 frame_y = normalize(cross(frame_x, V));
     vec2 matcap_uv = 0.5 + 0.5 * vec2(dot(frame_x, N), dot(frame_y, N));
-    rim += mat.matcap_color.rgb * texture_sample(matcap_map, mat.matcap_map, matcap_uv).rgb;
-    rim *= texture_sample(rim_map, mat.rim_map, uv).rgb;
+    rim += mat.matcap_color.rgb * mtoon_sample(matcap_map, matcap_uv).rgb;
+    rim *= mtoon_sample(rim_map, uv).rgb;
     if (mat.gi_params.w > 0.0)
         rim *= v_vcolor_r;
     color += rim * mix(vec3(1.0), received, mat.rim_color.a);
 
-    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, uv).rgb * hz_scene.pre_exposure;
+    color += mat.emissive.rgb * mat.emissive.a * mtoon_sample(emissive_map, uv).rgb *
+             hz_scene.pre_exposure;
 
-    color = hz_fog_apply(color, v_view_depth);
+    color = toon_fog(color, v_view_depth);
     float alpha = base.a;
 #ifdef MTOON_OVER_HAIR
     // drawn over the hair at its opacity, fading out as the face turns away
     alpha *= mat.over_hair_params.y * smoothstep(mat.over_hair_params.z, max(mat.over_hair_params.w, mat.over_hair_params.z + 1e-4), dot(N, V));
 #endif
-    frag_color = vec4(color, alpha);
-
-#ifdef HZ_RENDERER_GBUFFER
-#ifdef HZ_RENDERER_TRANSPARENT
-    // a transparent surface leaves motion and normal to what is behind it;
-    // its alpha marks it for the upscaler
-    frag_velocity = vec2(0.0);
-#ifdef HZ_RENDERER_TAAU
-    frag_normal = vec2(0.0);
-#else
-    frag_normal = vec4(0.0, 0.0, 0.0, clamp(base.a, 0.0, 0.9));
-#endif
-#else
-    frag_velocity = v_clip_cur.xy / v_clip_cur.w - v_clip_prev.xy / v_clip_prev.w;
-#ifdef HZ_RENDERER_TAAU
-    frag_normal = oct_encode_normal(N);
-#else
-    frag_normal = vec4(oct_encode_normal(N), 0.0, 0.0);
-#endif
-#endif
-#ifdef HZ_RENDERER_TAAU
-    frag_depth = gl_FragCoord.z;
-#ifdef HZ_RENDERER_TRANSPARENT
-    frag_reactive = clamp(base.a, 0.0, 0.9);
-    frag_opaque = vec4(0.0);
-#else
-    frag_reactive = 0.0;
-    frag_opaque = vec4(color, 1.0);
-#endif
-#endif
-#endif
+    HzSurface surface = hz_surface_default();
+    surface.normal = N;
+    hz_output_lit(vec4(color, alpha), surface, HZ_VELOCITY(v_clip_cur, v_clip_prev));
 }
 @end

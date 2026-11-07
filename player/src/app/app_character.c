@@ -429,17 +429,17 @@ hz_internal void app_character_over_hair_resolve(AppCharacterSystem *cs,
         if (!app_material_path_is(
                 cstr_to_str(string_blob_get(&subs.items[s].material.path)), name))
           continue;
-        HzHandleT(RendererMaterial) material =
+        HzHandleT(RendererMaterial) sm =
             renderer_submesh_instance_material(r, rmi->children.items[s]);
-        if (!handle_is_valid(HANDLE_CAST(HzHandle, material)))
+        if (!handle_is_valid(HANDLE_CAST(HzHandle, sm)))
           continue;
         if (cs->over_hair_count == APP_OVER_HAIR_MAX) {
           log_warn("character: more than % Over Hair materials; the rest are off",
                    fmt_u32(APP_OVER_HAIR_MAX));
           continue;
         }
-        material_set_vec4(r, material, "over_hair_rect", oh.items[o].uv_rect);
-        cs->over_hair_mats[cs->over_hair_count++] = HANDLE_CAST(HzHandle, material);
+        material_set_vec4(r, sm, "over_hair_rect", oh.items[o].uv_rect);
+        cs->over_hair_mats[cs->over_hair_count++] = HANDLE_CAST(HzHandle, sm);
         hits++;
       }
     }

@@ -13,6 +13,7 @@
     "node": ">=23.6"
   },
   "scripts": {
+    "frontend": "npm --prefix frontend run dev",
     "start": "node runtime/src/main.ts",
     "check": "node runtime/src/main.ts --check",
     "test": "node --test \"runtime/test/*.test.ts\"",
@@ -24,7 +25,10 @@
     "memory:verify-local": "node tools/supermemory/verify-local.ts",
     "memory:control": "node tools/supermemory/control.ts",
     "memory:backup": "node tools/supermemory/backup.ts",
-    "memory:evaluate": "node tools/supermemory/evaluate.ts"
+    "memory:evaluate": "node tools/supermemory/evaluate.ts",
+    "desktop": "npm --prefix frontend run desktop",
+    "desktop:prepare": "npm --prefix frontend run desktop:prepare",
+    "web-player": "npm --prefix frontend run web-player --"
   },
   "dependencies": {
     "supermemory": "5.0.2",

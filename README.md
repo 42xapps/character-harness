@@ -4,7 +4,27 @@
 
 The harness [Mutuals](https://github.com/mutuals-inc) uses to give life to its characters: a character you can talk to by voice, with a face and body that react to what it says.
 
-> Status: pre-release. The runtime and the player work end to end. Ready-made player builds are on this repo's GitHub Releases, or you can build the player yourself with the Kaigen engine.
+> Status: pre-release. The runtime and the player work end to end. Download a ready-made player below, or build the player yourself with the Kaigen engine.
+
+## Player downloads
+
+<!-- player-releases:start -->
+- [Windows x64 — v0.1.0-windows-x64 (pre-release)](https://github.com/mutuals-inc/character-harness/releases/tag/v0.1.0-windows-x64)
+- [macOS Apple Silicon — v0.1.1-macos-arm64 (pre-release)](https://github.com/mutuals-inc/character-harness/releases/tag/v0.1.1-macos-arm64)
+- [Linux x64 — v0.1.1-linux-x64 (pre-release)](https://github.com/mutuals-inc/character-harness/releases/tag/v0.1.1-linux-x64)
+- [Web (WebAssembly) — v0.1.3-web-wasm (pre-release)](https://github.com/mutuals-inc/character-harness/releases/tag/v0.1.3-web-wasm)
+<!-- player-releases:end -->
+
+Player releases are made for Windows x64, macOS Apple Silicon and Linux x64,
+plus a web (WebAssembly) build that Studio loads in WebGPU browsers;
+a platform shows up here once its first release is published.
+These links track the newest published version for each available platform,
+including pre-releases, and update automatically when releases change.
+[All releases](https://github.com/mutuals-inc/character-harness/releases).
+Follow a desktop release's instructions to run the player and Node harness together;
+install the web build with `npm run web-player -- download` (see
+[frontend/README.md](frontend/README.md#kaigen-in-the-browser)).
+Using a player release needs no Kaigen SDK or licence.
 
 ## How it works
 
@@ -18,7 +38,7 @@ A character is a folder with a manifest, a personality prompt and a body: any VR
 |---|---|
 | `runtime/` | The conversation loop, and the preparation of VRM models and their animations for the player. |
 | `player/` | The app that shows the character. Building it needs a Kaigen licence; using a release build doesn't. |
-| `extensions/` | Plug-ins that run on every turn: `emotion-tags` changes the face from a sentence's delivery tag, `director` stages each line, `memory` remembers what the user tells the character, `reactions` starts each reply with how the character took what the user said. |
+| `extensions/` | Plug-ins that run on every turn: `emotion-tags` changes the face from a sentence's delivery tag, `director` stages each line, `memory` remembers what the user tells the character, `reactions` starts each reply with how the character took what the user said, `game-link` lets the character play games built with neuro-sdk. |
 | `examples/` | Example extensions to copy from. `gesture-cues` is the one `docs/your-first-extension.md` builds. |
 | `characters/` | Character manifests. `foxglove/` is the reference character. |
 | `docs/` | How the pieces fit. Start with `docs/architecture.md`. |
@@ -62,9 +82,32 @@ built from the engine pin in `ios/KloeyCompanionLab/app/hzproject.hzt`; the
 launcher does not silently upgrade it. See the iOS lab README for signing,
 device and development details.
 
+To let the character play a game built with [neuro-sdk](https://github.com/VedalAI/neuro-sdk), add `extensions/game-link` to its `extensions:`, start the runtime and player, then start the game with `NEURO_SDK_WS_URL=ws://127.0.0.1:8000`. See `extensions/game-link/README.md`.
+
+## Character Studio
+
+The optional [frontend](frontend/README.md) puts the animated character, text and
+voice conversation, microphone settings, character editing, extensions and hook
+feedback in one interface. Desktop mode automatically runs Kaigen inside the
+Studio preview, with the native shaders and cloth. Browser mode uses Kaigen's
+web player when you install it (`npm run web-player -- download`) and the
+browser has WebGPU, and Three.js otherwise.
+
+For the native desktop interface on Windows or macOS, install root and frontend
+dependencies and restore the licensed Kaigen SDK, then run **`npm run desktop`**.
+See [Desktop Studio setup](docs/desktop-studio.md) for separate Windows and macOS
+instructions, SDK requirements, troubleshooting and implementation details.
+
+Install its dependencies with `npm --prefix frontend install`, then run
+`npm run frontend` and open `http://127.0.0.1:4173`. Local animation previews and
+device tests work without provider keys. Conversations use the character's
+existing `.env` configuration. See the frontend README for renderer differences
+and the draft's current limits.
+
 ## Docs
 
 - `docs/architecture.md`: the turn loop and the event system
+- `docs/desktop-studio.md`: start native-rendered Studio on Windows and macOS
 - `docs/character-manifest.md`: what a character is
 - `docs/extensions.md`: how to write an extension
 - `docs/your-first-extension.md`: build, check and test a small extension step by step

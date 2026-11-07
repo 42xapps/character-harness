@@ -72,7 +72,7 @@ void main() {
     // view_proj's first and second rows (the view part is a pure rotation)
     float scale_x = length(vec3(hz_scene.view_proj[0][0], hz_scene.view_proj[1][0], hz_scene.view_proj[2][0]));
     float scale_y = length(vec3(hz_scene.view_proj[0][1], hz_scene.view_proj[1][1], hz_scene.view_proj[2][1]));
-    vec4 clip = hz_scene.view_proj * position_ws;
+    vec4 clip = hz_instance_clip(v, position_ws);
     vec2 normal_cs = (hz_scene.view_proj * vec4(v_normal, 0.0)).xy;
     vec2 push_dir = dot(normal_cs, normal_cs) > 1e-12 ? normalize(normal_cs) : vec2(0.0);
     float facing_z = normalize((hz_scene.view * vec4(v_normal, 0.0)).xyz).z;
@@ -86,11 +86,12 @@ void main() {
 #ifdef HZ_RENDERER_GBUFFER
     // motion vectors from the surface point before the push: the push barely
     // changes between frames, so it drops out of the difference
-    v_clip_cur = hz_scene.view_proj_unjittered * position_ws;
     vec3 last_pos = rest_pos;
     apply_blendshapes_prev(last_pos, v.vertex_index, v.bs_offsets_base, v.bs_weights_offset);
     last_pos = apply_skinning_prev_pos(last_pos, v.bone_offset, v.vertex_base, v.vertex_layout_flags);
-    v_clip_prev = hz_scene.prev_view_proj * (unpack_prev_model() * vec4(last_pos, 1.0));
+    HzVelocity vel = hz_instance_velocity(v, position_ws, unpack_prev_model() * vec4(last_pos, 1.0));
+    v_clip_cur = vel.clip_cur;
+    v_clip_prev = vel.clip_prev;
 #endif
 }
 @end
@@ -99,11 +100,14 @@ void main() {
 #undef HZ_RENDERER_VERTEX_SHADER
 #define HZ_RENDERER_FRAGMENT_SHADER
 #define HZ_RENDERER_SHADOWS
-#define HZ_RENDERER_IBL
 #define HZ_RENDERER_LIGHTING_CLUSTERS
+// the sky light and fog, on the web too: with the shadows (2) and this
+// material's 8 maps they take 15 of WebGPU's 16 textures per stage
+#define HZ_RENDERER_IBL
 #define HZ_RENDERER_FOG
+// hz_output_lit declares and writes every target the pass asks for
+#define HZ_RENDERER_OUTPUT
 #include "renderer_shaders.glsl"
-layout(location = 0) out vec4 frag_color;
 in vec3 v_world_pos;
 in vec3 v_normal;
 in vec2 v_uv;
@@ -120,15 +124,6 @@ in float v_vcolor_r;
 #ifdef HZ_RENDERER_GBUFFER
 in vec4 v_clip_cur;
 in vec4 v_clip_prev;
-layout(location = 1) out vec2 frag_velocity;
-#ifdef HZ_RENDERER_TAAU
-layout(location = 2) out vec2 frag_normal;
-layout(location = 3) out float frag_depth;
-layout(location = 4) out float frag_reactive;
-layout(location = 5) out vec4 frag_opaque;
-#else
-layout(location = 2) out vec4 frag_normal;
-#endif
 #endif
 
 // The start of mtoon.glsl's material, field for field, as plain vec4s: the
@@ -166,6 +161,24 @@ struct MaterialFS {
     @texture2D @white
     uint face_mask_map;
 };
+
+// the sky's diffuse light toward dir; none without the sky light
+vec3 toon_sky(vec3 dir) {
+#ifdef HZ_RENDERER_IBL
+    return ibl_irradiance(dir);
+#else
+    return vec3(0.0);
+#endif
+}
+
+// fog over a lit color; none without fog
+vec3 toon_fog(vec3 color, float view_depth) {
+#ifdef HZ_RENDERER_FOG
+    return hz_fog_apply(color, view_depth);
+#else
+    return color;
+#endif
+}
 
 // the toon ramp helpers, as in mtoon.glsl
 float toon_step(float a, float b, float x) {
@@ -252,8 +265,8 @@ void main() {
     HZ_CLUSTER_LOOP_END
 
     vec3 scene_ambient = hz_scene.lights.ambient * hz_scene.lights.ambient_intensity;
-    vec3 sky_here = ibl_irradiance(N);
-    vec3 sky_even = 0.5 * (ibl_irradiance(vec3(0.0, 1.0, 0.0)) + ibl_irradiance(vec3(0.0, -1.0, 0.0)));
+    vec3 sky_here = toon_sky(N);
+    vec3 sky_even = 0.5 * (toon_sky(vec3(0.0, 1.0, 0.0)) + toon_sky(vec3(0.0, -1.0, 0.0)));
     vec3 ambient = scene_ambient + mix(sky_here, sky_even, mat.gi_params.x);
     color += lit * ambient;
     received += ambient;
@@ -272,23 +285,14 @@ void main() {
         rim *= v_vcolor_r;
     color += rim * mix(vec3(1.0), received, mat.rim_color.a);
 
-    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, v_uv).rgb * hz_scene.pre_exposure;
+    color += mat.emissive.rgb * mat.emissive.a * texture_sample(emissive_map, mat.emissive_map, v_uv).rgb *
+             hz_scene.pre_exposure;
 
     // the outline color, blended toward the body color by the lighting mix
-    vec3 outline = hz_fog_apply(mat.outline_color.rgb * mix(vec3(1.0), color, mat.outline_params.y),
-                                v_view_depth);
-    frag_color = vec4(outline, base.a);
-
-#ifdef HZ_RENDERER_GBUFFER
-    frag_velocity = v_clip_cur.xy / v_clip_cur.w - v_clip_prev.xy / v_clip_prev.w;
-#ifdef HZ_RENDERER_TAAU
-    frag_normal = oct_encode_normal(N);
-    frag_depth = gl_FragCoord.z;
-    frag_reactive = 0.0;
-    frag_opaque = vec4(outline, 1.0);
-#else
-    frag_normal = vec4(oct_encode_normal(N), 0.0, 0.0);
-#endif
-#endif
+    vec3 outline = toon_fog(mat.outline_color.rgb * mix(vec3(1.0), color, mat.outline_params.y),
+                            v_view_depth);
+    HzSurface surface = hz_surface_default();
+    surface.normal = N;
+    hz_output_lit(vec4(outline, base.a), surface, HZ_VELOCITY(v_clip_cur, v_clip_prev));
 }
 @end

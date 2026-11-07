@@ -5,9 +5,14 @@ import type { TurnContext } from "./context.ts";
 
 export const STATE_SCHEMA = 1;
 
+// One entry of the conversation. `role` is user, assistant or tool. An
+// assistant entry that called tools lists them in `tool_calls`, and each call's
+// result follows it as a tool entry naming the call in `tool_call_id`.
 export interface Message {
 	role: string;
 	content: string;
+	tool_calls?: ToolCall[];
+	tool_call_id?: string;
 }
 
 export interface Timing {
@@ -30,6 +35,43 @@ export interface Beat {
 
 // Supplied by the server's authenticated connection resolver, never client telemetry.
 export interface SessionPrincipal { user_id: string; companion_id: string }
+// A function the chat model may call this turn: one an extension declares in
+// its extension.yaml, or puts in `tools` on before_llm. `parameters` is a JSON
+// schema of `type: "object"`. `by` is the extension that added it, which the
+// runtime fills in; its on_tool_call runs the tool.
+export interface Tool {
+	name: string;
+	description?: string;
+	parameters?: Record<string, unknown>;
+	by?: string;
+}
+
+// A call the chat model made. `arguments` is the JSON text as the model wrote
+// it, so it may not parse or match the tool's schema. In `tool_calls`, `by` is
+// the extension whose tool it called, and `result` what the model got back.
+export interface ToolCall {
+	id: string;
+	name: string;
+	arguments: string;
+	by?: string;
+	result?: string;
+}
+
+// What on_tool_call hands back for a call: its result, why it failed, or
+// `pending` when the result comes later (see ServiceContext.result).
+export type ToolResult = { content: string } | { error: string } | { pending: true };
+
+// Which tools the model must use this turn: any or none (`auto`, the default),
+// at least one (`required`), none at all, or the one named.
+export type ToolChoice = "auto" | "required" | "none" | { name: string };
+
+// One stretch of speech the runtime heard, with when its words were spoken, in
+// Unix ms on the runtime's clock.
+export interface Utterance {
+	text: string;
+	start_ms: number;
+	end_ms: number;
+}
 
 export interface State {
 	schema: number;
@@ -37,11 +79,17 @@ export interface State {
 	session: { id: string; channel: string; end_reason?: string; principal?: SessionPrincipal };
 	input_event?: { id: string; accepted_at: string };
 	turn_outcome?: "generated" | "interrupted" | "failed" | "silent";
-	input?: { text: string; channel: string };
 	context?: TurnContext;
+	// `offered_by`: the extension whose offer this turn is, when it is one.
+	// `utterances`: the speech the user's line was heard as, oldest first, when
+	// the runtime heard all of it
+	input?: { text: string; channel: string; offered_by?: string; utterances?: Utterance[] };
 	messages?: Message[];
 	prompt?: string;
+	tools?: Tool[];
+	tool_choice?: ToolChoice;
 	reply?: string;
+	tool_calls?: ToolCall[];
 	turn?: number;
 	sentence?: string;
 	beats?: Beat[];
@@ -57,6 +105,7 @@ export const HOOKS = [
 	"before_reply",
 	"before_llm",
 	"after_llm",
+	"on_tool_call",
 	"on_sentence",
 	"on_speak",
 	"after_turn",

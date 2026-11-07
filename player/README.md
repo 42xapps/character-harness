@@ -4,7 +4,7 @@ The app that shows the character: it renders it, plays its voice, captures the m
 
 Ready-made builds are on this repo's GitHub Releases; using one needs no Kaigen licence. To change the player, you build it yourself, which needs a Kaigen licence.
 
-For either platform, prepare the harness first: install Node 24 or later,
+For any platform, prepare the harness first: install Node 24 or later,
 download the matching harness source release, run `npm install` from its root,
 and copy `.env.example` to `.env`. Fill in the keys your character uses;
 FoxGlove needs `XAI_API_KEY` and `ELEVENLABS_API_KEY`. See the
@@ -53,12 +53,41 @@ The app keeps what it writes, like the cache of imported models and its logs, in
    prebuilt player together. Allow microphone access for desktop apps in Windows
    Settings, then speak first.
 
+## Install a release (Linux)
+
+1. Download `character-player-<version>-linux-x64.tar.gz` and
+   `SHA256SUMS-linux-x64` from the release, and check it
+   (`sha256sum -c SHA256SUMS-linux-x64`).
+2. Extract it somewhere you can write to, like your home folder
+   (`tar -xzf character-player-<version>-linux-x64.tar.gz`), and keep the
+   folder together. The player runs in its own folder and keeps its cache of
+   imported models there (`cooked/vrm/`); its logs go to
+   `~/.local/share/Character Player/`.
+
+   It needs an x86_64 Linux desktop (X11 or Wayland), a Vulkan driver (Mesa's
+   `mesa-vulkan-drivers`, or your GPU vendor's) and a microphone through
+   PulseAudio or PipeWire (`pipewire-pulse`). No Kaigen SDK or licence is
+   needed to run it.
+3. Put this in the harness's `.env`, so `npm start` opens it. Use the extracted
+   player's actual path, keeping both quote levels for the space in its name:
+
+   ```dotenv
+   HARNESS_PLAYER="'/home/you/Apps/character-player-0.1.0-linux-x64/Character Player'"
+   ```
+
+4. Run `npm start` from the harness root. It starts the runtime and the
+   prebuilt player together. Speak first.
+
 ## Build (macOS)
+
+For the integrated desktop interface, use the [Windows/macOS Studio guide](../docs/desktop-studio.md).
+It builds this player automatically and keeps it in the background. The steps
+below build and run the standalone player.
 
 Run these steps from `player/`.
 
-1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt`.
-2. Restore this project's pinned engine (git ignores the local link):
+1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt` (`0.6.4.002`); install it with `kaigen engine install`.
+2. Link this folder to the pinned engine (git ignores the link):
 
    ```bash
    kaigen restore
@@ -104,7 +133,7 @@ See [the migration notes](MIGRATION.md) for the engine changes and validation.
 
 Run these steps from `player/`.
 
-1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt`.
+1. Install Kaigen and activate your licence (`kaigen activate <licence-key> --accept-terms`). The project is pinned to the engine version in `hzproject.hzt` (`0.6.4.002`); install it with `kaigen engine install`.
 2. Link this folder to the pinned engine (git ignores the link):
 
    ```powershell
@@ -131,14 +160,81 @@ executable is `out/windows/debug/CharacterPlayer.exe`. For distribution, use
 the publish build through `release-windows.ps1` below, rather than copying the
 debug executable.
 
+## Build (Linux)
+
+Run these steps from `player/`, after installing and activating Kaigen as above.
+
+```bash
+kaigen restore
+hz/hzbuild linux run
+```
+
+The cook mip-generates and compresses textures on the GPU, so it needs a Vulkan
+device. On a machine without a GPU, Mesa's software Vulkan driver (lavapipe,
+`mesa-vulkan-drivers`) works: point `VK_ICD_FILENAMES` at its `lvp_icd.json`
+for the build and the run. Studio's desktop mode doesn't run on Linux yet
+(`../docs/desktop-studio.md`).
+
+## Build and run in a browser (WebAssembly)
+
+The engine's WebAssembly build renders with WebGPU, with the same shaders as
+the desktop player. It needs the engine's `wasm` component
+(`kaigen engine add wasm --version 0.6.4.002`). From `player/`:
+
+```bash
+kaigen restore
+hz/hzbuild wasm run
+```
+
+`hz/hzbuild wasm` alone builds into `out/wasm/debug/` without serving it.
+`run` serves that folder with the cross-origin isolation headers its threads
+need (`Cross-Origin-Opener-Policy: same-origin`,
+`Cross-Origin-Embedder-Policy: require-corp`); any server that sends them
+works. Open it in a browser with WebGPU (Chrome or Edge) and pass the settings
+below as URL parameters, for example
+`/index.html?HARNESS_CHARACTER=foxglove&HARNESS_PREVIEW=emotion:happy`.
+
+In the browser the player shows a cooked-in profile (FoxGlove). It can't import
+a `.vrm` yet, because the import writes its cache to disk. On its own it hasn't
+been tried against the runtime's session socket, so use it to preview the
+character (`HARNESS_PREVIEW`); for conversations, use it in Studio (below).
+
+## Studio in a browser (WebAssembly)
+
+Studio's Browser mode shows FoxGlove with the web build when it is installed and
+the browser has WebGPU (a recent Chrome or Edge), and with three.js
+otherwise. Studio serves it from `.cache/web-player/` with the isolation headers
+its threads need, and drives it like the desktop app drives the native player:
+over `HARNESS_STUDIO_URL` it gets emotions, gestures, talking styles, camera
+moves and the mouth level of the speech Studio plays. The conversation, mic and
+voice stay in Studio. See the [Studio README](../frontend/README.md#kaigen-in-the-browser).
+
+Install it from the repo root, from a `vX.Y.Z-web-wasm` release:
+
+```bash
+npm run web-player -- download
+```
+
+or from your own build, after `hz/hzbuild wasm publish` in `player/`:
+
+```bash
+npm run web-player -- copy
+```
+
+`WEB_PLAYER_DIR` points Studio at another folder, from the repo root, such as
+`player/out/wasm/debug/`. In Studio the web build draws Kaigen's stage behind
+her: a WebGPU canvas from the engine is always opaque, so Studio's backgrounds
+don't apply to it.
+
 ## Settings
 
-The runtime sets the first two when it starts the player.
+The runtime sets the first three when it starts the player.
 
 | Variable | Default | What |
 |---|---|---|
 | `HARNESS_URL` | `ws://127.0.0.1:8788/session` | the runtime's session socket. The runtime only accepts it with its token (`/session/<token>`), which it passes when it starts the player and prints otherwise |
 | `HARNESS_CHARACTER` | `foxglove` in offline preview | the character: a path to a `.vrm` / `.glb` (the runtime passes a prepared one), or the name of a profile cooked into the build (`foxglove`) |
+| `HARNESS_LISTEN` | | the character's `listen` settings as JSON, like `{"end_of_speech_ms":900}`. Set them in `character.yaml` (`docs/character-manifest.md`), not here: the runtime always sets this one and ignores a value in the shell or `.env`. A key left out, or a value the player can't use, keeps the default |
 | `HARNESS_MIC_DEBUG` | `0` | `1` logs what the mic hears twice a second |
 | `HARNESS_PREVIEW` | `idle` when no character was supplied | offline preview: `idle`, `talk`, `talk:<style>`, `gesture:<name>` or `emotion:<name>`, repeated every few seconds; microphone and session processing are disabled |
 | `HARNESS_SCREENSHOT` | | saves frame `HARNESS_SCREENSHOT_FRAME` (default 240) to this `.png` and quits |
@@ -148,11 +244,19 @@ The runtime sets the first two when it starts the player.
 - Puts the character on the stage, with a portrait camera framed on the upper body.
 - Runs the engine's voice session against the runtime. The engine owns the socket, voice activity detection, playback and lip sync.
 - Applies beats: emotions reach the face, talking styles switch the body's loop, gestures play once, and camera words ease the framing toward `assets/mutuals/camera_moves.hzt`.
-- Never speaks first.
+- Speaks first only when an extension offers it a turn: it keeps a second socket to the runtime, the offers link, reports what its voice is doing there, and takes an offered line as the user's next turn while nobody is speaking (`../docs/protocol.md`, "The offers link"). The engine's own greeting stays off.
 
 ## FoxGlove
 
 FoxGlove is a profile cooked into the player (`assets/characters/foxglove.hzt`): her model, rig, face and expressions are in `assets/foxglove/`, with hair, skirt and bust physics and her own expression effects (sparkling eyes, tears, blush). Her idle loops, idle breaks and gestures are animations in her model, played through `assets/foxglove/states.hzt`, `assets/foxglove/emotes/` and `assets/mutuals/gestures.hzt`; their `.vrma` sources are in `characters/foxglove/animations/`. She has no talking loops yet: while she talks she stays in her idle loop.
+
+## Toon shading and light
+
+The toon shader takes the sun as MToon's light colour: at 1, the lit side shows the material's base colour and the shade side its shade colour. The engine hands shaders a directional light as pre-exposed lux over pi, so at the engine's default exposure (EV100 15) the stage's sun is 1.2 × 2^15 × π ≈ 123,533 lux, which reaches the shader at 1. The ambient (`ambient_intensity`) has no pi: 19,661 at EV100 15 is 0.5 of its colour.
+
+WebGPU allows 16 textures per shader stage, and the shadows, sky light and fog take 7, which leaves 9 of `mtoon.glsl`'s 14 maps. A material leaves out the maps it never sets with `MTOON_NO_<MAP>` keywords. On the web those maps aren't bound and read as their defaults, as unset maps do on the desktop, so both builds draw the same. A material with more than 9 maps, like one the VRM importer makes, still draws on the web, without sky light and fog. The desktop build binds every map whatever the keywords say.
+
+FoxGlove's keywords are listed per material under `material_override` in `assets/foxglove/foxglove.import.hzt`. The cook writes her material files in `assets/foxglove/materials/` from the glb each time, so keywords set in them would be lost; once one of those files has been edited, the cook stops with an error rather than overwrite it.
 
 ## Loading a VRM
 
@@ -170,9 +274,13 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | Path | What |
 |---|---|
 | `hzproject.hzt` | the project: name, folders, engine version, and the app's name, bundle id and version for a release |
+| `release-linux.sh` | builds a Linux release from a tag, packages it as a `.tar.gz`, and attaches it to a draft GitHub release |
+| `release-windows.ps1` | builds a Windows release from a tag, packages it as a `.zip`, and attaches it to a draft GitHub release |
+| `release-web.sh` | builds the web player from a tag, packages it as a `.tar.gz` for Studio, and attaches it to a draft GitHub release |
 | `release-macos.sh`, `macos.entitlements` | builds a release from a tag, signs it (ad hoc, or with a Developer ID and notarized), and attaches it to a draft GitHub release; the entitlements let the app use the mic |
-| `src/app/player.c`, `player.h` | the app: init, frame loop, mic, beats, camera |
+| `src/app/player.c`, `player.h` | the app: init, frame loop, mic, beats, camera, and the Studio link (`HARNESS_STUDIO_URL`) |
 | `src/app/player_vrm.c`, `.h` | runtime VRM import and caching: clips, face, rig and the generated character profile |
+| `src/app/player_offers.c`, `.h` | the offers link: the voice's status out, offered turns in |
 | `src/app/player_json.c`, `.h` | a small JSON reader for the VRM extensions and the runtime's clip table |
 | `src/app/app_character.c`, `.h`, `app_emote_clips.c` | loading and swapping the character, emote clips |
 | `src/app/app.c` | the build's entry file, which includes the others |
@@ -180,7 +288,36 @@ The runtime prepares a character's model: its `.vrm` with the character's animat
 | `assets/characters/foxglove.hzt`, `assets/foxglove/` | FoxGlove: her profile, model and animations, rig, face, expressions, physics, states and emotes |
 | `assets/mutuals/` | the stage, camera moves, emotions, the gesture set of a cooked-in profile, the lip sync profile, an upper-body mask (empty; the engine expects one) |
 | `assets/vad/` | the voice activity model ([Silero VAD](https://github.com/snakers4/silero-vad), MIT licence) |
-| `shaders/mutuals/` | the toon and outline shaders |
+| `shaders/mutuals/` | the toon and outline shaders (`mtoon.glsl`, `mtoon_outline.glsl`); the engine's VRM importer binds VRM materials to `mtoon.glsl`. The web build draws them like the desktop build, sky light and fog included; see "Toon shading and light" below |
+
+## Release tags and download links
+
+Use one tag and GitHub release per version, OS and architecture:
+`v0.1.0-windows-x64`, `v0.1.0-macos-arm64` and `v0.1.0-linux-x64` can all
+release app version `0.1.0`, independently and from different commits. The
+platform suffix is omitted from the app's product version. The web player uses
+`v0.1.0-web-wasm`; it isn't in the README's download links, because
+`npm run web-player -- download` finds it.
+
+Create and push the tag on the commit you will build, then check it out before
+running the platform's release script. For example:
+
+```powershell
+git tag v0.1.0-windows-x64
+git push origin v0.1.0-windows-x64
+git switch --detach v0.1.0-windows-x64
+```
+
+After publishing, the `Update player download links` GitHub Actions workflow
+updates only the marked downloads block in the root README on the default
+branch. It selects the highest published numeric version per platform,
+includes pre-releases and excludes drafts. Editing, deleting or unpublishing
+a release refreshes the links too. You can also run it manually from Actions
+→ Update player download links → Run workflow, for example after merging this
+workflow for the first time. It needs permission to push README updates to
+the default branch; future branch protection must allow those bot commits.
+GitHub's generic `/releases/latest` link excludes pre-releases and does not
+select a platform, so the README links directly to the selected tags.
 
 ## Releasing (macOS)
 
@@ -198,13 +335,73 @@ MACOS_SIGNING_IDENTITY="Developer ID Application: <name> (<team id>)" MACOS_NOTA
 
 Either way, review the draft and publish it. CI doesn't build the player, so releases are made this way.
 
+## Releasing (Linux)
+
+From a clean checkout of a `vX.Y.Z-linux-x64` tag pushed to GitHub, on x86_64
+Linux with the Kaigen SDK linked at `player/hz` and your licence activated:
+
+```bash
+player/release-linux.sh vX.Y.Z-linux-x64
+```
+
+The cook needs a Vulkan device; without a GPU, point `VK_ICD_FILENAMES` at
+lavapipe's `lvp_icd.json` (see "Build (Linux)"). The script sets the product
+version from the tag for the build only, removes cached VRM imports and old
+publish output, and runs `hz/hzbuild linux publish`. It packages the published
+executable and its cooked assets (without the web build's `.br` files), the
+licences and a README into:
+
+```text
+player/out/release/linux-x64/
+  character-player-0.1.0-linux-x64/
+  character-player-0.1.0-linux-x64.tar.gz
+  SHA256SUMS-linux-x64
+```
+
+Debug symbols, object files and the engine's release entry stay out of it, and
+the script stops if anything in the package names a path on the build machine.
+It then creates a draft release with the files and notes on running the full
+harness; a rerun replaces the files on that draft, and a published release is
+never changed. `--no-release` stops after packaging. Review the draft and
+publish it.
+
+## Releasing (web)
+
+From a clean checkout of a `vX.Y.Z-web-wasm` tag pushed to GitHub, on Linux with
+the Kaigen SDK and its `wasm` component linked at `player/hz` and your licence
+activated:
+
+```bash
+player/release-web.sh vX.Y.Z-web-wasm
+```
+
+The cook needs a Vulkan device, as for Linux. The script sets the product
+version from the tag for the build only, removes cached VRM imports and old
+publish output, and runs `hz/hzbuild wasm publish`. It packages the player's
+scripts, `game.wasm.br` and its cooked assets (without the native `.zst` files,
+the engine's test page and its static-host headers), the licences and a README
+into:
+
+```text
+player/out/release/web-wasm/
+  character-player-0.1.0-web-wasm/
+  character-player-0.1.0-web-wasm.tar.gz
+  SHA256SUMS-web-wasm
+```
+
+It stops if anything in the package, the brotli files unpacked included, names a
+path on the build machine or holds a Kaigen licence key. It then creates a draft
+release; a rerun replaces the files on that draft, and a published release is
+never changed. `--no-release` stops after packaging. Review the draft and
+publish it; `npm run web-player -- download` takes the highest published version.
+
 ## Releasing (Windows)
 
-From a clean checkout of a `vX.Y.Z` tag, on Windows with the Kaigen SDK linked at
+From a clean checkout of a `vX.Y.Z-windows-x64` tag, on Windows with the Kaigen SDK linked at
 `player/hz`, an activated licence and the native toolchain installed:
 
 ```powershell
-.\player\release-windows.ps1 v0.1.0 -NoRelease
+.\player\release-windows.ps1 v0.1.0-windows-x64 -NoRelease
 ```
 
 The script temporarily sets the product version from the tag, removes cached
@@ -240,19 +437,19 @@ source, configure their own keys and run `npm start` as described above.
 For a local preview of uncommitted work, without creating a tag or uploading:
 
 ```powershell
-.\player\release-windows.ps1 v0.1.0 -NoRelease -AllowDirty
+.\player\release-windows.ps1 v0.1.0-windows-x64 -NoRelease -AllowDirty
 ```
 
 To attach the ZIP and checksums to a draft GitHub release, push the tag and run
 without `-NoRelease` (requires `gh` installed and authenticated):
 
 ```powershell
-.\player\release-windows.ps1 v0.1.0
+.\player\release-windows.ps1 v0.1.0-windows-x64
 ```
 
-If a macOS draft already exists for the tag, the Windows assets are added to
-it without replacing its notes or checksums. Existing assets are not silently
-overwritten, and public releases are not modified. Review the draft before
+Each platform has its own tag and release. If a Windows draft already exists
+for this tag, missing assets are added without replacing its notes or checksums.
+Existing assets are not silently overwritten, and public releases are not modified. Review the draft before
 publishing. Artifacts stay under the platform-specific output directory so
 this script does not delete macOS packages.
 
