@@ -48,6 +48,17 @@ for corrupt in [Data("broken".utf8),
 }
 print("Session settings checks passed: save, restore, replacement, preview override, partial settings, byte limits and corrupt data.")
 
+let listening = first.merging(["HARNESS_LISTEN": "{\"end_of_speech_ms\":900}"]) { _, new in new }
+applied = [:]
+prepare(listening)
+prepare([:])
+precondition(applied == listening)
+applied = [:]
+prepare(first)
+prepare([:])
+precondition(applied == first)
+print("Listening settings survive relaunch and are cleared by a replacement session.")
+
 let orbit = HZCommand.orbitCamera(yaw: 0.25, pitch: -0.1, zoom: 0.3).encoded()
 precondition(orbit.count == 16)
 precondition(orbit.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) } == 3)

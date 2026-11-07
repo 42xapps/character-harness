@@ -4,6 +4,7 @@ import Security
 struct CompanionSessionSettings: Codable {
     let url: String
     let character: String
+    var listen: String? = nil
 
     private var isValid: Bool {
         guard !url.isEmpty, url.utf8.count < 512,
@@ -30,7 +31,7 @@ struct CompanionSessionSettings: Codable {
         let url = environment["HARNESS_URL"] ?? ""
         let character = environment["HARNESS_CHARACTER"] ?? ""
         if !url.isEmpty || !character.isEmpty {
-            let settings = Self(url: url, character: character)
+            let settings = Self(url: url, character: character, listen: environment["HARNESS_LISTEN"])
             if settings.isValid, let data = try? JSONEncoder().encode(settings) {
                 save(data)
             }
@@ -41,6 +42,11 @@ struct CompanionSessionSettings: Codable {
               settings.isValid else { return }
         apply("HARNESS_URL", settings.url)
         apply("HARNESS_CHARACTER", settings.character)
+        if let listen = settings.listen, listen.utf8.count < 512,
+           let data = listen.data(using: .utf8),
+           (try? JSONSerialization.jsonObject(with: data)) is [String: Any] {
+            apply("HARNESS_LISTEN", listen)
+        }
     }
 
     private static var keychainQuery: [String: Any] {

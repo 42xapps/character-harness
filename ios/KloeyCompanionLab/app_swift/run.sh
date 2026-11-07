@@ -180,6 +180,7 @@ if [ "$RESTART_SERVER" -eq 1 ]; then
   "${NODE_BINARY:-node}" "$LAB_ROOT/tools/restart-harness.mjs" "$BUILD_ROOT/session.json"
   HARNESS_URL="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["url"])' "$BUILD_ROOT/session.json")"
   HARNESS_CHARACTER="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["character"])' "$BUILD_ROOT/session.json")"
+  HARNESS_LISTEN="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])).get("listen", {})))' "$BUILD_ROOT/session.json")"
 fi
 
 step "Installing on iPhone"
@@ -190,6 +191,7 @@ LAUNCH_ARGS=(--terminate-existing --device "$DEVICE_UDID")
 if [ -n "${HARNESS_URL:-}" ]; then
   export DEVICECTL_CHILD_HARNESS_URL="$HARNESS_URL"
   export DEVICECTL_CHILD_HARNESS_CHARACTER="$HARNESS_CHARACTER"
+  export DEVICECTL_CHILD_HARNESS_LISTEN="${HARNESS_LISTEN:-}"
 fi
 export DEVICECTL_CHILD_MTL_DEBUG_LAYER=0
 xcrun devicectl device process launch "${LAUNCH_ARGS[@]}" "$BUNDLE_ID" 2>&1 | tee "$BUILD_ROOT/launch.log"

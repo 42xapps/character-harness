@@ -11,7 +11,7 @@ shader_roots 1 shaders
 macos_bundle_name "Kloey Companion Lab"
 macos_bundle_id com.kaigen.kloeycompanionlab
 ios_public_headers 1 src/app_swift/app_host.h
-engine_version 0.6.2.001-beta
+engine_version 0.6.4.002
 publish
   product_name "Kloey Companion Lab"
   version 0.1.0

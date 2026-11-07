@@ -29,7 +29,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kaigen.kloeycompanionlab
         "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(SRCROOT)/../app/out/ios-framework/HZEngine.xcframework/ios-arm64"
-        "OTHER_LDFLAGS[sdk=iphoneos*]": "$(inherited) -lc++ -framework HZEngine -framework Foundation -framework UIKit -framework QuartzCore -framework Metal -framework MetalFX -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework Network -framework Security -framework CoreText -framework CoreGraphics -framework GameController -framework VideoToolbox -framework CoreMedia"
+        "OTHER_LDFLAGS[sdk=iphoneos*]": "$(inherited) -lc++ -framework HZEngine -framework Foundation -framework UIKit -framework QuartzCore -framework Metal -framework MetalFX -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework Network -framework Security -framework CoreText -framework CoreGraphics -framework GameController -framework VideoToolbox -framework CoreMedia -framework CoreHaptics"
         CODE_SIGN_STYLE: Automatic
     info:
       path: Generated/Info.plist

@@ -25,6 +25,7 @@
 #include "app_swift/app_swift.h"
 #include "app/app_character.h"
 #include "app/player.h"
+#include "app/player_offers.h"
 #include "app/calm_life.h"
 #include "app/calm_world.h"
 #include "app/ios_quality.h"
@@ -83,6 +84,7 @@ typedef struct AppState {
   f32 mic_debug_peak;    // loudest sample since the last debug line
   u32 mic_debug_frames;
   CharacterVoice vs;
+  PlayerOffers offers;
   f32 talk_hold;
   i32 last_talk_want;
   HzHandleT(GestureSetBlobAsset) gesture_asset;
@@ -90,6 +92,7 @@ typedef struct AppState {
   u32 last_beat_gen;
   // the camera move from the latest beat: eases cam_cur from cam_from to cam_to
   b32 cam_active;
+  b32 cam_head;
   PlayerCamMove cam_from, cam_to, cam_cur;
   f32 cam_t, cam_dur;
   u32 framing;
@@ -618,6 +621,7 @@ hz_internal void player_camera_move(AppState *s, EcsWorld *w, const char *name) 
         .y = m->y,
         .distance = m->distance};
     s->cam_t = 0.0f;
+    s->cam_head = cstr_equal(name, "close-up");
     s->cam_dur = m->transition > 0.0f ? m->transition : 0.6f;
     s->cam_curve = m->curve;
     s->cam_active = true;
@@ -818,6 +822,51 @@ hz_internal void player_link_bundled_cooked(void) {
 }
 #endif
 
+// a `listen` value in (0, max), else 0: the engine takes 0 as its default
+hz_internal f64 player_listen_value(PJson *listen, const char *key, f64 max) {
+  PJson *value = pjson_get(listen, key);
+  if (!value)
+    return 0;
+  if (value->kind != PJSON_NUMBER) {
+    log_error("player: % % is not a number; it keeps its default", fmt_cstr(PLAYER_LISTEN_ENV),
+              fmt_cstr(key));
+    return 0;
+  }
+  if (value->number > 0 && value->number < max)
+    return value->number;
+  log_error("player: % % is out of range; it keeps its default", fmt_cstr(PLAYER_LISTEN_ENV),
+            fmt_cstr(key));
+  return 0;
+}
+
+// the character's `listen` settings onto the voice config. The runtime checks
+// them against the manifest's ranges; this only keeps a value the engine can
+// take, for a player started by hand.
+hz_internal void player_listen(CString text, CharacterVoiceDesc *voice, Allocator *alloc) {
+  if (!text[0])
+    return;
+  PJson *listen = pjson_parse(text, cstr_len(text), alloc);
+  if (!listen || listen->kind != PJSON_OBJECT) {
+    log_error("player: % is not a JSON object; listening keeps its defaults",
+              fmt_cstr(PLAYER_LISTEN_ENV));
+    return;
+  }
+  voice->endpoint_silence_ms = (u32)player_listen_value(listen, "end_of_speech_ms", 60000);
+  voice->barge_confirm_ms = (u32)player_listen_value(listen, "barge_in_ms", 60000);
+  // the two thresholds go together, release below onset, or neither applies
+  f32 hi = (f32)player_listen_value(listen, "speech_threshold", 1);
+  f32 lo = (f32)player_listen_value(listen, "silence_threshold", 1);
+  if (hi > 0 && lo > 0 && lo < hi) {
+    voice->vad_hi = hi;
+    voice->vad_lo = lo;
+  } else if (hi > 0 || lo > 0) {
+    log_error("player: % needs speech_threshold and silence_threshold together, silence "
+              "below speech; both keep their defaults",
+              fmt_cstr(PLAYER_LISTEN_ENV));
+  }
+  voice->echo_peak_floor = (f32)player_listen_value(listen, "echo_floor", 1);
+}
+
 HZ_APP_API void app_init(AppMemory *memory) {
   if (!is_main_thread())
     return;
@@ -938,15 +987,21 @@ HZ_APP_API void app_init(AppMemory *memory) {
   PlatformFileData vad = os_read_file(PLAYER_VAD_MODEL, &assets->allocator);
   if (!vad.success)
     log_error("voice: % is missing; run a cook", fmt_cstr(PLAYER_VAD_MODEL));
-  character_voice_init(&state->vs,
-                       &(CharacterVoiceDesc){
+  CharacterVoiceDesc voice = {
                            .session_url = state->url,
                            .audio = &state->audio,
                            .assets = assets,
                            .alloc = &assets->allocator,
                            .vad_model = vad.success ? vad.buffer : 0,
                            .vad_model_len = vad.success ? vad.buffer_len : 0,
-                       });
+                       };
+  tctx_temp_allocator_scope(ta, NULL) {
+    char *listen = ALLOC_ARRAY(&ta.allocator, char, PLAYER_ENV_MAX);
+    player_env(PLAYER_LISTEN_ENV, "", listen);
+    player_listen(listen, &voice, &assets->allocator);
+  }
+  character_voice_init(&state->vs, &voice);
+  player_offers_init(&state->offers, state->url);
   // the engine's built-in greeting stays shut: the character never speaks first
   character_voice_hold_greeting(&state->vs, true);
 
@@ -1040,6 +1095,8 @@ hz_internal void player_camera_prepare(AppState *s, f32 dt) {
   f32 horizontal = (s->framing ? 2.6f : s->camera_base.z) + move.distance;
   horizontal = m_clampf(horizontal * m_expf(s->orbit_zoom_cur) * (1 + reserved * 1.1f), 1.8f, 7.5f);
   f32 aim = (s->framing ? 1.30f : PLAYER_CAM_AIM_Y) + s->character.cam_offset_y + reserved * 1.5f;
+  if (s->cam_head && !s->framing)
+    aim = 1.665f + s->character.cam_offset_y - horizontal * m_tanf(m_radians(move.fov) * .5f);
   f32 height = s->camera_base.y + s->character.cam_offset_y + move.y +
     m_sinf(s->orbit_pitch_cur) * horizontal + m_maxf(0, horizontal - 4) * .18f;
   f32 flat = m_cosf(s->orbit_pitch_cur) * horizontal;
@@ -1063,8 +1120,14 @@ HZ_APP_API void app_update_and_render(AppMemory *memory) {
     app_character_over_hair_update(&state->character, w);
     player_context_tick(state, memory->dt);
     player_mic_tick(state);
-    if (!state->preview[0] && !state->screenshot[0])
+    if (!state->preview[0] && !state->screenshot[0]) {
       character_voice_tick(&state->vs, memory->dt);
+      if (state->activity_flags & 1) player_offers_tick(&state->offers, &state->vs, memory->dt);
+      else if (state->offers.ws) {
+        os_ws_close(state->offers.ws);
+        player_offers_init(&state->offers, state->url);
+      }
+    }
     player_talk_tick(state, memory->dt);
     player_mic_debug_tick(state, memory->dt);
     if (ecs_resource_get(w, CalmWorldState)->ready &&

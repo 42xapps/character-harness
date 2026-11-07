@@ -11,6 +11,7 @@
 
 // launch settings, read once from the environment; unset means the default
 #define PLAYER_URL_ENV "HARNESS_URL"
+#define PLAYER_LISTEN_ENV "HARNESS_LISTEN"
 #define PLAYER_URL_DEFAULT "ws://127.0.0.1:8788/session"
 // a path to a .vrm / .glb, imported on first load (player_vrm.c), or the name
 // or path of a profile cooked into the build (characters/<name>.hzt, like

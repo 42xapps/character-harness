@@ -132,7 +132,7 @@ try {
     } catch { /* The process is still starting. */ }
     if (!ready) await delay(200);
   }
-  const session = { url: `ws://${host}:${port}/session/${token}`, character };
+  const session = { url: `ws://${host}:${port}/session/${token}`, character, listen: manifest.listen ?? {} };
   writeFileSync(handoff, JSON.stringify(session), { mode: 0o600 });
   writeFileSync(path.join(cache, "server.json"), JSON.stringify({ pid: child.pid, port, log }), { mode: 0o600 });
   handedOff = true;

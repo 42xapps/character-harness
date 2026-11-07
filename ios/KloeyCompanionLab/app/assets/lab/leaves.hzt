@@ -9,6 +9,7 @@ cull_mode GPU_CULL_NONE
 is_transparent false
 alpha_cutoff false
 alpha_to_coverage false
+lod_fade false
 blend
   enabled false
   src_factor GPU_BLEND_ZERO
@@ -42,3 +43,4 @@ keywords 2
   name "HZ_RENDERER_FOG"
   value ""
 passes 0
+quality_drops 0

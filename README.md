@@ -77,7 +77,7 @@ generated automatically. Node dependencies are installed from
 machine-local `app/hz` Kaigen link.
 
 Each Mac needs Xcode signed into the Apple ID used for device development and
-the pinned Kaigen `0.6.2.001-beta` engine with its iOS component. The scene is
+the pinned Kaigen `0.6.4.002` engine with its iOS component. The scene is
 built from the engine pin in `ios/KloeyCompanionLab/app/hzproject.hzt`; the
 launcher does not silently upgrade it. See the iOS lab README for signing,
 device and development details.

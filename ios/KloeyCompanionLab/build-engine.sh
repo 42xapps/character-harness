@@ -15,9 +15,7 @@ python3 "$lab_root/tools/prepare-collision.py" > /dev/null
 python3 "$lab_root/tools/verify-nature.py" > /dev/null
 python3 "$lab_root/tools/verify-life-space.py" > /dev/null
 cd "$lab_root/app"
-if [[ ! -x hz/hzbuild ]]; then
-  "${KAIGEN_CLI:-$HOME/.kaigen/bin/kaigen}" restore
-fi
+"${KAIGEN_CLI:-$HOME/.kaigen/bin/kaigen}" restore
 build_args=(ios --framework)
 [[ "$configuration" != Release ]] || build_args+=(--release)
 hz/hzbuild "${build_args[@]}"

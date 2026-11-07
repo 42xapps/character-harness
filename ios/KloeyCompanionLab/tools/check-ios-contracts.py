@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='kloey-contracts-') as directory:
     enums = (ROOT / 'app/hz/src/engine/rendering/renderer_quality.h').read_text()
     strip = lambda text: re.sub(r'^#(?:include|pragma).*\n', '', text, flags=re.M)
     test = temp / 'quality.c'
-    test.write_text('#include <stdint.h>\n#include <stdbool.h>\n#include <assert.h>\n'
+    test.write_text('#include <stdint.h>\n#include <stdbool.h>\n#include <assert.h>\n#define HZ_REFLECT()\n'
                     'typedef uint32_t u32; typedef uint64_t u64; typedef float f32; typedef double f64; typedef uint32_t b32;\n' +
                     strip(enums) + strip(quality) + r'''
 int main(void) {

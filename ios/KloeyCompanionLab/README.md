@@ -6,6 +6,22 @@ This project uses iOS 26, matching Kloey's current deployment target.
 
 ## Start in Xcode
 
+The iOS player follows upstream's Kaigen 0.6.4.002 pin, toon shaders, avatar
+import settings and shared player helpers. Service/game offers use the same
+voice-state and epoch handshake as the desktop player. Tool calls run in the
+runtime; the native player retains reply text, as upstream's native player does.
+Studio's browser renderer and desktop window remain separate clients.
+Character listening settings are handed to iOS by the server launcher and
+saved with the development connection. The lab's forest, movement, native
+cards, camera controls, world context and Luna configuration remain available.
+
+For an offline physical-device protocol check, run
+`node ios/KloeyCompanionLab/tools/protocol-smoke.mjs` at the repository root and
+launch the app with `HARNESS_URL=ws://<Mac LAN address>:18789/session/ios-smoke`
+and `HARNESS_CHARACTER=foxglove`. The probe tests an offered turn, tool-result
+messages, alignment, streamed PCM and a performance cue without provider calls.
+Restore the normal connection after testing.
+
 Generate with `python3 tools/generate-ios-project.py` when needed, then open `app_swift/KloeyCompanionLab.xcodeproj`, select the **KloeyCompanionLab**
 scheme, select your physical iPhone, and choose your development team under
 Signing & Capabilities. Then Run. This Mac already has the user's signing team
@@ -89,7 +105,7 @@ Both Macs need the same Kaigen engine pin with its iOS component, Xcode with
 your Apple ID signed in, and the paired iPhone trusted and unlocked with
 Developer Mode enabled. Keep the Mac and phone on the same Wi-Fi. A first-time
 Xcode install may ask you to choose your signing team; the launcher then uses
-automatic signing. The project pins Kaigen `0.6.2.001-beta` in
+automatic signing. The project pins Kaigen `0.6.4.002` in
 `app/hzproject.hzt` and does not substitute a newer engine.
 
 The script prefers the single connected physical iPhone. Use
@@ -262,7 +278,7 @@ both are configured; it never infers acceptance from a missing setting.
 It does not publish, archive to the store or upload a license.
 
 `python3 tools/sync-player-helpers.py --check` detects shared player-source drift.
-`--write` deliberately refreshes the seven listed helpers from `player/src/app`;
+`--write` deliberately refreshes the shared helpers from `player/src/app`;
 it retains their original contents/license and leaves native composition code
 alone. Retarget preparation imports the canonical runtime helpers directly.
 
